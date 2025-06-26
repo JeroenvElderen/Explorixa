@@ -1,0 +1,92 @@
+{
+    "version": 8,
+    "name": "Satellite base + vector features",
+    "glyphs": "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
+    "sources": {
+      "satellite": {
+        "type": "raster",
+        "url": "mapbox://mapbox.satellite",
+        "tileSize": 256
+      },
+      "mapbox-streets": {
+        "type": "vector",
+        "url": "mapbox://mapbox.mapbox-streets-v8"
+      }
+    },
+    "layers": [
+      {
+        "id": "satellite-base",
+        "type": "raster",
+        "source": "satellite",
+        "minzoom": 0,
+        "maxzoom": 22
+      },
+      {
+        "id": "building",
+        "type": "fill",
+        "source": "mapbox-streets",
+        "source-layer": "building",
+        "paint": {
+          "fill-color": "#d1cdc7",
+          "fill-opacity": 0.5
+        }
+      },
+      {
+        "id": "road",
+        "type": "line",
+        "source": "mapbox-streets",
+        "source-layer": "road",
+        "paint": {
+          "line-color": "#ffffff",
+          "line-width": [
+            "interpolate",
+            ["linear"],
+            ["zoom"],
+            5,
+            0.5,
+            15,
+            4
+          ],
+          "line-opacity": 0.8
+        }
+      },
+      {
+        "id": "poi-labels",
+        "type": "symbol",
+        "source": "mapbox-streets",
+        "source-layer": "poi_label",
+        "layout": {
+          "text-field": ["coalesce", ["get", "name_en"], ["get", "name"]],
+          "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
+          "text-size": 12,
+          "icon-image": ["concat", ["get", "maki"], "-15"],
+          "icon-allow-overlap": true,
+          "text-allow-overlap": false
+        },
+        "paint": {
+          "text-color": "#ffffff",
+          "text-halo-color": "#000000",
+          "text-halo-width": 1
+        }
+      },
+      {
+        "id": "place-labels",
+        "type": "symbol",
+        "source": "mapbox-streets",
+        "source-layer": "place_label",
+        "layout": {
+          "text-field": ["get", "name_en"],
+          "text-font": ["DIN Offc Pro Bold", "Arial Unicode MS Bold"],
+          "text-size": 14,
+          "text-anchor": "top",
+          "text-offset": [0, 0.6]
+        },
+        "paint": {
+          "text-color": "#ffffff",
+          "text-halo-color": "#000000",
+          "text-halo-width": 1.5
+        }
+      }
+    ]
+  }
+  

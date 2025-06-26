@@ -1,38 +1,49 @@
-.App {
-  text-align: center;
-}
-
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  background-color: #000;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
 }
 
-.App-link {
-  color: #61dafb;
+#root {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.App {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.navbar-wrapper {
+  position: relative;
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  z-index: 1000;
+}
+
+.flag-marker {
+  /* anchor the bottom-center of the flag to the coordinate */
+  transform: translate(-50%, -100%);
+}
+.flag-marker img {
+  display: block;
+}
+
+/* Map container fills all available space */
+#map {
+  flex: 1 1 auto;
+  pointer-events: auto !important;
+  width: 100%;
+  min-height: 0; /* prevents flex overflow */
+  height: 100%;
 }
