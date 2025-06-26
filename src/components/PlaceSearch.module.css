@@ -1,0 +1,10 @@
+/* pull in Mapbox’s styles, but only here */
+@import "@mapbox/search-js-react/dist/style.css";
+
+/* our own wrapper class to scope it */
+.wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
