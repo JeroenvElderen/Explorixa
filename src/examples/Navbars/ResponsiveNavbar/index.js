@@ -1,6 +1,6 @@
 // src/examples/Navbars/ResponsiveNavbar/index.js
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 import AppBar from "@mui/material/AppBar";
@@ -30,12 +30,19 @@ const iconsStyle = ({ palette: { white } }) => ({
 });
 
 export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
+  
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, openConfigurator } = controller;
 
   // **Internal** selected‐tab state
   const [selected, setSelected] = useState(0);
   const [openMenu, setOpenMenu] = useState(null);
+
+   useEffect(() => {
+    if (!openConfigurator) {
+      setSelected(0);
+    }
+  }, [openConfigurator]);
 
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.only("xs"));
@@ -71,6 +78,9 @@ export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
     }
   };
 
+    if (openConfigurator) return null;
+
+   
   return (
     <>
       <AppBar

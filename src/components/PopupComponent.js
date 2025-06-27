@@ -62,7 +62,7 @@ export default function PopupComponent({ data, onClose }) {
                 align="center"
                 sx={{ mt: -1, mb: 1, fontWeight: 800, color: 'white' }}
               >
-                {countryName}
+                {data.title}
               </Typography>
             }
             description={

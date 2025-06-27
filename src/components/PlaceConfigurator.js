@@ -1,6 +1,6 @@
 // src/components/PlaceConfigurator.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import ConfiguratorRoot from "examples/Configurator/ConfiguratorRoot";
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
@@ -15,9 +15,12 @@ import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 
 import { useMaterialUIController, setOpenConfigurator } from "context";
-import outlined from "assets/theme/components/button/outlined";
+import { supabase } from "../SupabaseClient";
+import { v4 as uuidv4 } from "uuid";
 
-// Add any additional countries you need here:
+// storage bucket
+const BUCKET = "pins-images";
+
 const COUNTRY_OPTIONS = [
   { code: "", name: "All Countries" },
   { code: "se", name: "Sweden" },
@@ -31,11 +34,10 @@ export default function PlaceConfigurator({
   countryCode: initialCountryCode,
   accessToken,
   onPlacePick,
-  onPlaceSelected,
-  initialData = {},
   onActivateMapClick,
+  initialData = {},
+  onPlaceSelected,
 }) {
-  // Define shared input height and styles
   const inputHeight = 48;
   const outlinedInputSx = {
     "& .MuiOutlinedInput-input": {
@@ -47,101 +49,152 @@ export default function PlaceConfigurator({
       minHeight: inputHeight,
     },
   };
-  const selectSx = {
-    "& .MuiSelect-select": {
-      height: inputHeight,
-      boxSizing: "border-box",
-      padding: "12px",
-    },
-  };
 
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator, darkMode } = controller;
 
   const [selectedPlace, setSelectedPlace] = useState(initialData);
   const [searchCountry, setSearchCountry] = useState(initialCountryCode || "");
-
   const [form, setForm] = useState({
     Name: "",
+    "Post Summary": "",
+    Information: "",
+    Category: "",
+    Ranking: "",
+    "Average Costs": "",
+    MainImage: "",
+    Images: [],
+
+    // hidden fields
     Latitude: "",
     Longitude: "",
     countryName: "",
     City: "",
-    Category: "",
-    Information: "",
-    Ranking: "",
-    "Average Costs": "",
-    "Post Summary": "",
   });
 
+  // image refs + files
+  const mainImageInputRef = useRef(null);
+  const multiImageInputRef = useRef(null);
+  const [mainImageFile, setMainImageFile] = useState(null);
+  const [multiImageFiles, setMultiImageFiles] = useState([]);
+
+  // open/close
   const handleClose = () => setOpenConfigurator(dispatch, false);
-
-  const handlePlaceSelected = (place) => {
-    setSelectedPlace(place);
-    onPlacePick?.(place);
-  };
-
-  const handleCountryChange = (e) => {
-    setSearchCountry(e.target.value);
+  const handleCancelForm = () => {
     setSelectedPlace(null);
-    setForm((f) => ({
-      ...f,
+    setForm({
       Name: "",
+      "Post Summary": "",
+      Information: "",
+      Category: "",
+      Ranking: "",
+      "Average Costs": "",
+      MainImage: "",
+      Images: [],
       Latitude: "",
       Longitude: "",
       countryName: "",
       City: "",
-    }));
+    });
+    setMainImageFile(null);
+    setMultiImageFiles([]);
+    setOpenConfigurator(dispatch, false);
   };
 
-  const handleCancelForm = () => setSelectedPlace(null);
-
-  const handleSubmitForm = (formData) => {
-    console.log("Submitted pin data:", formData);
-    onPlaceSelected?.(formData);
-    setSelectedPlace(null);
+  // upload helper
+  const uploadImage = async (file) => {
+    const ext = file.name.split(".").pop();
+    const path = `${uuidv4()}.${ext}`;
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(path, file, {
+        cacheControl: "3600",
+        upsert: false,
+        contentType: file.type,
+      });
+    if (error) throw error;
+    const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+    return data.publicUrl;
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setForm((f) => ({ ...f, [name]: value }));
+  // submit handler
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!selectedPlace?.lat || !selectedPlace?.lng) {
+      alert("Please choose a place on the map first.");
+      return;
+    }
+
+    try {
+      // build payload
+      const payload = {
+        Name: form.Name,
+        "Post Summary": form["Post Summary"],
+        Information: form.Information,
+        Category: form.Category,
+        Ranking: form.Ranking || null,
+        "Average Costs": form["Average Costs"] || null,
+        latitude: parseFloat(selectedPlace.lat),
+        longitude: parseFloat(selectedPlace.lng),
+        countryName: selectedPlace.country,
+        City: selectedPlace.city,
+      };
+
+      // upload main image
+      if (mainImageFile) {
+        payload["Main Image"] = await uploadImage(mainImageFile);
+      }
+
+      // upload additional images
+      if (multiImageFiles.length) {
+        const urls = await Promise.all(multiImageFiles.map(uploadImage));
+        payload.Images = urls.join(",");
+      }
+
+      // insert into Supabase
+      const { error } = await supabase.from("pins").insert([payload]);
+      if (error) throw error;
+
+      alert("Pin saved!");
+
+      window.location.reload();
+
+      onPlaceSelected?.(payload); // notify parent
+      handleCancelForm();
+    } catch (err) {
+      console.error(err);
+      alert("Error: " + err.message);
+    }
   };
 
+  // sync selectedPlace → hidden form fields
   useEffect(() => {
     if (selectedPlace) {
-      console.log("Selected place payload:", selectedPlace);
-      setForm((prev) => ({
-        ...prev,
-        Name: selectedPlace.landmark || "",
-        Latitude: selectedPlace.lat || "",
-        Longitude: selectedPlace.lng || "",
-        countryName: selectedPlace.country || "",
-        City: selectedPlace.city || "",
+      setForm((f) => ({
+        ...f,
+        Latitude: selectedPlace.lat,
+        Longitude: selectedPlace.lng,
+        countryName: selectedPlace.country,
+        City: selectedPlace.city,
       }));
     }
   }, [selectedPlace]);
 
+  // if parent gives new initialData
   useEffect(() => {
-    if (initialData) {
-      setSelectedPlace(initialData);
-    }
+    if (initialData) setSelectedPlace(initialData);
   }, [initialData]);
 
   return (
     <ConfiguratorRoot
-    variant="temporary"
-    anchor="right"
-    open={openConfigurator}
-    onClose={handleClose}
-    ModalProps={{ hideBackdrop: true }}
-    PaperProps={{
-      sx: {
-        width: 360,
-        maxWidth: "80vw",
-        height: "100vh",
-      }
-    }}
-    ownerState={{ openConfigurator }}
+      variant="temporary"
+      anchor="right"
+      open={openConfigurator}
+      onClose={handleClose}
+      ModalProps={{ hideBackdrop: true }}
+      PaperProps={{ sx: { width: 360, maxWidth: "80vw", height: "100vh" } }}
+      ownerState={{ openConfigurator }}
     >
       <MDBox
         display="flex"
@@ -151,173 +204,171 @@ export default function PlaceConfigurator({
         pb={0.5}
         px={3}
       >
-        <MDTypography variant="h5">
-          {selectedPlace ? "Create a New Pin" : "Create a New Pin"}
-        </MDTypography>
+        <MDTypography variant="h5">Create a New Pin</MDTypography>
         <Icon
+          onClick={handleCancelForm}
           sx={({ typography: { size }, palette: { dark, white } }) => ({
             fontSize: `${size.lg} !important`,
             color: darkMode ? white.main : dark.main,
-            stroke: "currentColor",
-            strokeWidth: "2px",
             cursor: "pointer",
             transform: "translateY(5px)",
           })}
-          onClick={handleClose}
         >
           close
         </Icon>
       </MDBox>
       <Divider />
       <MDBox pt={0} pb={3} px={3}>
+        {/* Country filter */}
         <FormControl fullWidth variant="standard" sx={{ mb: 2 }}>
           <InputLabel id="search-country-label">Search Country</InputLabel>
           <Select
             labelId="search-country-label"
             value={searchCountry}
-            onChange={handleCountryChange}
-            label="Search Country"
+            onChange={(e) => {
+              setSearchCountry(e.target.value);
+              setSelectedPlace(null);
+            }}
             sx={{ height: "48px" }}
           >
             {COUNTRY_OPTIONS.map((opt) => (
-              <MenuItem key={opt.code} value={opt.code} >
+              <MenuItem key={opt.code} value={opt.code}>
                 {opt.name}
               </MenuItem>
             ))}
           </Select>
         </FormControl>
 
+        {/* Map search */}
         <PlaceSearch
           countryCode={searchCountry || null}
           accessToken={accessToken}
-          onPlaceSelected={handlePlaceSelected}
+          onPlaceSelected={(p) => {
+            setSelectedPlace(p);
+            onPlacePick?.(p);
+          }}
           onActivateMapClick={onActivateMapClick}
         />
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSubmitForm(form);
-          }}
-        >
+        {/* Form */}
+        <form onSubmit={handleSubmit}>
           <MDBox display="flex" flexDirection="column" gap={2}>
             <TextField
               fullWidth
               label="Title"
-              name="Name"
               value={form.Name}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, Name: e.target.value })}
               required
               sx={{ mt: 1, ...outlinedInputSx }}
             />
+
             <TextField
               fullWidth
               label="Post Summary"
-              name="Post Summary"
               value={form["Post Summary"]}
-              onChange={handleChange}
+              onChange={(e) =>
+                setForm({ ...form, ["Post Summary"]: e.target.value })
+              }
               sx={outlinedInputSx}
             />
-            <TextField
-              fullWidth
-              label="Latitude"
-              name="Latitude"
-              value={form.Latitude}
-              onChange={handleChange}
-              required
-              sx={{
-                ...outlinedInputSx,
-                display: "none",
-              }}
 
-            />
-            <TextField
-              fullWidth
-              label="Longitude"
-              name="Longitude"
-              value={form.Longitude}
-              onChange={handleChange}
-              required
-              sx={{
-                ...outlinedInputSx,
-                display: "none",
-              }}
-            />
-            <TextField
-              fullWidth
-              label="Country"
-              name="countryName"
-              value={form.countryName}
-              onChange={handleChange}
-              sx={{
-                ...outlinedInputSx,
-                display: "none",
-              }}
-            />
+            {/* hidden coords/country/city */}
+            <input type="hidden" name="Latitude" value={form.Latitude} />
+            <input type="hidden" name="Longitude" value={form.Longitude} />
+            <input type="hidden" name="countryName" value={form.countryName} />
+
             <TextField
               fullWidth
               label="City"
-              name="City"
               value={form.City}
-              onChange={handleChange}
+              onChange={(e) => setForm({ ...form, City: e.target.value })}
               sx={outlinedInputSx}
             />
+
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
-                name="Category"
                 value={form.Category}
-                onChange={handleChange}
-                label="Category"
-                sx={{ height: "48px"}}
+                onChange={(e) =>
+                  setForm({ ...form, Category: e.target.value })
+                }
+                sx={{ height: "48px" }}
               >
                 <MenuItem value="Category1">Category1</MenuItem>
                 <MenuItem value="Category2">Category2</MenuItem>
                 <MenuItem value="Category3">Category3</MenuItem>
               </Select>
             </FormControl>
+
             <TextField
               fullWidth
               label="Information"
-              name="Information"
               value={form.Information}
-              onChange={handleChange}
+              onChange={(e) =>
+                setForm({ ...form, Information: e.target.value })
+              }
               multiline
               rows={2}
-              sx={{
-                "& .MuiInputBase-input": {
-                  padding: "12px",
-                },
-              }}
+              sx={{ "& .MuiInputBase-input": { padding: "12px" } }}
             />
+
             <TextField
               fullWidth
               label="Ranking"
-              name="Ranking"
+              type="number"
               value={form.Ranking}
-              onChange={handleChange}
-              type="number"
-              sx={outlinedInputSx}
-            />
-            <TextField
-              fullWidth
-              label="Average Costs"
-              name="Average Costs"
-              value={form["Average Costs"]}
-              onChange={handleChange}
-              type="number"
+              onChange={(e) => setForm({ ...form, Ranking: e.target.value })}
               sx={outlinedInputSx}
             />
 
-            <Button variant="contained" type="submit" color="primary">
+            <TextField
+              fullWidth
+              label="Average Costs"
+              type="number"
+              value={form["Average Costs"]}
+              onChange={(e) =>
+                setForm({ ...form, ["Average Costs"]: e.target.value })
+              }
+              sx={outlinedInputSx}
+            />
+
+            {/* Main image upload */}
+            <div>
+              <Button onClick={() => mainImageInputRef.current.click()}>
+                Upload Main Image
+              </Button>
+              <input
+                type="file"
+                accept="image/*"
+                ref={mainImageInputRef}
+                style={{ display: "none" }}
+                onChange={(e) => setMainImageFile(e.target.files[0])}
+              />
+              {mainImageFile && <span> {mainImageFile.name} </span>}
+            </div>
+
+            {/* Additional images */}
+            <div>
+              <Button onClick={() => multiImageInputRef.current.click()}>
+                Upload Additional Images
+              </Button>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                ref={multiImageInputRef}
+                style={{ display: "none" }}
+                onChange={(e) => setMultiImageFiles(Array.from(e.target.files))}
+              />
+              {multiImageFiles.length > 0 && (
+                <span>{multiImageFiles.map((f) => f.name).join(", ")}</span>
+              )}
+            </div>
+
+            <Button variant="contained" type="submit">
               Save Pin
             </Button>
-            <Button
-              variant="outlined"
-              type="button"
-              onClick={handleCancelForm}
-              color="secondary"
-            >
+            <Button variant="outlined" onClick={handleCancelForm}>
               Cancel
             </Button>
           </MDBox>
