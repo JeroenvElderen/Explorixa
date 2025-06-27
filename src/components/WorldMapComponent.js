@@ -4,6 +4,7 @@ import Supercluster from "supercluster";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "../SupabaseClient";
 import PopupComponent from "./PopupComponent";
+import "./WorldMapComponent.css";
 
 const WorldMapComponent = ({
   accessToken,

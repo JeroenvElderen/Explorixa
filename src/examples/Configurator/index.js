@@ -59,7 +59,7 @@ function Configurator() {
     darkMode,
   } = controller;
   const [disabled, setDisabled] = useState(false);
-  const sidenavColors = ["primary", "dark", "info", "success", "warning", "error"];
+  const sidenavColors = ["primary"];
 
   // Use the useEffect hook to change the button state for the sidenav type based on window size.
   useEffect(() => {
@@ -106,7 +106,7 @@ function Configurator() {
     border: `${borderWidth[1]} solid ${darkMode ? white.main : dark.main}`,
 
     "&:hover, &:focus, &:focus:not(:hover)": {
-      background: darkMode ? background.sidenav : white.main,
+      background: "darkMode ? background.sidenav : white.main",
       color: darkMode ? white.main : dark.main,
       border: `${borderWidth[1]} solid ${darkMode ? white.main : dark.main}`,
     },

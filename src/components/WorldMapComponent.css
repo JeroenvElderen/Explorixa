@@ -1,0 +1,11 @@
+/* in your global stylesheet, e.g. src/index.css or App.css */
+
+/* hide the Mapbox logo icon */
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}
+
+/* (just in case) also hide any attribution control */
+.mapboxgl-ctrl-attrib {
+  display: none !important;
+}
