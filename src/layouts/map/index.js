@@ -43,6 +43,12 @@ export default function Map() {
     }
   }, [miniSidenav]);
 
+  useEffect(() => {
+    if (!openConfigurator) {
+      setNavValue(0);
+    }
+  }, [openConfigurator]);
+
   // replaces previous showChrome logic: Home now simply closes the configurator
   const handleHomeClick = () => setOpenConfigurator(dispatch, false);
 
@@ -111,7 +117,12 @@ export default function Map() {
               selectingPoint={selectingPoint}
               onMapClick={handleMapClick}
               onPoiClick={handlePlacePick}
-              target={selectedPlace ? [selectedPlace.lng, selectedPlace.lat] : undefined}
+              target={selectedPlace != null && 
+                typeof selectedPlace.lng === "number" &&
+                typeof selectedPlace.lat === "number"
+                  ? [selectedPlace.lng, selectedPlace.lat]
+                  : undefined
+              }
             />
           </Grid>
         </Grid>
