@@ -72,6 +72,7 @@ export default function App() {
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
+  const showConfiguratorButton = pathname ==="/map";
 
   // Cache for the rtl
   useMemo(() => {
@@ -169,11 +170,11 @@ export default function App() {
                 onMouseEnter={handleOnMouseEnter}
                 onMouseLeave={handleOnMouseLeave}
               />
-              <Configurator />
-              {configsButton}
+              
+              {showConfiguratorButton && configsButton}
             </>
           )}
-          {layout === "vr" && <Configurator />}
+          {layout === "vr" }
           <Routes>
             {getRoutes(routes)}
             <Route path="*" element={<Navigate to="/map" />} />
@@ -195,11 +196,11 @@ export default function App() {
               onMouseEnter={handleOnMouseEnter}
               onMouseLeave={handleOnMouseLeave}
             />
-            <Configurator />
-            {configsButton}
+            
+            {/* {showConfiguratorButton && configsButton} */}
           </>
         )}
-        {layout === "vr" && <Configurator />}
+        {layout === "vr" }
         <Routes>
           {getRoutes(routes)}
           <Route path="*" element={<Navigate to="/map" />} />

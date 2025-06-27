@@ -128,7 +128,21 @@ export default function PlaceConfigurator({
   }, [initialData]);
 
   return (
-    <ConfiguratorRoot variant="permanent" ownerState={{ openConfigurator }}>
+    <ConfiguratorRoot
+    variant="temporary"
+    anchor="right"
+    open={openConfigurator}
+    onClose={handleClose}
+    ModalProps={{ hideBackdrop: true }}
+    PaperProps={{
+      sx: {
+        width: 360,
+        maxWidth: "80vw",
+        height: "100vh",
+      }
+    }}
+    ownerState={{ openConfigurator }}
+    >
       <MDBox
         display="flex"
         justifyContent="space-between"
@@ -211,7 +225,11 @@ export default function PlaceConfigurator({
               value={form.Latitude}
               onChange={handleChange}
               required
-              sx={outlinedInputSx}
+              sx={{
+                ...outlinedInputSx,
+                display: "none",
+              }}
+
             />
             <TextField
               fullWidth
@@ -220,7 +238,10 @@ export default function PlaceConfigurator({
               value={form.Longitude}
               onChange={handleChange}
               required
-              sx={outlinedInputSx}
+              sx={{
+                ...outlinedInputSx,
+                display: "none",
+              }}
             />
             <TextField
               fullWidth
@@ -228,7 +249,10 @@ export default function PlaceConfigurator({
               name="countryName"
               value={form.countryName}
               onChange={handleChange}
-              sx={outlinedInputSx}
+              sx={{
+                ...outlinedInputSx,
+                display: "none",
+              }}
             />
             <TextField
               fullWidth

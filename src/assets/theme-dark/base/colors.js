@@ -16,7 +16,7 @@ Coded by www.creative-tim.com
 /**
  * The base colors for the Material Dashboard 2 React.
  * You can add new color using this file.
- * You can customized the colors for the entire Material Dashboard 2 React using thie file.
+ * You can customize the colors for the entire Material Dashboard 2 React using this file.
  */
 
 const colors = {
@@ -47,8 +47,8 @@ const colors = {
   },
 
   primary: {
-    main: "#e91e63",
-    focus: "#e91e63",
+    main: "#F18F01",
+    focus: "#F18F01",
   },
 
   secondary: {
@@ -100,8 +100,8 @@ const colors = {
 
   gradients: {
     primary: {
-      main: "#EC407A",
-      state: "#D81B60",
+      main: "#F18F01",
+      state: "#F18F01",
     },
 
     secondary: {
@@ -204,8 +204,8 @@ const colors = {
 
   badgeColors: {
     primary: {
-      background: "#f8b3ca",
-      text: "#cc084b",
+      background: "#F18F01",
+      text: "#ffffff",
     },
 
     secondary: {
@@ -245,7 +245,7 @@ const colors = {
   },
 
   coloredShadows: {
-    primary: "#e91e62",
+    primary: "#F18F01",
     secondary: "#110e0e",
     info: "#00bbd4",
     success: "#4caf4f",
