@@ -1,5 +1,3 @@
-// src/pages/Map/index.js
-
 import React, { useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import MDBox from "../../components/MDBox";
@@ -12,6 +10,7 @@ import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { Link } from "react-router-dom";
+import { PlaceConfiguratorMobileOverlay } from "../../components/PlaceConfigurator";
 
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
@@ -30,44 +29,44 @@ export default function Map() {
   const [selectingPoint, setSelectingPoint] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
 
+  // control flying to a new pin
+  const [flyToPlace, setFlyToPlace] = useState(false);
+  // resetKey to clear highlighted POI marker
+  const [resetKey, setResetKey] = useState(0);
+  // count POI clicks
+  const [poiClickedCount, setPoiClickedCount] = useState(0);
+
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // bottom-nav state
+  // bottom nav state
   const [navValue, setNavValue] = useState(0);
 
-  // whenever the sidenav closes (miniSidenav false), reset navValue → 0
+  // reset nav on sidenav/configurator close
+  useEffect(() => { if (!miniSidenav) setNavValue(0); }, [miniSidenav]);
+  useEffect(() => { if (!openConfigurator) setNavValue(0); }, [openConfigurator]);
+
+  // clear fly flag after flying
   useEffect(() => {
-    if (!miniSidenav) {
-      setNavValue(0);
+    if (flyToPlace) {
+      const timer = setTimeout(() => setFlyToPlace(false), 1000);
+      return () => clearTimeout(timer);
     }
-  }, [miniSidenav]);
+  }, [flyToPlace]);
 
-  useEffect(() => {
-    if (!openConfigurator) {
-      setNavValue(0);
-    }
-  }, [openConfigurator]);
+  // Home button: close configurator and reset highlight
+  const handleHomeClick = () => {
+    setOpenConfigurator(dispatch, false);
+    setResetKey(r => r + 1);
+  };
 
-  // replaces previous showChrome logic: Home now simply closes the configurator
-  const handleHomeClick = () => setOpenConfigurator(dispatch, false);
-
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase.auth.getUser();
-      if (!error && data.user) setLoggedInAuthor(data.user.id);
-    })();
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
-      setLoggedInAuthor(session?.user?.id ?? null);
-    });
-    return () => authListener.subscription.unsubscribe();
-  }, []);
-
+  // Activate map click for adding new pin
   const handleActivateMapClick = () => {
     setSelectingPoint(true);
     setOpenConfigurator(dispatch, true);
   };
 
+  // When a pin is selected and saved
   const handlePlaceSelected = async (place) => {
     await supabase.from("pins").insert({
       author: loggedInAuthor,
@@ -79,14 +78,18 @@ export default function Map() {
       longitude: place.lng,
     });
     setSelectedPlace(place);
+    setFlyToPlace(true);
+    setResetKey(r => r + 1);
     setOpenConfigurator(dispatch, false);
   };
 
+  // When an existing POI or map click is picked
   const handlePlacePick = (place) => {
     setSelectedPlace(place);
     setSelectingPoint(false);
   };
 
+  // Geocode on map click
   const handleMapClick = async ({ lng, lat }) => {
     const url =
       `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
@@ -96,15 +99,21 @@ export default function Map() {
     const { features } = await res.json();
     const feat = features[0] || {};
     const context = feat.context || [];
-
     handlePlacePick({
       lat,
       lng,
-      country: context.find((c) => c.id.startsWith("country"))?.text || "",
-      city: context.find((c) => c.id.startsWith("place"))?.text || "",
+      country: context.find(c => c.id.startsWith("country"))?.text || "",
+      city: context.find(c => c.id.startsWith("place"))?.text || "",
       address: feat.text || "",
       landmark: "",
     });
+  };
+
+  // Cancel in configurator: clear form and reset highlight
+  const handleCancelConfigurator = () => {
+    setSelectedPlace(null);
+    setResetKey(r => r + 1);
+    setOpenConfigurator(dispatch, false);
   };
 
   return (
@@ -116,13 +125,18 @@ export default function Map() {
               accessToken={MAPBOX_ACCESS_TOKEN}
               selectingPoint={selectingPoint}
               onMapClick={handleMapClick}
-              onPoiClick={handlePlacePick}
-              target={selectedPlace != null && 
-                typeof selectedPlace.lng === "number" &&
-                typeof selectedPlace.lat === "number"
+              onPoiClick={(place) => {
+                handlePlacePick(place);
+                setPoiClickedCount(c => c + 1);
+                setFlyToPlace(false);
+              }}
+              target={
+                selectedPlace?.lng != null && selectedPlace?.lat != null
                   ? [selectedPlace.lng, selectedPlace.lat]
                   : undefined
               }
+              flyOnTarget={flyToPlace}
+              resetKey={resetKey}
             />
           </Grid>
         </Grid>
@@ -133,6 +147,7 @@ export default function Map() {
         onNavChange={setNavValue}
         onHomeClick={handleHomeClick}
         onConfiguratorClick={handleActivateMapClick}
+        poiClicked={poiClickedCount}
       >
         <BottomNavigation
           value={navValue}
@@ -164,12 +179,14 @@ export default function Map() {
 
       {openConfigurator && (
         <PlaceConfigurator
+          key={resetKey}
           countryCode={null}
           accessToken={MAPBOX_ACCESS_TOKEN}
           initialData={selectedPlace}
           onPlacePick={handlePlacePick}
           onPlaceSelected={handlePlaceSelected}
           onActivateMapClick={handleActivateMapClick}
+          onCancel={handleCancelConfigurator}
         />
       )}
     </DashboardLayout>

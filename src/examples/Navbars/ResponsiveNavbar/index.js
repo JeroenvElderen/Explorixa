@@ -1,21 +1,17 @@
-// src/examples/Navbars/ResponsiveNavbar/index.js
-
-import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
-
+import React, { useState, useRef, useEffect } from "react";
 import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Menu from "@mui/material/Menu";
+import Box from "@mui/material/Box";
 import { useTheme } from "@mui/material/styles";
 import useMediaQuery from "@mui/material/useMediaQuery";
-
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
-
 import HomeIcon from "@mui/icons-material/Home";
-import { AddLocation } from "@mui/icons-material";
+import AddLocationIcon from "@mui/icons-material/AddLocation";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-import { IconButton, Icon } from "@mui/material";
+import MenuIcon from "@mui/icons-material/MenuOpen";
+import MenuOpenIcon from "@mui/icons-material/Menu";
 
 import {
   useMaterialUIController,
@@ -23,64 +19,113 @@ import {
   setOpenConfigurator,
 } from "../../../context";
 import NotificationItem from "../../../examples/Items/NotificationItem";
-import { navbarMobileMenu } from "./styles";
 
-const iconsStyle = ({ palette: { white } }) => ({
-  color: white.main,
-});
-
-export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
-  
+export default function ResponsiveNavbar({
+  onHomeClick,
+  onConfiguratorClick,
+  poiClicked,
+}) {
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, openConfigurator } = controller;
 
-  // **Internal** selected‐tab state
-  const [selected, setSelected] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [slideIndex, setSlideIndex] = useState(0);
   const [openMenu, setOpenMenu] = useState(null);
+  const closingByNav = useRef(false);
+
+  const theme = useTheme();
+  const isWeb = useMediaQuery(theme.breakpoints.up("md"));
+
+  const ICON_SIZE = 24;
+  const GAP = theme.spacing(1);
+  const ITEM_SIZE = 56;
+  const animTimeout = useRef(null);
+
+  // Close helpers
+  const closeSidenav = () => {
+    if (!miniSidenav) setMiniSidenav(dispatch, true);
+  };
+  const closeConfigurator = () => {
+    if (openConfigurator) setOpenConfigurator(dispatch, false);
+  };
 
    useEffect(() => {
     if (!openConfigurator) {
-      setSelected(0);
+      if (!closingByNav.current) {
+        setSlideIndex(0);
+        setSelectedIndex(0);
+      }
+      // clear the flag for next time
+      closingByNav.current = false;
     }
   }, [openConfigurator]);
 
-  const theme = useTheme();
-  const isXs = useMediaQuery(theme.breakpoints.only("xs"));
+
+  // Trigger on POI click: open configurator and select Add Pin
+  useEffect(() => {
+    if (poiClicked) {
+      closeSidenav();
+      // open configurator panel immediately
+      setOpenConfigurator(dispatch, true);
+      // set Add Pin active via nav index
+      setSlideIndex(1);
+      setSelectedIndex(1);
+      // notify parent if needed
+      if (onConfiguratorClick) onConfiguratorClick();
+    }
+  }, [poiClicked, dispatch]);
+
+  // Generic slide-and-click handler for Home, Profile, Sidenav toggle
+  const handleClick = (newIndex, callback) => {
+    setSlideIndex(newIndex);
+    clearTimeout(animTimeout.current);
+    animTimeout.current = setTimeout(() => {
+      setSelectedIndex(newIndex);
+      if (callback) callback();
+    }, 600);
+  };
+
+  const handleHome = () => {
+    closeSidenav();
+    closeConfigurator();
+    handleClick(0, onHomeClick);
+  };
+
+  const handleConfiguratorToggle = () => {
+    closeSidenav();
+    // toggle open state
+    const willOpen = !openConfigurator;
+    setOpenConfigurator(dispatch, willOpen);
+    setSlideIndex(1);
+    setSelectedIndex(1);
+    if (onConfiguratorClick) onConfiguratorClick();
+  };
+
+  const handleProfile = () => {
+    closeSidenav();
+    closingByNav.current = true;
+    closeConfigurator();
+    handleClick(2);
+  };
+
+  const handleMiniToggle = () => {
+    closingByNav.current = true;
+    const newMini = !miniSidenav;
+    setMiniSidenav(dispatch, newMini);
+    closeConfigurator();
+    const idx = newMini ? 0 : 3;
+    handleClick(idx, () => {
+      if (newMini) onHomeClick();
+    });
+  };
 
   const handleOpenMenu = (e) => setOpenMenu(e.currentTarget);
   const handleCloseMenu = () => setOpenMenu(null);
 
-  const handleHome = () => {
-    setSelected(0);
-    onHomeClick();
-  };
+  useEffect(() => {
+    return () => clearTimeout(animTimeout.current);
+  }, []);
 
-  const handleConfiguratorToggle = () => {
-    setSelected(1);
-    onConfiguratorClick();
-  };
-
-  const handleProfile = () => {
-    setSelected(2);
-  };
-
-  const handleMiniToggle = () => {
-    const newMini = !miniSidenav;
-    setMiniSidenav(dispatch, newMini);
-
-    if (!newMini) {
-      // just expanded
-      setSelected(3);
-    } else {
-      // just collapsed
-      setSelected(0);
-      onHomeClick();
-    }
-  };
-
-    if (openConfigurator) return null;
-
-   
   return (
     <>
       <AppBar
@@ -91,10 +136,9 @@ export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
           bottom: 30,
           left: 0,
           right: 0,
-          width: "100%",
           backgroundColor: "transparent",
           pointerEvents: "none",
-          zIndex: (t) => t.zIndex.drawer + 1,
+          zIndex: (t) => (isWeb ? t.zIndex.drawer - 1 : t.zIndex.drawer + 1),
         }}
       >
         <Toolbar
@@ -103,77 +147,89 @@ export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
             m: 0,
             width: "100%",
             pointerEvents: "auto",
+            display: "flex",
             justifyContent: "center",
-            "& .MuiBottomNavigation-root": {
-              marginRight: openConfigurator ? "200px" : 0,
-            }
+            alignItems: "center",
           }}
         >
-          <BottomNavigation
-            showLabels={false}
-            value={selected}
+          <Box
             sx={{
-              backgroundColor: "rgb(33,40,60)",
-              borderRadius: "50px",
+              position: "relative",
               display: "flex",
-              gap: theme.spacing(0.5),
-              px: theme.spacing(1),
-              "& svg": { color: "#fff" },
-              "& .MuiBottomNavigationAction-root": {
-                minWidth: 0,
-                padding: theme.spacing(1.5),
-                margin: 1,
-              },
-              "& .Mui-selected": {
-                backgroundColor: "#F18F01",
-                borderRadius: "50%",
-                color: theme.palette.primary.contrastText,
-              },
-              ml: openConfigurator ? "00px" : 0,
-              transition: "margin-right 300ms ease-in-out",
+              justifyContent: "center",
+              alignItems: "center",
+              p: GAP,
+              backdropFilter: "blur(20px)",
+              background:
+                "linear-gradient(145deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)",
+              border: "1px solid rgba(255, 255, 255, 0.6)",
+              borderRadius: "60px",
+              boxShadow:
+                "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
             }}
           >
-            {/* Home */}
-            <BottomNavigationAction
-              icon={<HomeIcon sx={{ height: 22, width: "auto" }} />}
-              onClick={handleHome}
-              selected={selected === 0}
+            {/* Sliding active background */}
+            <Box
+              sx={{
+                position: "absolute",
+                top: GAP,
+                left: `calc(${GAP} + ${slideIndex} * (${ITEM_SIZE}px + ${GAP}))`,
+                width: ITEM_SIZE,
+                height: ITEM_SIZE,
+                borderRadius: "50%",
+                transition: `left 600ms ease`,
+                backdropFilter: "blur(12px)",
+                background:
+                  "linear-gradient(145deg, rgba(241,143,1,0.85) 0%, rgba(241,143,1,0.7) 100%)",
+                border: "1px solid rgba(255, 255, 255, 0.4)",
+                boxShadow:
+                  "inset 0 0 10px rgba(255,255,255,0.4), 0 0 12px rgba(241,143,1,0.7)",
+                pointerEvents: "none",
+              }}
             />
-
-            {/* Add Location */}
-            <BottomNavigationAction
-              icon={<AddLocation sx={{ height: 22, width: "auto" }} />}
-              onClick={handleConfiguratorToggle}
-              selected={selected === 1}
-            />
-
-            {/* Profile */}
-            <BottomNavigationAction
-              icon={<AccountCircleIcon sx={{ height: 22, width: "auto" }} />}
-              component={Link}
-              to="/profile"
-              onClick={handleProfile}
-              selected={selected === 2}
-            />
-
-            {/* Hamburger */}
-            <BottomNavigationAction
-              icon={
-                <IconButton
-                  size="small"
-                  disableRipple
-                  color="inherit"
-                  sx={navbarMobileMenu}
-                  onClick={handleMiniToggle}
-                >
-                  <Icon sx={iconsStyle} fontSize="medium">
-                    {miniSidenav ? "menu_open" : "menu"}
-                  </Icon>
-                </IconButton>
-              }
-              selected={selected === 3}
-            />
-          </BottomNavigation>
+            <BottomNavigation
+              showLabels={false}
+              value={selectedIndex}
+              sx={{
+                background: "transparent",
+                display: "flex",
+                gap: GAP,
+                p: 0,
+                m: 0,
+                '& .MuiBottomNavigationAction-root': {
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  minWidth: 0,
+                  padding: GAP,
+                  borderRadius: "50%",
+                  width: ITEM_SIZE,
+                  height: ITEM_SIZE,
+                },
+                '& .MuiBottomNavigationAction-root svg': {
+                  width: ICON_SIZE,
+                  height: ICON_SIZE,
+                  color: "#fff",
+                },
+              }}
+            >
+              <BottomNavigationAction icon={<HomeIcon />} onClick={handleHome} />
+              <BottomNavigationAction
+                icon={<AddLocationIcon />}
+                onClick={handleConfiguratorToggle}
+              />
+              <BottomNavigationAction
+                icon={<AccountCircleIcon />}
+                onClick={handleProfile}
+              />
+              <BottomNavigationAction
+                icon={
+                  miniSidenav ? <MenuOpenIcon /> : <MenuIcon />
+                }
+                onClick={handleMiniToggle}
+              />
+            </BottomNavigation>
+          </Box>
         </Toolbar>
       </AppBar>
 
@@ -184,9 +240,30 @@ export default function ResponsiveNavbar({ onHomeClick, onConfiguratorClick }) {
         anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
         sx={{ mt: 2 }}
       >
-        <NotificationItem icon={<Icon>email</Icon>} title="Check new messages" />
-        <NotificationItem icon={<Icon>podcasts</Icon>} title="Manage Podcast sessions" />
-        <NotificationItem icon={<Icon>shopping_cart</Icon>} title="Payment completed" />
+        <NotificationItem
+          icon={
+            <Box component="span" sx={{ color: "#000" }}>
+              email
+            </Box>
+          }
+          title="Check new messages"
+        />
+        <NotificationItem
+          icon={
+            <Box component="span" sx={{ color: "#000" }}>
+              podcasts
+            </Box>
+          }
+          title="Manage Podcast sessions"
+        />
+        <NotificationItem
+          icon={
+            <Box component="span" sx={{ color: "#000" }}>
+              shopping_cart
+            </Box>
+          }
+          title="Payment completed"
+        />
       </Menu>
     </>
   );
