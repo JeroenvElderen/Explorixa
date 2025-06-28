@@ -12,10 +12,12 @@ const WorldMapComponent = ({
   onMapClick = () => {},
   onPoiClick = () => {},
   target,
+  flyOnTarget = false,
 }) => {
   const mapRef = useRef(null);
   const markersRef = useRef([]);
   const superclusterRef = useRef(null);
+  const selectedPoiMarkerRef = useRef(null);  // ← ref for highlighting selected POI
   const [popupData, setPopupData] = useState(null);
 
   const countryColors = {
@@ -76,34 +78,51 @@ const WorldMapComponent = ({
       await loadPinsAndCluster(map);
       map.on("moveend", () => updateMarkers(map));
 
-      // click listener for POIs AND natural features (e.g. mountain peaks)
+      // click listener for POIs AND natural features
       const handlePoiClick = async (e) => {
         if (!e.features?.length) return;
         const feat = e.features[0];
         const { lng, lat } = e.lngLat;
 
-        // include poi so we get e.g. peak names
+        // Remove previous highlighted POI marker
+        if (selectedPoiMarkerRef.current) {
+          selectedPoiMarkerRef.current.remove();
+        }
+        // Add a grey marker for the selected POI
+        selectedPoiMarkerRef.current = new mapboxgl.Marker({ color: "#888888" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+
+        // Reverse geocode POI + context
         const res = await fetch(
-          `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
-            `${lng},${lat}.json?access_token=${accessToken}` +
-            `&types=poi,place,region,country,address&limit=1`
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${accessToken}&types=poi,place,region,country,address&limit=1`
         );
         const { features } = await res.json();
-        const context = features[0]?.context || [];
+        const primary = features[0] || {};
 
-        const city = context.find((c) => c.id.includes("place"))?.text || "";
-        const country = context.find((c) => c.id.includes("country"))?.text || "";
+        let city =
+          primary.context?.find((c) => c.id.startsWith("place"))?.text || "";
+        if (!city) {
+          const cityRes = await fetch(
+            `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${accessToken}&types=place&limit=1`
+          );
+          const cityJson = await cityRes.json();
+          city = cityJson.features[0]?.text || "";
+        }
+        const country =
+          primary.context?.find((c) => c.id.startsWith("country"))?.text || "";
 
         onPoiClick({
           lat,
           lng,
+          text: feat.text,
+          name: feat.properties.name,
           landmark: feat.properties.name || feat.text || "Unnamed POI",
           city,
           country,
         });
       };
 
-      // wire up BOTH the poi-label and natural-point-label layers
       const interactiveLayers = ["poi-label", "natural-point-label"];
       interactiveLayers.forEach((layerId) => {
         const attach = () => {
@@ -115,7 +134,6 @@ const WorldMapComponent = ({
             (map.getCanvas().style.cursor = "")
           );
         };
-
         if (map.getLayer(layerId)) {
           attach();
         } else {
@@ -127,15 +145,18 @@ const WorldMapComponent = ({
     });
 
     return () => {
+      if (selectedPoiMarkerRef.current) {
+        selectedPoiMarkerRef.current.remove();
+      }
       map.remove();
       mapRef.current = null;
     };
   }, [accessToken]);
 
-  // 2) Fly the map to any new `target` [lng, lat]
+  // 2) Fly the map to any new `target` [lng, lat], but only if flyOnTarget is true
   useEffect(() => {
     const map = mapRef.current;
-    if (map && target && Array.isArray(target)) {
+    if (map && flyOnTarget && Array.isArray(target)) {
       map.flyTo({
         center: target,
         zoom: 12,
@@ -143,7 +164,7 @@ const WorldMapComponent = ({
         curve: 1.4,
       });
     }
-  }, [target]);
+  }, [target, flyOnTarget]);
 
   // 3) Raw map click for manual pin placement
   useEffect(() => {
@@ -157,7 +178,6 @@ const WorldMapComponent = ({
     return () => map.off("click", handler);
   }, [selectingPoint, onMapClick]);
 
-  // Load pins into supercluster
   const loadPinsAndCluster = async (map) => {
     const { data: pins, error } = await supabase.from("pins").select("*");
     if (error) return console.error("Error loading pins:", error);
@@ -184,17 +204,14 @@ const WorldMapComponent = ({
     updateMarkers(map);
   };
 
-  // Remove all markers
   const clearMarkers = () => {
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = [];
   };
 
-  // Draw clusters & pins
   const updateMarkers = (map) => {
     if (!superclusterRef.current) return;
     clearMarkers();
-
     const bounds = map.getBounds().toArray().flat();
     const zoom = Math.floor(map.getZoom());
     const clusters = superclusterRef.current.getClusters(bounds, zoom);
@@ -203,13 +220,11 @@ const WorldMapComponent = ({
       const [lng, lat] = cluster.geometry.coordinates;
 
       if (cluster.properties.cluster) {
-        // Cluster marker
         const leaves = superclusterRef.current.getLeaves(
           cluster.properties.cluster_id,
           1
         );
         const color = getCountryColor(leaves[0]?.properties.countryName);
-
         const el = document.createElement("div");
         el.className = "cluster-marker";
         el.style.cssText = `
@@ -224,24 +239,21 @@ const WorldMapComponent = ({
           font-weight: bold;
           cursor: pointer;
         `;
-        el.innerText = cluster.properties.point_count;
+        el.innerText = cluster.properties.point_count.toString();
         el.addEventListener("click", () => {
           const expZoom = superclusterRef.current.getClusterExpansionZoom(
             cluster.properties.cluster_id
           );
           map.easeTo({ center: [lng, lat], zoom: Math.min(expZoom, 20) });
         });
-
         markersRef.current.push(
           new mapboxgl.Marker({ element: el }).setLngLat([lng, lat]).addTo(map)
         );
       } else {
-        // Single pin marker
         const color = getCountryColor(cluster.properties.countryName);
         const marker = new mapboxgl.Marker({ color })
           .setLngLat([lng, lat])
           .addTo(map);
-
         marker.getElement().style.cursor = "pointer";
         marker.getElement().addEventListener("click", (e) => {
           e.preventDefault();
@@ -256,7 +268,6 @@ const WorldMapComponent = ({
             countryName: cluster.properties.countryName,
           });
         });
-
         markersRef.current.push(marker);
       }
     });
