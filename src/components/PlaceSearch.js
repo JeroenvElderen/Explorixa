@@ -8,6 +8,8 @@ export default function PlaceSearch({
   accessToken,
   onPlaceSelected,
   onActivateMapClick,
+  inputClass,
+  suggestionsClass,
 }) {
   const [searchText, setSearchText] = useState("");
 
@@ -104,6 +106,7 @@ export default function PlaceSearch({
   if (!accessToken) return null;
 
   return (
+    
     <MDBox display="flex" flexDirection="column" width="100%" position="relative">
       <MDBox display="flex" alignItems="center">
         <SearchBox
@@ -129,13 +132,8 @@ export default function PlaceSearch({
           }}
           inputClass="md-input"
           suggestionsClass="md-suggestions"
+        
         />
-        <Icon
-          sx={{ cursor: "pointer", ml: 1 }}
-          onClick={onActivateMapClick}
-        >
-          place
-        </Icon>
       </MDBox>
     </MDBox>
   );

@@ -1,0 +1,68 @@
+/* PlaceConfigurator.css */
+
+
+/* Make the Mapbox SearchBox wrapper full width and flex */
+div[class$="--SearchBox"] {
+  background: transparent !important;
+  box-shadow: none !important;
+  width: 50vw !important;
+  max-width: 100vw !important;
+  display: flex !important;
+  align-items: stretch !important;
+  flex: 1 1 0% !important;
+  padding: 0 !important;
+}
+
+/* The input should fill available width */
+input[placeholder="Search for a place…"][role="combobox"] {
+  width: 100% !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  background: transparent !important;
+  color: rgb(211, 212, 216) !important;
+  border: 1px solid rgb(211, 212, 216) !important;
+  font-size: 1rem !important;
+  padding: 12px 14px !important;
+  border-radius: 10px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  caret-color: #fff !important;
+  transition: border-color 0.2s;
+}
+
+
+input[placeholder="Search for a place…"][role="combobox"]:focus {
+    background: transparent !important;
+  border-color: #90caf9 !important; /* Optional: blue highlight on focus */
+}
+
+input[placeholder="Search for a place…"][role="combobox"]::placeholder {
+  color: rgb(211, 212, 216) !important;
+  opacity: 1 !important;
+}
+
+/* Optionally, style the suggestion dropdown */
+ul[role="listbox"] {
+  background: #222 !important;
+  color: #fff !important;
+  border: 1px solid #444 !important;
+  border-radius: 0 0 10px 10px !important;
+  margin-top: 2px !important;
+  font-size: 1rem !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25) !important;
+}
+
+ul[role="listbox"] li {
+  color: #fff !important;
+  padding: 10px 14px !important;
+  cursor: pointer;
+}
+
+ul[role="listbox"] li[aria-selected="true"] {
+  background: #333 !important;
+}
+
+/* Optional: style the hover for options */
+ul[role="listbox"] li:hover {
+  background: #444 !important;
+}

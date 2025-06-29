@@ -206,7 +206,13 @@ export default function PlaceConfigurator({
       sx={{
         pointerEvents: "none",
         "& .MuiDrawer-paper": {
+          top: { xs: "20px", sm: "0px" },
+          left: { xs: "20px", sm: "auto" },
+          right: { xs: "20px", sm: "0px" },
+          width: { xs: "92vw", sm: 380 },
+          height: { xs: "85vh", sm: "100vh"},
           pointerEvents: "auto",
+          borderRadius: { xs: "25px", sm: "0px"}
         },
       }}
       ownerState={{ openConfigurator }}
@@ -271,8 +277,9 @@ export default function PlaceConfigurator({
             onPlacePick?.(p);
           }}
           onActivateMapClick={onActivateMapClick}
+          inputClass="place-search-input"
+          suggestionClass="place-search-suggestions"
         />
-
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <MDBox display="flex" flexDirection="column" gap={{ xs: 1.5, sm: 2 }}>
@@ -337,7 +344,10 @@ export default function PlaceConfigurator({
                 ...outlinedInputSx,
               }}
             />
-
+          <MDBox
+            display="flex"
+            gap={2}
+            >
             <TextField
               fullWidth
               label="Ranking"
@@ -357,6 +367,7 @@ export default function PlaceConfigurator({
               }
               sx={outlinedInputSx}
             />
+            </MDBox>
 
             {/* Main image upload */}
             <div>
