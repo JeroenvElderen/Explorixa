@@ -114,6 +114,7 @@ export default function Map() {
     setSelectedPlace(null);
     setResetKey(r => r + 1);
     setOpenConfigurator(dispatch, false);
+    setNavValue(0);
   };
 
   return (
@@ -184,11 +185,10 @@ export default function Map() {
             left: 0,
             right: 0,
             bottom: `calc(56px + 20px)`,  // nav height + gap
-            zIndex: theme.zIndex.modal + 1, // above modal level for certainty
-            pointerEvents: "none",
+            zIndex: theme.zIndex.appBar + 1, // above navbar
           }}
         >
-          <Box sx={{ pointerEvents: "auto" }}>
+          <Box>
             <PlaceConfigurator
               key={resetKey}
               countryCode={null}

@@ -13,10 +13,13 @@ import MenuItem from "@mui/material/MenuItem";
 import Select from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
+import { useTheme } from "@mui/material/styles";
+import { Box } from "@mui/material";
 
 import { useMaterialUIController, setOpenConfigurator } from "context";
 import { supabase } from "../SupabaseClient";
 import { v4 as uuidv4 } from "uuid";
+import zIndex from "@mui/material/styles/zIndex";
 
 // storage bucket
 const BUCKET = "pins-images";
@@ -37,6 +40,7 @@ export default function PlaceConfigurator({
   onActivateMapClick,
   initialData = {},
   onPlaceSelected,
+  onCancel,
 }) {
   const inputHeight = 48;
   const outlinedInputSx = {
@@ -52,6 +56,7 @@ export default function PlaceConfigurator({
 
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator, darkMode } = controller;
+  const theme = useTheme();
 
   const [selectedPlace, setSelectedPlace] = useState(initialData);
   const [searchCountry, setSearchCountry] = useState(initialCountryCode || "");
@@ -77,7 +82,7 @@ export default function PlaceConfigurator({
   const [mainImageFile, setMainImageFile] = useState(null);
   const [multiImageFiles, setMultiImageFiles] = useState([]);
 
-  // open/close
+  // open/close handlers
   const handleClose = () => setOpenConfigurator(dispatch, false);
   const handleCancelForm = () => {
     setSelectedPlace(null);
@@ -98,6 +103,7 @@ export default function PlaceConfigurator({
     setMainImageFile(null);
     setMultiImageFiles([]);
     setOpenConfigurator(dispatch, false);
+    onCancel?.();
   };
 
   // upload helper
@@ -119,14 +125,11 @@ export default function PlaceConfigurator({
   // submit handler
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (!selectedPlace?.lat || !selectedPlace?.lng) {
       alert("Please choose a place on the map first.");
       return;
     }
-
     try {
-      // build payload
       const payload = {
         Name: form.Name,
         "Post Summary": form["Post Summary"],
@@ -139,27 +142,18 @@ export default function PlaceConfigurator({
         countryName: selectedPlace.country,
         City: selectedPlace.city,
       };
-
-      // upload main image
       if (mainImageFile) {
         payload["Main Image"] = await uploadImage(mainImageFile);
       }
-
-      // upload additional images
       if (multiImageFiles.length) {
         const urls = await Promise.all(multiImageFiles.map(uploadImage));
         payload.Images = urls.join(",");
       }
-
-      // insert into Supabase
       const { error } = await supabase.from("pins").insert([payload]);
       if (error) throw error;
-
       alert("Pin saved!");
-
       window.location.reload();
-
-      onPlaceSelected?.(payload); // notify parent
+      onPlaceSelected?.(payload);
       handleCancelForm();
     } catch (err) {
       console.error(err);
@@ -167,13 +161,13 @@ export default function PlaceConfigurator({
     }
   };
 
-  // sync selectedPlace → hidden form fields
+  // sync selectedPlace → form
   useEffect(() => {
     if (selectedPlace) {
       setForm((f) => ({
         ...f,
         Name:
-          selectedPlace.text && selectedPlace.text.length
+          selectedPlace.text?.length
             ? selectedPlace.text
             : selectedPlace.name
             ? selectedPlace.name
@@ -186,42 +180,34 @@ export default function PlaceConfigurator({
     }
   }, [selectedPlace]);
 
-  // if parent gives new initialData
+  // update on initialData change
   useEffect(() => {
     if (initialData) setSelectedPlace(initialData);
   }, [initialData]);
 
   return (
     <ConfiguratorRoot
-  variant="temporary"
-  anchor="right"
-  open={openConfigurator}
-  onClose={handleClose}
-  ModalProps={{ hideBackdrop: true }}
-  sx={{
-    // ensure the portal container is above the nav
-    zIndex: theme => theme.zIndex.modal + 1,
-    pointerEvents: "none",
-    "& .MuiDrawer-paper": {
-      // raise the actual sliding panel above the nav
-      zIndex: theme => theme.zIndex.modal + 1,
-      top: { xs: "20px", sm: "0px" },
-      bottom: { xs: "20px", sm: "0px" },
-      left: { xs: "20px", sm: "auto" },
-      right: { xs: "20px", sm: "0px" },
-      width: { xs: "92vw", sm: 380 },
-      height: { xs: "calc(100vh - 20vh)", sm: "100vh" },
-      pointerEvents: "auto",
-      borderRadius: { xs: "25px", sm: "0px" },
-    },
-  }}
-  PaperProps={{
-    sx: {
-      // extra insurance on the Paper itself
-      zIndex: theme => theme.zIndex.modal + 1,
-    },
-  }}
-  ownerState={{ openConfigurator }}
+      variant="temporary"
+      anchor="right"
+      open={openConfigurator}
+      onClose={handleClose}
+      ModalProps={{ hideBackdrop: true, disablePortal: false }}
+      sx={{
+        pointerEvents: "none",
+        "& .MuiDrawer-paper": {
+          
+          pointerEvents: "none",
+          top: { xs: 0, sm: 0 },
+          bottom: { xs: 0, sm: 0 },
+          left: { xs: 0, sm: "auto" },
+          right: { xs: 0, sm: 0 },
+          width: { xs: "100vw", sm: 380 },
+          height: { xs: "100vh", sm: "100vh" },
+          borderRadius: { xs: 0, sm: 0 },
+        },
+      }}
+      PaperProps={{ sx: { pointerEvents: "auto" } }}
+      ownerState={{ openConfigurator }}
     >
       <MDBox
         display="flex"
@@ -233,10 +219,7 @@ export default function PlaceConfigurator({
       >
         <MDTypography
           variant="h5"
-          sx={{
-            fontSize: { xs: "1.15rem", sm: "1.5rem" },
-            fontWeight: 600,
-          }}
+          sx={{ fontSize: { xs: "1.15rem", sm: "1.5rem" }, fontWeight: 600 }}
         >
           Create a New Pin
         </MDTypography>
@@ -248,12 +231,10 @@ export default function PlaceConfigurator({
             cursor: "pointer",
             transform: "translateY(5px)",
           })}
-        >
-          close
-        </Icon>
+        > close </Icon>
       </MDBox>
       <Divider />
-      <MDBox pt={0} pb={3} px={{ xs: 2, sm: 3 }}>
+      <MDBox pt={0} pb={3} px={{ xs: 2, sm: 3 }} sx={{ pointerEvents: "auto" }}>
         {/* Country filter */}
         <FormControl fullWidth variant="standard" sx={{ mb: { xs: 1.5, sm: 2 } }}>
           <InputLabel id="search-country-label">Search Country</InputLabel>
@@ -273,8 +254,8 @@ export default function PlaceConfigurator({
             ))}
           </Select>
         </FormControl>
-
         {/* Map search */}
+        <Box sx={{ width: { xs: "100%", sm: "100%"}, mb: 2}}>
         <PlaceSearch
           countryCode={searchCountry || null}
           accessToken={accessToken}
@@ -286,6 +267,7 @@ export default function PlaceConfigurator({
           inputClass="place-search-input"
           suggestionClass="place-search-suggestions"
         />
+        </Box>
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <MDBox display="flex" flexDirection="column" gap={{ xs: 1.5, sm: 2 }}>
@@ -297,22 +279,16 @@ export default function PlaceConfigurator({
               required
               sx={{ mt: { xs: 1, sm: 2 }, ...outlinedInputSx }}
             />
-
             <TextField
               fullWidth
               label="Post Summary"
               value={form["Post Summary"]}
-              onChange={(e) =>
-                setForm({ ...form, ["Post Summary"]: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, ["Post Summary"]: e.target.value })}
               sx={outlinedInputSx}
             />
-
-            {/* hidden coords/country/city */}
             <input type="hidden" name="Latitude" value={form.Latitude} />
             <input type="hidden" name="Longitude" value={form.Longitude} />
             <input type="hidden" name="countryName" value={form.countryName} />
-
             <TextField
               fullWidth
               label="City"
@@ -320,14 +296,11 @@ export default function PlaceConfigurator({
               onChange={(e) => setForm({ ...form, City: e.target.value })}
               sx={outlinedInputSx}
             />
-
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
                 value={form.Category}
-                onChange={(e) =>
-                  setForm({ ...form, Category: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, Category: e.target.value })}
                 sx={{ height: "48px" }}
               >
                 <MenuItem value="Category1">Category1</MenuItem>
@@ -335,123 +308,57 @@ export default function PlaceConfigurator({
                 <MenuItem value="Category3">Category3</MenuItem>
               </Select>
             </FormControl>
-
             <TextField
               fullWidth
               label="Information"
               value={form.Information}
-              onChange={(e) =>
-                setForm({ ...form, Information: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, Information: e.target.value })}
               multiline
               rows={2}
-              sx={{
-                "& .MuiInputBase-input": { padding: "12px" },
-                ...outlinedInputSx,
-              }}
+              sx={{ "& .MuiInputBase-input": { padding: "12px" }, ...outlinedInputSx }}
             />
-          <MDBox
-            display="flex"
-            gap={2}
-            >
-            <TextField
-              fullWidth
-              label="Ranking"
-              type="number"
-              value={form.Ranking}
-              onChange={(e) => setForm({ ...form, Ranking: e.target.value })}
-              sx={outlinedInputSx}
-            />
-
-            <TextField
-              fullWidth
-              label="Average Costs"
-              type="number"
-              value={form["Average Costs"]}
-              onChange={(e) =>
-                setForm({ ...form, ["Average Costs"]: e.target.value })
-              }
-              sx={outlinedInputSx}
-            />
+            <MDBox display="flex" gap={2}>
+              <TextField
+                fullWidth
+                label="Ranking"
+                type="number"
+                value={form.Ranking}
+                onChange={(e) => setForm({ ...form, Ranking: e.target.value })}
+                sx={outlinedInputSx}
+              />
+              <TextField
+                fullWidth
+                label="Average Costs"
+                type="number"
+                value={form["Average Costs"]}
+                onChange={(e) => setForm({ ...form, ["Average Costs"]: e.target.value })}
+                sx={outlinedInputSx}
+              />
             </MDBox>
-
-            {/* Main image upload */}
             <div>
-              <Button
-                onClick={() => mainImageInputRef.current.click()}
-                sx={{
-                  width: { xs: "100%", sm: "auto" },
-                  mb: { xs: 1, sm: 0 },
-                  textTransform: "none",
-                }}
-              >
+              <Button onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
                 Upload Main Image
               </Button>
-              <input
-                type="file"
-                accept="image/*"
-                ref={mainImageInputRef}
-                style={{ display: "none" }}
-                onChange={(e) => setMainImageFile(e.target.files[0])}
-              />
-              {mainImageFile && <span style={{ fontSize: 13 }}> {mainImageFile.name} </span>}
+              <input type="file" accept="image/*" ref={mainImageInputRef} style={{ display: "none" }} onChange={(e) => setMainImageFile(e.target.files[0])} />
+              {mainImageFile && <span style={{ fontSize: 13 }}>{mainImageFile.name}</span>}
             </div>
-
-            {/* Additional images */}
             <div>
-              <Button
-                onClick={() => multiImageInputRef.current.click()}
-                sx={{
-                  width: { xs: "100%", sm: "auto" },
-                  mb: { xs: 1, sm: 0 },
-                  textTransform: "none",
-                }}
-              >
+              <Button onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
                 Upload Additional Images
               </Button>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                ref={multiImageInputRef}
-                style={{ display: "none" }}
-                onChange={(e) => setMultiImageFiles(Array.from(e.target.files))}
-              />
-              {multiImageFiles.length > 0 && (
-                <span style={{ fontSize: 13 }}>
-                  {multiImageFiles.map((f) => f.name).join(", ")}
-                </span>
-              )}
+              <input type="file" accept="image/*" multiple ref={multiImageInputRef} style={{ display: "none" }} onChange={(e) => setMultiImageFiles(Array.from(e.target.files))} />
+              {multiImageFiles.length > 0 && <span style={{ fontSize: 13 }}>{multiImageFiles.map((f) => f.name).join(", ")}</span>}
             </div>
-
-            {/* Responsive button group */}
-            <MDBox
-              display="flex"
-              flexDirection={{ xs: "column", sm: "row" }}
-              gap={{ xs: 1, sm: 2 }}
-              mt={1}
-            >
-              <Button
-                variant="contained"
-                type="submit"
-                sx={{
-                  width: { xs: "100%", sm: "auto" },
-                  mb: { xs: 1, sm: 0 },
-                  fontWeight: 600,
-                }}
-              >
+            <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
+              <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
                 Save Pin
               </Button>
-              <Button
-                variant="outlined"
-                onClick={handleCancelForm}
-                sx={{
-                  width: { xs: "100%", sm: "auto" },
-                  fontWeight: 600,
-                }}
-              >
+              <Button variant="outlined" onClick={handleCancelForm} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
                 Cancel
               </Button>
+            </MDBox>
+            <MDBox display="block" height="150px">
+              
             </MDBox>
           </MDBox>
         </form>
