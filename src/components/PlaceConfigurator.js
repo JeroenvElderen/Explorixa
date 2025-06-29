@@ -207,10 +207,11 @@ export default function PlaceConfigurator({
         pointerEvents: "none",
         "& .MuiDrawer-paper": {
           top: { xs: "20px", sm: "0px" },
+          bottom: { xs: "20px", sm: "0px" },
           left: { xs: "20px", sm: "auto" },
           right: { xs: "20px", sm: "0px" },
           width: { xs: "92vw", sm: 380 },
-          height: { mobileS: "700px", mobileM:"700px", mobileL: "700px", sm: "100vh"},
+          height: { xs: "calc(100vh - 40px)", sm: "100vh" },
           pointerEvents: "auto",
           borderRadius: { xs: "25px", sm: "0px"}
         },
