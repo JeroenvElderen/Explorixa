@@ -14,12 +14,10 @@ import Select from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 import { useTheme } from "@mui/material/styles";
-import { Box } from "@mui/material";
 
 import { useMaterialUIController, setOpenConfigurator } from "context";
 import { supabase } from "../SupabaseClient";
 import { v4 as uuidv4 } from "uuid";
-import zIndex from "@mui/material/styles/zIndex";
 
 // storage bucket
 const BUCKET = "pins-images";
@@ -192,23 +190,26 @@ export default function PlaceConfigurator({
       open={openConfigurator}
       onClose={handleClose}
       ModalProps={{ hideBackdrop: true, disablePortal: false }}
-      sx={{
+      sx={{ 
         pointerEvents: "none",
         "& .MuiDrawer-paper": {
-          
-          pointerEvents: "none",
-          top: { xs: 0, sm: 0 },
-          bottom: { xs: 0, sm: 0 },
-          left: { xs: 0, sm: "auto" },
-          right: { xs: 0, sm: 0 },
-          width: { xs: "100vw", sm: 380 },
-          height: { xs: "100vh", sm: "100vh" },
-          borderRadius: { xs: 0, sm: 0 },
+          width: "100% !important",
+          maxWidth: "100vw !important",
+        }
+       }}
+      PaperProps={{
+        sx: {
+          pointerEvents: "auto",
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          width: { xs: "100vw", sm: "auto" },
+          maxWidth: "none",
         },
       }}
-      PaperProps={{ sx: { pointerEvents: "auto" } }}
       ownerState={{ openConfigurator }}
     >
+      {/* 1. Header */}
       <MDBox
         display="flex"
         justifyContent="space-between"
@@ -231,10 +232,24 @@ export default function PlaceConfigurator({
             cursor: "pointer",
             transform: "translateY(5px)",
           })}
-        > close </Icon>
+        >
+          close
+        </Icon>
       </MDBox>
+
       <Divider />
-      <MDBox pt={0} pb={3} px={{ xs: 2, sm: 3 }} sx={{ pointerEvents: "auto" }}>
+
+      {/* 2. Scrollable body */}
+      <MDBox
+        sx={{
+          flex: 1,
+          overflowY: "auto",
+          pointerEvents: "auto",
+        }}
+        pt={0}
+        pb={3}
+        px={{ xs: 2, sm: 3 }}
+      >
         {/* Country filter */}
         <FormControl fullWidth variant="standard" sx={{ mb: { xs: 1.5, sm: 2 } }}>
           <InputLabel id="search-country-label">Search Country</InputLabel>
@@ -254,8 +269,8 @@ export default function PlaceConfigurator({
             ))}
           </Select>
         </FormControl>
+
         {/* Map search */}
-        <Box sx={{ width: { xs: "100%", sm: "100%"}, mb: 2}}>
         <PlaceSearch
           countryCode={searchCountry || null}
           accessToken={accessToken}
@@ -267,7 +282,7 @@ export default function PlaceConfigurator({
           inputClass="place-search-input"
           suggestionClass="place-search-suggestions"
         />
-        </Box>
+
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <MDBox display="flex" flexDirection="column" gap={{ xs: 1.5, sm: 2 }}>
@@ -357,9 +372,9 @@ export default function PlaceConfigurator({
                 Cancel
               </Button>
             </MDBox>
-            <MDBox display="block" height="150px">
-              
-            </MDBox>
+
+            {/* optional spacer to pad bottom */}
+            <MDBox height={150} />
           </MDBox>
         </form>
       </MDBox>
