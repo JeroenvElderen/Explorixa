@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
+import Box from "@mui/material/Box";
 import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
 import ResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar";
 import WorldMapComponent from "../../components/WorldMapComponent";
-import PlaceConfigurator from "../../components/PlaceConfigurator";
+import PlaceConfigurator, { PlaceConfiguratorMobileOverlay } from "../../components/PlaceConfigurator";
 import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import { Link } from "react-router-dom";
-import { PlaceConfiguratorMobileOverlay } from "../../components/PlaceConfigurator";
 
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
@@ -170,7 +170,7 @@ export default function Map() {
           <BottomNavigationAction label="Search" icon={<SearchIcon />} />
           <BottomNavigationAction
             label="Profile"
-            icon={<AccountCircleIcon />}
+            icon={<AccountCircleIcon />} 
             component={Link}
             to="/profile"
           />
@@ -178,16 +178,29 @@ export default function Map() {
       </ResponsiveNavbar>
 
       {openConfigurator && (
-        <PlaceConfigurator
-          key={resetKey}
-          countryCode={null}
-          accessToken={MAPBOX_ACCESS_TOKEN}
-          initialData={selectedPlace}
-          onPlacePick={handlePlacePick}
-          onPlaceSelected={handlePlaceSelected}
-          onActivateMapClick={handleActivateMapClick}
-          onCancel={handleCancelConfigurator}
-        />
+        <Box
+          sx={{
+            position: "fixed",
+            left: 0,
+            right: 0,
+            bottom: `calc(56px + 20px)`,  // nav height + gap
+            zIndex: theme.zIndex.modal + 1, // above modal level for certainty
+            pointerEvents: "none",
+          }}
+        >
+          <Box sx={{ pointerEvents: "auto" }}>
+            <PlaceConfigurator
+              key={resetKey}
+              countryCode={null}
+              accessToken={MAPBOX_ACCESS_TOKEN}
+              initialData={selectedPlace}
+              onPlacePick={handlePlacePick}
+              onPlaceSelected={handlePlaceSelected}
+              onActivateMapClick={handleActivateMapClick}
+              onCancel={handleCancelConfigurator}
+            />
+          </Box>
+        </Box>
       )}
     </DashboardLayout>
   );
