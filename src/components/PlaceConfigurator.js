@@ -210,7 +210,7 @@ export default function PlaceConfigurator({
       left: { xs: "20px", sm: "auto" },
       right: { xs: "20px", sm: "0px" },
       width: { xs: "92vw", sm: 380 },
-      height: { xs: "calc(100vh - 17vh)", sm: "100vh" },
+      height: { xs: "calc(100vh - 20vh)", sm: "100vh" },
       pointerEvents: "auto",
       borderRadius: { xs: "25px", sm: "0px" },
     },
