@@ -27,6 +27,9 @@ const breakpoints = {
     lg: 992,
     xl: 1200,
     xxl: 1400,
+    mobileL: 425,
+    mobileM: 375,
+    mobileS: 320,
   },
 };
 
