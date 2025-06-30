@@ -23,6 +23,8 @@
     "diff-match-patch": "^1.0.5",
     "emailjs-com": "^3.2.0",
     "gdal-async": "^3.11.0",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
     "i18n-iso-countries": "^7.14.0",
     "mapbox-gl": "^3.13.0",
     "mdb-react-ui-kit": "^9.0.0",
