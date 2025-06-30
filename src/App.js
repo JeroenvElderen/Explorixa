@@ -13,7 +13,7 @@ Coded by www.creative-tim.com
 * The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 */
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 
 // react-router components
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -72,7 +72,7 @@ export default function App() {
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
-  const showConfiguratorButton = pathname ==="/map";
+  const showConfiguratorButton = pathname ==="/dashboard";
 
   // Cache for the rtl
   useMemo(() => {
@@ -128,7 +128,7 @@ export default function App() {
     return [];
   });
 
-  const isMapPage = pathname.toLowerCase() === "/map";
+  const isMapPage = pathname.toLowerCase() === "/dashboard";
 
   const configsButton = (
     <MDBox
@@ -175,10 +175,12 @@ export default function App() {
             </>
           )}
           {layout === "vr" }
+          <Suspense fallback={<div style={{textAlign: "center", marginTop: 80 }}>Loading...</div>}>
           <Routes>
             {getRoutes(routes)}
-            <Route path="*" element={<Navigate to="/map" />} />
+            <Route path="*" element={<Navigate to="/dashboard" />} />
           </Routes>
+          </Suspense>
         </AuthProvider>
       </ThemeProvider>
     </CacheProvider>
@@ -203,7 +205,7 @@ export default function App() {
         {layout === "vr" }
         <Routes>
           {getRoutes(routes)}
-          <Route path="*" element={<Navigate to="/map" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
       </AuthProvider>
     </ThemeProvider>

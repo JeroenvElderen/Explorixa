@@ -1,4 +1,5 @@
 // Material Dashboard 2 React page components (no layout imports)
+import React from "react";
 import Tables from "./layouts/tables";
 import Billing from "./layouts/billing";
 import RTL from "./layouts/rtl";
@@ -6,8 +7,6 @@ import Notifications from "./layouts/notifications";
 import Profile from "./layouts/profile";
 import SignIn from "./layouts/authentication/sign-in";
 import SignUp from "./layouts/authentication/sign-up";
-import Map from "./layouts/map";
-import Dashboard from "./layouts/dashboard";
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import PublicIcon from '@mui/icons-material/Public';
 import CityPage from "components/CityPage";
@@ -23,15 +22,19 @@ import Icon from "@mui/material/Icon";
 import { supabase } from "./SupabaseClient"; // make sure the path is correct
 import { LocationOn, ModeOfTravel } from "@mui/icons-material";
 
+
+const Map = React.lazy(() => import("./layouts/map"));
+const Dashboard = React.lazy(() => import ("./layouts/dashboard"));
+
 const routes = [
-  /* {
+  {
     type: "collapse",
     name: "Dashboard",
     key: "dashboard",
     icon: <Icon fontSize="small">dashboard</Icon>,
     route: "/dashboard",
     component: Dashboard,
-  },*/ 
+  }, 
   {
     type: "collapse",
     name: "Destinations",
