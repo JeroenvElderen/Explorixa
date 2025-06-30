@@ -18,6 +18,7 @@ import { useTheme } from "@mui/material/styles";
 import { useMaterialUIController, setOpenConfigurator } from "context";
 import { supabase } from "../SupabaseClient";
 import { v4 as uuidv4 } from "uuid";
+import zIndex from "@mui/material/styles/zIndex";
 
 // storage bucket
 const BUCKET = "pins-images";
@@ -185,33 +186,41 @@ export default function PlaceConfigurator({
 
   return (
     <ConfiguratorRoot
-      variant="temporary"
+      variant="persistent"
       anchor="right"
       open={openConfigurator}
       onClose={handleClose}
       ModalProps={{ hideBackdrop: true, disablePortal: false }}
-      sx={{ 
-        pointerEvents: "none",
-        "& .MuiDrawer-paper": {
-          [theme.breakpoints.down("sm")]: {
-            width: "100% !important", 
-            maxWidth: "100% !important",
-          },
-          [theme.breakpoints.up("sm")]: {
-            width: 400,
-            maxWidth: "400px",
-          }
-        },
-       }}
+      sx={{
+    // only restyle the inner paper element
+    "& .MuiDrawer-paper": {
+      backdropFilter: "blur(20px)",
+      top: 15,
+      right: 15,
+      bottom: 15,
+      height: "97vh",
+      WebkitBackdropFilter: "blur(20px)",
+      background:
+        "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+      border: "1px solid rgba(255, 255, 255, 0.6)",
+      boxShadow:
+        "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+      borderRadius: "12px",
+      overflow: "hidden",
+    },
+  }}
       PaperProps={{
         sx: {
+          zIndex: 1200,
           pointerEvents: "auto",
           display: "flex",
           flexDirection: "column",
           height: "100vh",
           [theme.breakpoints.down("sm")]: {
-            width: "100% !important",
-            maxWidth: "100% !important",
+            width: "calc(100vw - 30px) !important",
+            maxWidth: "calc(100vw - 30px) !important",
+            height: "calc(100vh - 30px) !important",
+            
           },
           [theme.breakpoints.up("sm")]: {
             width: 400,

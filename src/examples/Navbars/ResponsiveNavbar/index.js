@@ -24,6 +24,10 @@ export default function ResponsiveNavbar({
   onHomeClick,
   onConfiguratorClick,
   poiClicked,
+  onProfileClick,
+  navValue,
+  onNavChange,
+  onAnyNav,
 }) {
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, openConfigurator } = controller;
@@ -90,12 +94,14 @@ export default function ResponsiveNavbar({
   };
 
   const handleHome = () => {
+    if (onAnyNav) onAnyNav();
     closeSidenav();
     closeConfigurator();
     handleClick(0, onHomeClick);
   };
 
   const handleConfiguratorToggle = () => {
+    if (onAnyNav) onAnyNav();
     closeSidenav();
     // toggle open state
     const willOpen = !openConfigurator;
@@ -110,9 +116,11 @@ export default function ResponsiveNavbar({
     closingByNav.current = true;
     closeConfigurator();
     handleClick(2);
+    if (onProfileClick) onProfileClick();
   };
 
   const handleMiniToggle = () => {
+    if (onAnyNav) onAnyNav();
     closingByNav.current = true;
     const newMini = !miniSidenav;
     setMiniSidenav(dispatch, newMini);
@@ -193,7 +201,7 @@ export default function ResponsiveNavbar({
             />
             <BottomNavigation
               showLabels={false}
-              value={selectedIndex}
+              value={navValue}
               sx={{
                 background: "transparent",
                 display: "flex",
