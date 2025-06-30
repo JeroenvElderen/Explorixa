@@ -193,9 +193,15 @@ export default function PlaceConfigurator({
       sx={{ 
         pointerEvents: "none",
         "& .MuiDrawer-paper": {
-          width: "100% !important",
-          maxWidth: "100vw !important",
-        }
+          [theme.breakpoints.down("sm")]: {
+            width: "100% !important", 
+            maxWidth: "100% !important",
+          },
+          [theme.breakpoints.up("sm")]: {
+            width: 400,
+            maxWidth: "400px",
+          }
+        },
        }}
       PaperProps={{
         sx: {
@@ -203,8 +209,14 @@ export default function PlaceConfigurator({
           display: "flex",
           flexDirection: "column",
           height: "100vh",
-          width: { xs: "100vw", sm: "auto" },
-          maxWidth: "none",
+          [theme.breakpoints.down("sm")]: {
+            width: "100% !important",
+            maxWidth: "100% !important",
+          },
+          [theme.breakpoints.up("sm")]: {
+            width: 400,
+            maxWidth: "400px",
+          }
         },
       }}
       ownerState={{ openConfigurator }}

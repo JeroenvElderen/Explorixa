@@ -7,6 +7,8 @@ import List from "@mui/material/List";
 import Divider from "@mui/material/Divider";
 import Link from "@mui/material/Link";
 import Icon from "@mui/material/Icon";
+import { useTheme } from "@mui/material/styles";
+import useMediaQuery from "@mui/material/useMediaQuery";
 
 // Custom components
 import MDBox from "../../components/MDBox";
@@ -261,10 +263,24 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
       {...rest}
       variant="permanent"
       ownerState={{ transparentSidenav, whiteSidenav, miniSidenav, darkMode }}
+      sx={{
+    // only restyle the inner paper element
+    "& .MuiDrawer-paper": {
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      background:
+        "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+      border: "1px solid rgba(255, 255, 255, 0.6)",
+      boxShadow:
+        "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+      borderRadius: "12px",
+      overflow: "hidden",
+    },
+  }}
     >
       <MDBox pt={3} pb={1} px={4} textAlign="center" position="relative">
         <MDBox
-          display={{ xs: "block", xl: "none" }}
+          display={{ xs: "block", lg: "none" }}
           position="absolute"
           top={0}
           right={0}
