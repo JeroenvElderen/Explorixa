@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
 import ResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar";
-import WorldMapComponent from "../../components/WorldMapComponent";
-import PlaceConfigurator, { PlaceConfiguratorMobileOverlay } from "../../components/PlaceConfigurator";
+
 import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
@@ -18,6 +17,9 @@ import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 
+
+const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
+const PlaceConfigurator = lazy(() => import("../../components/PlaceConfigurator"));
 const MAPBOX_ACCESS_TOKEN =
   "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
 
@@ -122,6 +124,7 @@ export default function Map() {
       <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
+            <Suspense fallback={<div style={{textAlign:"center", padding:40}}>Loading map...</div>}>
             <WorldMapComponent
               accessToken={MAPBOX_ACCESS_TOKEN}
               selectingPoint={selectingPoint}
@@ -139,6 +142,7 @@ export default function Map() {
               flyOnTarget={flyToPlace}
               resetKey={resetKey}
             />
+            </Suspense>
           </Grid>
         </Grid>
       </MDBox>
@@ -189,6 +193,7 @@ export default function Map() {
           }}
         >
           <Box>
+            <Suspense fallback={<div>Loading Configurator...</div>}>
             <PlaceConfigurator
               key={resetKey}
               countryCode={null}
@@ -199,6 +204,7 @@ export default function Map() {
               onActivateMapClick={handleActivateMapClick}
               onCancel={handleCancelConfigurator}
             />
+            </Suspense>
           </Box>
         </Box>
       )}
