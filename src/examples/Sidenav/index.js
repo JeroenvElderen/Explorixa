@@ -264,6 +264,7 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
       variant="permanent"
       ownerState={{ transparentSidenav, whiteSidenav, miniSidenav, darkMode }}
       sx={{
+        zIndex: 1301,
     // only restyle the inner paper element
     "& .MuiDrawer-paper": {
       backdropFilter: "blur(20px)",

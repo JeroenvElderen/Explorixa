@@ -5,73 +5,70 @@ import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
 import ResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar";
-
 import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import { Link } from "react-router-dom";
-
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import HomeIcon from "@mui/icons-material/Home";
 import SearchIcon from "@mui/icons-material/Search";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
-
+import ProfilePopup from "layouts/ProfilePopup";
 
 const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
 const PlaceConfigurator = lazy(() => import("../../components/PlaceConfigurator"));
-const MAPBOX_ACCESS_TOKEN =
-  "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
+const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator, miniSidenav } = controller;
 
-  const [loggedInAuthor, setLoggedInAuthor] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [selectingPoint, setSelectingPoint] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
-
-  // control flying to a new pin
   const [flyToPlace, setFlyToPlace] = useState(false);
-  // resetKey to clear highlighted POI marker
   const [resetKey, setResetKey] = useState(0);
-  // count POI clicks
   const [poiClickedCount, setPoiClickedCount] = useState(0);
-
+  const [navValue, setNavValue] = useState(0);
+  const handleAnyNav = () => setShowProfilePopup(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // bottom nav state
-  const [navValue, setNavValue] = useState(0);
-
-  // reset nav on sidenav/configurator close
-  useEffect(() => { if (!miniSidenav) setNavValue(0); }, [miniSidenav]);
-  useEffect(() => { if (!openConfigurator) setNavValue(0); }, [openConfigurator]);
-
-  // clear fly flag after flying
   useEffect(() => {
-    if (flyToPlace) {
-      const timer = setTimeout(() => setFlyToPlace(false), 1000);
-      return () => clearTimeout(timer);
+    async function loadProfile() {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (!authError && user) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .single();
+        if (!error) setProfile(data);
+      }
     }
-  }, [flyToPlace]);
+    loadProfile();
+  }, []);
 
-  // Home button: close configurator and reset highlight
-  const handleHomeClick = () => {
-    setOpenConfigurator(dispatch, false);
-    setResetKey(r => r + 1);
+  const handleProfilePopupClose = () => {
+    setShowProfilePopup(false);
+    setNavValue(0);
   };
 
-  // Activate map click for adding new pin
+  const handleHomeClick = () => {
+    setOpenConfigurator(dispatch, false);
+    setResetKey((r) => r + 1);
+    setNavValue(0);
+  };
+
   const handleActivateMapClick = () => {
     setSelectingPoint(true);
     setOpenConfigurator(dispatch, true);
   };
 
-  // When a pin is selected and saved
   const handlePlaceSelected = async (place) => {
     await supabase.from("pins").insert({
-      author: loggedInAuthor,
+      author: profile?.user_id,
       country: place.country,
       city: place.city,
       address: place.address,
@@ -81,67 +78,68 @@ export default function Map() {
     });
     setSelectedPlace(place);
     setFlyToPlace(true);
-    setResetKey(r => r + 1);
+    setResetKey((r) => r + 1);
     setOpenConfigurator(dispatch, false);
   };
 
-  // When an existing POI or map click is picked
   const handlePlacePick = (place) => {
     setSelectedPlace(place);
     setSelectingPoint(false);
   };
 
-  // Geocode on map click
   const handleMapClick = async ({ lng, lat }) => {
-    const url =
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
-      `?access_token=${MAPBOX_ACCESS_TOKEN}` +
-      `&types=address,place,region,country,poi&limit=1`;
-    const res = await fetch(url);
-    const { features } = await res.json();
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=address,place,region,country,poi&limit=1`;
+    const { features } = await fetch(url).then((r) => r.json());
     const feat = features[0] || {};
     const context = feat.context || [];
     handlePlacePick({
       lat,
       lng,
-      country: context.find(c => c.id.startsWith("country"))?.text || "",
-      city: context.find(c => c.id.startsWith("place"))?.text || "",
-      address: feat.text || "",
+      country: context.find((c) => c.id.startsWith("country"))?.text,
+      city: context.find((c) => c.id.startsWith("place"))?.text,
+      address: feat.text,
       landmark: "",
     });
   };
 
-  // Cancel in configurator: clear form and reset highlight
   const handleCancelConfigurator = () => {
     setSelectedPlace(null);
-    setResetKey(r => r + 1);
+    setResetKey((r) => r + 1);
     setOpenConfigurator(dispatch, false);
     setNavValue(0);
   };
+
+  useEffect(() => { if (!miniSidenav) setNavValue(0); }, [miniSidenav]);
+  useEffect(() => { if (!openConfigurator) setNavValue(0); }, [openConfigurator]);
+
+  useEffect(() => {
+    if (flyToPlace) {
+      const timer = setTimeout(() => setFlyToPlace(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [flyToPlace]);
+
+  console.log("showProfilePopup:", showProfilePopup, "profile:", profile);
 
   return (
     <DashboardLayout>
       <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Suspense fallback={<div style={{textAlign:"center", padding:40}}>Loading map...</div>}>
-            <WorldMapComponent
-              accessToken={MAPBOX_ACCESS_TOKEN}
-              selectingPoint={selectingPoint}
-              onMapClick={handleMapClick}
-              onPoiClick={(place) => {
-                handlePlacePick(place);
-                setPoiClickedCount(c => c + 1);
-                setFlyToPlace(false);
-              }}
-              target={
-                selectedPlace?.lng != null && selectedPlace?.lat != null
-                  ? [selectedPlace.lng, selectedPlace.lat]
-                  : undefined
-              }
-              flyOnTarget={flyToPlace}
-              resetKey={resetKey}
-            />
+            <Suspense fallback={<div style={{ textAlign: "center", padding: 40 }}>Loading map...</div>}>
+              <WorldMapComponent
+                accessToken={MAPBOX_ACCESS_TOKEN}
+                selectingPoint={selectingPoint}
+                onMapClick={handleMapClick}
+                onPoiClick={(place) => {
+                  handlePlacePick(place);
+                  setPoiClickedCount((c) => c + 1);
+                  setFlyToPlace(false);
+                }}
+                target={selectedPlace ? [selectedPlace.lng, selectedPlace.lat] : undefined}
+                flyOnTarget={flyToPlace}
+                resetKey={resetKey}
+              />
             </Suspense>
           </Grid>
         </Grid>
@@ -153,47 +151,22 @@ export default function Map() {
         onHomeClick={handleHomeClick}
         onConfiguratorClick={handleActivateMapClick}
         poiClicked={poiClickedCount}
+        onProfileClick={() => {
+          setNavValue(2);
+          setShowProfilePopup(true)
+        }}
+        onAnyNav={handleAnyNav}
       >
-        <BottomNavigation
-          value={navValue}
-          onChange={(_, newValue) => setNavValue(newValue)}
-          showLabels
-          sx={{
-            width: "100vw",
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            zIndex: theme.zIndex.appBar,
-            backgroundColor: theme.palette.background.paper,
-            ".Mui-selected, .Mui-selected > svg": {
-              color: theme.palette.primary.main,
-            },
-          }}
-        >
-          <BottomNavigationAction label="Home" icon={<HomeIcon />} />
-          <BottomNavigationAction label="Search" icon={<SearchIcon />} />
-          <BottomNavigationAction
-            label="Profile"
-            icon={<AccountCircleIcon />} 
-            component={Link}
-            to="/profile"
-          />
-        </BottomNavigation>
+        
       </ResponsiveNavbar>
 
+      {showProfilePopup && (
+        <ProfilePopup user={profile} onClose={handleProfilePopupClose} />
+      )}
+
       {openConfigurator && (
-        <Box
-          sx={{
-            position: "fixed",
-            left: 0,
-            right: 0,
-            bottom: `calc(56px + 20px)`,  // nav height + gap
-            zIndex: theme.zIndex.appBar + 1, // above navbar
-          }}
-        >
-          <Box>
-            <Suspense fallback={<div>Loading Configurator...</div>}>
+       
+          <Suspense fallback={<div>Loading Configurator...</div>}>
             <PlaceConfigurator
               key={resetKey}
               countryCode={null}
@@ -204,9 +177,8 @@ export default function Map() {
               onActivateMapClick={handleActivateMapClick}
               onCancel={handleCancelConfigurator}
             />
-            </Suspense>
-          </Box>
-        </Box>
+          </Suspense>
+        
       )}
     </DashboardLayout>
   );
