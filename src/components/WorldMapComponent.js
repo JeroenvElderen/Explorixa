@@ -150,6 +150,7 @@ const WorldMapComponent = ({
         "source-layer": "country_boundaries", paint: { "line-color": "#fff !important", "line-width": 1.5 }});
 
       await loadPinsAndCluster(map);
+      updateMarkers(map);
       map.on("moveend", () => updateMarkers(map));
 
       const handlePoiClick = async (e) => {
