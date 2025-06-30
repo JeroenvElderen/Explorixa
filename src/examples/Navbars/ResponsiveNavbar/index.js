@@ -34,7 +34,9 @@ export default function ResponsiveNavbar({
   const closingByNav = useRef(false);
 
   const theme = useTheme();
-  const isWeb = useMediaQuery(theme.breakpoints.up("md"));
+
+  const isWeb = useMediaQuery(theme.breakpoints.up("lg"));
+  const isDesktop = useMediaQuery("(min-width:1200px");
 
   const ICON_SIZE = 24;
   const GAP = theme.spacing(1);
@@ -43,8 +45,10 @@ export default function ResponsiveNavbar({
 
   // Close helpers
   const closeSidenav = () => {
+    if (isWeb) return;
     if (!miniSidenav) setMiniSidenav(dispatch, true);
   };
+  
   const closeConfigurator = () => {
     if (openConfigurator) setOpenConfigurator(dispatch, false);
   };
@@ -222,12 +226,14 @@ export default function ResponsiveNavbar({
                 icon={<AccountCircleIcon />}
                 onClick={handleProfile}
               />
+              {!isDesktop && (
               <BottomNavigationAction
                 icon={
                   miniSidenav ? <MenuOpenIcon /> : <MenuIcon />
                 }
                 onClick={handleMiniToggle}
               />
+              )}
             </BottomNavigation>
           </Box>
         </Toolbar>
