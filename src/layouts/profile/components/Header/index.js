@@ -1,71 +1,84 @@
-/**
-=========================================================
-* Material Dashboard 2 React - v2.2.0
-=========================================================
-
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
-* Copyright 2023 Creative Tim (https://www.creative-tim.com)
-
-Coded by www.creative-tim.com
-
- =========================================================
-
-* The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-*/
-
-import { useState, useEffect } from "react";
-
-// prop-types is a library for typechecking of props.
+// src/layouts/profile/components/Header.jsx
+import React, { useState, useEffect, useRef } from "react";
+import { supabase } from "../../../../SupabaseClient";
 import PropTypes from "prop-types";
-
-// @mui material components
 import Card from "@mui/material/Card";
 import Grid from "@mui/material/Grid";
 import AppBar from "@mui/material/AppBar";
 import Tabs from "@mui/material/Tabs";
 import Tab from "@mui/material/Tab";
 import Icon from "@mui/material/Icon";
-
-// Material Dashboard 2 React components
 import MDBox from "../../../../components/MDBox";
 import MDTypography from "../../../../components/MDTypography";
 import MDAvatar from "../../../../components/MDAvatar";
-
-// Material Dashboard 2 React base styles
 import breakpoints from "../../../../assets/theme/base/breakpoints";
-
-// Images
-import burceMars from "../../../../assets/images/bruce-mars.jpg";
 import backgroundImage from "../../../../assets/images/bg-profile.jpeg";
+import AddIcon from "@mui/icons-material/Add";
 
-function Header({ children }) {
+function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange }) {
   const [tabsOrientation, setTabsOrientation] = useState("horizontal");
-  const [tabValue, setTabValue] = useState(0);
+  const [tabValue, setTabValue] = useState(activeTab);
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    // A function that sets the orientation state of the tabs.
-    function handleTabsOrientation() {
-      return window.innerWidth < breakpoints.values.sm
-        ? setTabsOrientation("vertical")
-        : setTabsOrientation("horizontal");
+    setTabValue(activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setTabsOrientation(
+        window.innerWidth < breakpoints.values.sm ? "vertical" : "horizontal"
+      );
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  useEffect(() => {
+    async function loadProfile() {
+      setLoading(true);
+      const { data: { user }, error: authErr } = await supabase.auth.getUser();
+      if (authErr || !user) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await supabase
+        .from("profiles")
+        .select("full_name, avatar_url, user_id")
+        .eq("user_id", user.id)
+        .single();
+      if (data) setProfile(data);
+      setLoading(false);
     }
+    loadProfile();
+  }, []);
 
-    /** 
-     The event listener that's calling the handleTabsOrientation function when resizing the window.
-    */
-    window.addEventListener("resize", handleTabsOrientation);
+  const handleTabChange = (_, value) => {
+    setTabValue(value);
+    onTabChange(value);
+  };
 
-    // Call the handleTabsOrientation function to set the state with the initial value.
-    handleTabsOrientation();
+  const triggerFileSelect = () => fileInputRef.current?.click();
 
-    // Remove event listener on cleanup
-    return () => window.removeEventListener("resize", handleTabsOrientation);
-  }, [tabsOrientation]);
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
+    const ext = file.name.split('.').pop();
+    const path = `${profile.user_id}/avatar.${ext}`;
+    await supabase.storage.from('pins-images').upload(path, file, { upsert: true });
+    const { data: { publicUrl } } = supabase.storage.from('pins-images').getPublicUrl(path);
+    await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('user_id', profile.user_id);
+    onAvatarChange(publicUrl);
+  };
 
-  const handleSetTabValue = (event, newValue) => setTabValue(newValue);
+  if (loading) return <MDBox p={4}><MDTypography>Loading…</MDTypography></MDBox>;
+  if (!profile) return <MDBox p={4}><MDTypography color="error">Profile not found.</MDTypography></MDBox>;
 
   return (
-    <MDBox position="relative" mb={5}>
+    <MDBox position="relative" mb={5} >
       <MDBox
         display="flex"
         alignItems="center"
@@ -74,65 +87,85 @@ function Header({ children }) {
         borderRadius="xl"
         sx={{
           backgroundImage: ({ functions: { rgba, linearGradient }, palette: { gradients } }) =>
-            `${linearGradient(
-              rgba(gradients.info.main, 0.6),
-              rgba(gradients.info.state, 0.6)
-            )}, url(${backgroundImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "50%",
-          overflow: "hidden",
+            `${linearGradient(rgba(gradients.info.main, 0.6), rgba(gradients.info.state, 0.6))}, url(${backgroundImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: '50%',
         }}
       />
-      <Card
-        sx={{
+      <Card 
+      sx={{
           position: "relative",
           mt: -8,
           mx: 3,
           py: 2,
           px: 2,
-        }}
-      >
-        <Grid container spacing={3} alignItems="center">
+          // Glass-metal styling:
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+          borderRadius: "12px",
+          overflow: "hidden",
+        }}>
+        <Grid container alignItems="center" spacing={3}>
           <Grid item>
-            <MDAvatar src={burceMars} alt="profile-image" size="xl" shadow="sm" />
-          </Grid>
-          <Grid item>
-            <MDBox height="100%" mt={0.5} lineHeight={1}>
-              <MDTypography variant="h5" fontWeight="medium">
-                Richard Davis
-              </MDTypography>
-              <MDTypography variant="button" color="text" fontWeight="regular">
-                CEO / Co-Founder
-              </MDTypography>
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleAvatarUpload}
+            />
+            <MDBox position="relative" display="inline-block">
+              <MDAvatar
+                src={avatarUrl || profile.avatar_url}
+                alt="profile-image"
+                size="xl"
+                shadow="sm"
+                onClick={triggerFileSelect}
+                sx={{
+                  cursor: 'pointer',
+                  '& .MuiAvatar-img': {
+                    objectFit: 'cover',
+                    width: '100%',
+                    height: '100%',
+                  },
+                }}
+              />
+              {tabValue === 2 && (
+                <MDBox
+                  onClick={triggerFileSelect}
+                  sx={{
+                    position: 'absolute',
+                    inset: 0,
+                    bgcolor: 'rgba(0,0,0,0)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <AddIcon sx={{ color: '#F18F01', fontSize: '48px !important' }} />
+                </MDBox>
+              )}
             </MDBox>
           </Grid>
-          <Grid item xs={12} md={6} lg={4} sx={{ ml: "auto" }}>
-            <AppBar position="static">
-              <Tabs orientation={tabsOrientation} value={tabValue} onChange={handleSetTabValue}>
-                <Tab
-                  label="App"
-                  icon={
-                    <Icon fontSize="small" sx={{ mt: -0.25 }}>
-                      home
-                    </Icon>
-                  }
-                />
-                <Tab
-                  label="Message"
-                  icon={
-                    <Icon fontSize="small" sx={{ mt: -0.25 }}>
-                      email
-                    </Icon>
-                  }
-                />
-                <Tab
-                  label="Settings"
-                  icon={
-                    <Icon fontSize="small" sx={{ mt: -0.25 }}>
-                      settings
-                    </Icon>
-                  }
-                />
+          <Grid item>
+            <MDTypography variant="h5" fontWeight="medium">
+              {profile.full_name}
+            </MDTypography>
+            <MDTypography variant="button" color="text">
+              {profile.full_name}'s Dashboard
+            </MDTypography>
+          </Grid>
+          <Grid item xs={12} md={6} lg={4} sx={{ ml: 'auto' }}>
+            <AppBar position="static" >
+              <Tabs orientation={tabsOrientation} value={tabValue} onChange={handleTabChange} >
+                <Tab label="App" icon={<Icon>home</Icon>} value={0} />
+                <Tab label="Message" icon={<Icon>email</Icon>} value={1} />
+                <Tab label="Settings" icon={<Icon>settings</Icon>} value={2} />
               </Tabs>
             </AppBar>
           </Grid>
@@ -142,15 +175,12 @@ function Header({ children }) {
     </MDBox>
   );
 }
-
-// Setting default props for the Header
-Header.defaultProps = {
-  children: "",
-};
-
-// Typechecking props for the Header
 Header.propTypes = {
   children: PropTypes.node,
+  activeTab: PropTypes.number.isRequired,
+  onTabChange: PropTypes.func.isRequired,
+  avatarUrl: PropTypes.string,
+  onAvatarChange: PropTypes.func.isRequired,
 };
-
+Header.defaultProps = { avatarUrl: '' };
 export default Header;

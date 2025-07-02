@@ -1,37 +1,23 @@
+// src/components/WorldMapComponent.js
 import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
-import Supercluster from "supercluster";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "../SupabaseClient";
 import PopupComponent from "./PopupComponent";
 import "./WorldMapComponent.css";
 
-// Convert "#RRGGBB" → "R,G,B"
+// "#RRGGBB" → "R,G,B"
 function hexToRgbString(hex) {
-  const match = hex.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
-  if (!match) return "0,0,0";
+  const m = hex.match(/^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i);
+  if (!m) return "0,0,0";
   return [
-    parseInt(match[1], 16),
-    parseInt(match[2], 16),
-    parseInt(match[3], 16),
+    parseInt(m[1], 16),
+    parseInt(m[2], 16),
+    parseInt(m[3], 16),
   ].join(",");
 }
 
-const WorldMapComponent = ({
-  accessToken,
-  selectingPoint = false,
-  onMapClick = () => {},
-  onPoiClick = () => {},
-  target,
-  flyOnTarget = false,
-}) => {
-  const mapRef = useRef(null);
-  const markersRef = useRef([]);
-  const superclusterRef = useRef(null);
-  const selectedPoiMarkerRef = useRef(null);
-  const [popupData, setPopupData] = useState(null);
-
-  // Map country name → ISO
+// Map country name → ISO
   const countryNameToIso = {
     Afghanistan: "AF", Albania: "AL", Algeria: "DZ", Andorra: "AD", Angola: "AO",
     Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT", Azerbaijan: "AZ",
@@ -127,185 +113,224 @@ const WorldMapComponent = ({
     ZM: "#198A00", ZW: "#006400",
     default: "#888888",
   };
-  const getCountryColor = (iso) => countryColors[iso] || countryColors.default;
+
+
+// Utility for cluster icon
+function createClusterCanvas(baseHex) {
+  const rgb = hexToRgbString(baseHex);
+  const size = 40;
+  const r = 15;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, `rgba(${rgb},0.85)`);
+  grad.addColorStop(1, `rgba(${rgb},0.7)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, r, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  return canvas;
+}
+
+// Utility for country marker
+function createMarkerCanvas(baseHex, iso) {
+  const rgb = hexToRgbString(baseHex);
+  const size = 40;
+  const tail = 5;
+  const r = 15;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size + tail;
+  const ctx = canvas.getContext("2d");
+  const grad = ctx.createLinearGradient(0, 0, size, size);
+  grad.addColorStop(0, `rgba(${rgb},0.85)`);
+  grad.addColorStop(1, `rgba(${rgb},0.7)`);
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, r, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(255,255,255,0.4)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(iso, size/2, size/2);
+  ctx.fillStyle = `rgba(${rgb},0.85)`;
+  ctx.beginPath();
+  ctx.moveTo(size/2 - 7, size/2 + r - 2);
+  ctx.lineTo(size/2, size + tail - 2);
+  ctx.lineTo(size/2 + 7, size/2 + r - 2);
+  ctx.closePath();
+  ctx.fill();
+  return canvas;
+}
+
+export default function WorldMapComponent({
+  accessToken,
+  selectingPoint = false,
+  onMapClick = () => {},
+  onPoiClick = () => {},
+  target,
+  flyOnTarget = false,
+}) {
+  const mapRef = useRef(null);
+  const [popupData, setPopupData] = useState(null);
 
   mapboxgl.accessToken = accessToken;
 
+  // Initialize & tear down the map
   useEffect(() => {
     if (mapRef.current) return;
     const map = new mapboxgl.Map({
       container: "world-map",
       style: "mapbox://styles/jeroenvanelderen/cmc958dgm006s01shdiu103uz",
-      center: [0, 20], zoom: 1.5, projection: "globe", attributionControl: false,
+      center: [0, 20],
+      zoom: 1.5,
+      projection: "globe",
+      attributionControl: false,
     });
     mapRef.current = map;
 
     map.on("load", async () => {
-      map.setFog({ color: "rgb(17,17,17)", "high-color": "rgb(17,17,17)", "horizon-blend": 0.2,
-        "space-color": "rgb(0,0,0)", "star-intensity": 0.5 });
-      map.addSource("country-boundaries", { type: "vector", url: "mapbox://mapbox.country-boundaries-v1" });
-      map.addLayer({ id: "country-fill", type: "fill", source: "country-boundaries",
-        "source-layer": "country_boundaries", paint: { "fill-color": "#627BC1", "fill-opacity": 0 }});
-      map.addLayer({ id: "country-border", type: "line", source: "country-boundaries",
-        "source-layer": "country_boundaries", paint: { "line-color": "#fff !important", "line-width": 1.5 }});
+      map.setFog({
+        color: "rgb(17,17,17)",
+        "high-color": "rgb(17,17,17)",
+        "horizon-blend": 0.2,
+        "space-color": "rgb(0,0,0)",
+        "star-intensity": 0.5,
+      });
 
-      await loadPinsAndCluster(map);
-      updateMarkers(map);
-      map.on("moveend", () => updateMarkers(map));
+      const { data: pins } = await supabase.from("pins").select("*, countryName");
+      const features = pins.map(pin => ({
+        type: "Feature",
+        properties: {
+          pinId: pin.id,
+          title: pin.Name,
+          description: pin.Information,
+          imageurl: pin["Main Image"],
+          date: pin.created_at,
+          iso: countryNameToIso[pin.countryName] || "default",
+        },
+        geometry: { type: "Point", coordinates: [pin.longitude, pin.latitude] },
+      }));
 
-      const handlePoiClick = async (e) => {
-        if (!e.features?.length) return;
-        const feat = e.features[0];
-        const { lng, lat } = e.lngLat;
-        if (selectedPoiMarkerRef.current) selectedPoiMarkerRef.current.remove();
-        selectedPoiMarkerRef.current = new mapboxgl.Marker({ color: "#888888" })
-          .setLngLat([lng, lat]).addTo(map);
-        const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${accessToken}&types=poi,place,region,country,address&limit=1`);
-        const { features } = await res.json();
-        const primary = features[0] || {};
-        let city = primary.context?.find(c => c.id.startsWith("place"))?.text || "";
-        if (!city) {
-          const cityJson = await (await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${accessToken}&types=place&limit=1`)).json();
-          city = cityJson.features[0]?.text || "";
-        }
-        const country = primary.context?.find(c => c.id.startsWith("country"))?.text || "";
-        onPoiClick({ lat, lng, text: feat.text, name: feat.properties.name, landmark: feat.properties.name || feat.text || "Unnamed POI", city, country });
-      };
-      ["poi-label","natural-point-label"].forEach(layerId => {
-        const attach = () => {
-          map.on("click", layerId, handlePoiClick);
-          map.on("mouseenter", layerId, () => map.getCanvas().style.cursor = "pointer");
-          map.on("mouseleave", layerId, () => map.getCanvas().style.cursor = "");
-        };
-        if (map.getLayer(layerId)) attach(); else map.on("styledata", () => { if (map.getLayer(layerId)) attach(); });
+      if (map.getSource("pins")) {
+        map.getSource("pins").setData({ type: "FeatureCollection", features });
+      } else {
+        map.addSource("pins", { type: "geojson", data: { type: "FeatureCollection", features }, cluster: true, clusterRadius: 60 });
+      }
+
+      const isos = [...new Set(features.map(f => f.properties.iso))];
+      isos.forEach(iso => {
+        const imgId = `marker-${iso}`;
+        const hex = countryColors[iso] || countryColors.default;
+        const canvas = createMarkerCanvas(hex, iso);
+        const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+        if (map.hasImage(imgId)) map.removeImage(imgId);
+        map.addImage(imgId, imgData);
+      });
+
+      const CLUSTER_ICON_ID = "cluster-icon";
+      const ORANGE = "#F18F01";
+      const clusterCanvas = createClusterCanvas(ORANGE);
+      const clusterImg = clusterCanvas.getContext("2d").getImageData(0, 0, clusterCanvas.width, clusterCanvas.height);
+      if (map.hasImage(CLUSTER_ICON_ID)) map.removeImage(CLUSTER_ICON_ID);
+      map.addImage(CLUSTER_ICON_ID, clusterImg);
+
+      ["clusters", "cluster-count", "unclustered-point"].forEach(id => {
+        if (map.getLayer(id)) map.removeLayer(id);
+      });
+
+      map.addLayer({
+        id: "clusters",
+        type: "symbol",
+        source: "pins",
+        filter: ["has","point_count"],
+        layout: { "icon-image": CLUSTER_ICON_ID, "icon-allow-overlap": true, "icon-anchor": "center", "icon-size": ["step", ["get","point_count"], 1.2, 10, 1.5, 30, 2, 70, 2.5, 200, 3] }
+      });
+
+      map.addLayer({
+        id: "cluster-count",
+        type: "symbol",
+        source: "pins",
+        filter: ["has","point_count"],
+        layout: { "text-field": "{point_count_abbreviated}", "text-font":["DIN Offc Pro Medium","Arial Unicode MS Bold"], "text-size":12, "text-allow-overlap": true, "text-ignore-placement": true },
+        paint:{"text-color":"#fff"}
+      });
+
+      map.addLayer({
+        id: "unclustered-point",
+        type: "symbol",
+        source: "pins",
+        filter:["!",["has","point_count"]],
+        layout:{"icon-image":["concat","marker-",["get","iso"]],"icon-allow-overlap":true,"icon-anchor":"bottom"}
+      });
+
+      const poiLayer = map.getStyle().layers.find(l => l.id.includes('poi-label'));
+      if (poiLayer) {
+        map.moveLayer(poiLayer.id);
+        map.on('click', poiLayer.id, e => {
+          const feat = e.features[0];
+          const name = feat.properties.name_en || feat.properties.name || feat.properties.text || '';
+          const category = feat.properties.category || feat.properties.subcategory || feat.properties.classification || '';
+          const coords = feat.geometry.type === 'Point' ? feat.geometry.coordinates : feat.geometry.coordinates[0];
+          const [lng, lat] = coords;
+          onPoiClick({ name, text: name, landmark: name, category, lat, lng });
+        });
+      }
+
+      map.on("click","clusters", e => {
+        const clusterId = e.features[0].properties.cluster_id;
+        map.getSource("pins").getClusterExpansionZoom(clusterId, (err, z) => {
+          if (!err) map.easeTo({ center: e.lngLat, zoom: z });
+        });
+      });
+
+      map.on("click","unclustered-point", e => {
+        const feat = e.features[0]; const [lng, lat] = feat.geometry.coordinates;
+        const p = feat.properties;
+        setPopupData({ title: p.title, description: p.description, imageurl: p.imageurl, date: p.date, longitude: lng, latitude: lat, countryName: p.countryName });
       });
     });
 
-    return () => { if (selectedPoiMarkerRef.current) selectedPoiMarkerRef.current.remove(); map.remove(); mapRef.current = null; };
+    return () => {
+      if (mapRef.current && mapRef.current._selectCb) {
+        mapRef.current.off("click", mapRef.current._selectCb);
+      }
+      map.remove();
+      mapRef.current = null;
+    };
   }, [accessToken]);
 
-  useEffect(() => { if (mapRef.current && flyOnTarget && Array.isArray(target)) mapRef.current.flyTo({ center: target, zoom: 12, speed: 1.2, curve: 1.4 }); }, [target, flyOnTarget]);
-  useEffect(() => { const map = mapRef.current; if (!map) return; const handler = e => { if (!selectingPoint) return; onMapClick({ lng: e.lngLat.lng, lat: e.lngLat.lat }); }; map.on("click", handler); return () => map.off("click", handler); }, [selectingPoint, onMapClick]);
-
-  const loadPinsAndCluster = async (map) => {
-    const { data: pins, error } = await supabase.from("pins").select("*");
-    if (error) return console.error("Error loading pins:", error);
-    const features = pins.map(pin => ({ type: "Feature", properties: { cluster: false, pinId: pin.id, title: pin.Name || "No title", description: pin.Information || "No description", imageurl: pin["Main Image"] || "", date: pin.created_at, countryName: pin.countryName || "default" }, geometry: { type: "Point", coordinates: [pin.longitude, pin.latitude] }}));
-    superclusterRef.current = new Supercluster({ radius: 60, maxZoom: 16 });
-    superclusterRef.current.load(features);
-  };
-
-  const clearMarkers = () => { markersRef.current.forEach(m => m.remove()); markersRef.current = []; };
-
-  const updateMarkers = (map) => {
-    if (!superclusterRef.current) return;
-    clearMarkers();
-    const bounds = map.getBounds().toArray().flat();
-    const zoom = Math.floor(map.getZoom());
-    const clusters = superclusterRef.current.getClusters(bounds, zoom);
-
-    clusters.forEach(cluster => {
-      const [lng, lat] = cluster.geometry.coordinates;
-      if (cluster.properties.cluster) {
-        // Cluster, NO tail!
-        const color = "#F18F01";
-        const rgb = hexToRgbString(color);
-        const strong = `rgba(${rgb},0.85)`;
-        const soft = `rgba(${rgb},0.7)`;
-        const el = document.createElement("div");
-        el.style.cssText = `
-          background: linear-gradient(145deg, ${strong} 0%, ${soft} 100%);
-          border: 1px solid rgba(255,255,255,0.4);
-          box-shadow: inset 0 0 10px rgba(255,255,255,0.4), 0 0 12px ${soft};
-          backdrop-filter: blur(12px);
-          border-radius: 50%;
-          width: 40px; height: 40px;
-          display: flex; align-items: center; justify-content: center;
-          color: #fff; font-weight: bold; cursor: pointer;
-        `;
-        el.innerText = cluster.properties.point_count;
-        el.addEventListener("click", () => {
-          const expZoom = superclusterRef.current.getClusterExpansionZoom(cluster.properties.cluster_id);
-          map.easeTo({ center: [lng, lat], zoom: Math.min(expZoom, 20) });
-        });
-        // Cluster marker, anchor center
-        const marker = new mapboxgl.Marker({ element: el, anchor: "center" }).setLngLat([lng, lat]).addTo(map);
-        markersRef.current.push(marker);
-      } else {
-        // Single marker: add TAIL
-        const iso = countryNameToIso[cluster.properties.countryName] || "default";
-        const baseHex = getCountryColor(iso);
-        const rgbString = hexToRgbString(baseHex);
-        const strong = `rgba(${rgbString},0.85)`;
-        const soft = `rgba(${rgbString},0.7)`;
-
-        // Create marker container
-        const container = document.createElement("div");
-        container.style.cssText = `
-          position: relative;
-          width: 30px; height: 40px; /* marker height + tail height */
-          display: flex; flex-direction: column; align-items: center; pointer-events: auto;
-        `;
-
-        // Bubble
-        const bubble = document.createElement("div");
-        bubble.style.cssText = `
-          background: linear-gradient(145deg, ${strong} 0%, ${soft} 100%);
-          border: 1px solid rgba(255,255,255,0.4);
-          box-shadow: inset 0 0 10px rgba(255,255,255,0.4), 0 0 12px ${soft};
-          backdrop-filter: blur(12px);
-          border-radius: 50%;
-          width: 30px; height: 30px;
-          display: flex; align-items: center; justify-content: center;
-          color: #fff; font-size: 0.6rem; cursor: pointer;
-          position: relative;
-          z-index: 2;
-        `;
-        bubble.innerText = iso;
-
-        // Tail
-        const tail = document.createElement("div");
-        tail.style.cssText = `
-          width: 0; height: 0;
-          border-left: 7px solid transparent;
-          border-right: 7px solid transparent;
-          border-top: 10px solid ${strong};
-          margin-top: -2px;
-          filter: blur(0.3px);
-          opacity: 0.85;
-          z-index: 1;
-        `;
-
-        container.appendChild(bubble);
-        container.appendChild(tail);
-
-        // Anchor is "bottom" so the tip is at (lng,lat)
-        const marker = new mapboxgl.Marker({ element: container, anchor: "bottom" })
-          .setLngLat([lng, lat]).addTo(map);
-
-        bubble.addEventListener("click", e => {
-          e.preventDefault(); e.stopPropagation();
-          setPopupData({
-            title: cluster.properties.title,
-            description: cluster.properties.description,
-            imageurl: cluster.properties.imageurl,
-            date: cluster.properties.date,
-            longitude: lng,
-            latitude: lat,
-            countryName: cluster.properties.countryName
-          });
-        });
-        markersRef.current.push(marker);
+  // selectingPoint clicks — with guarded cleanup
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const cb = e => {
+      if (selectingPoint) onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+    };
+    mapRef.current._selectCb = cb;
+    mapRef.current.on("click", cb);
+    return () => {
+      if (mapRef.current && mapRef.current._selectCb) {
+        mapRef.current.off("click", mapRef.current._selectCb);
+        delete mapRef.current._selectCb;
       }
-    });
-  };
+    };
+  }, [selectingPoint, onMapClick]);
+
+  
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
-      <div id="world-map" style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh" }} />
-      {popupData && <PopupComponent data={popupData} onClose={() => setPopupData(null)} />}
+      <div id="world-map" style={{ position: "fixed",top:0,left:0,width:"100vw",height:"100vh"}} />
+      {popupData && <PopupComponent data={popupData} onClose={()=>setPopupData(null)} />}
     </div>
   );
-};
-
-export default WorldMapComponent;
+}

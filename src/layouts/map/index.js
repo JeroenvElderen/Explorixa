@@ -18,6 +18,7 @@ import ProfilePopup from "layouts/ProfilePopup";
 const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
 const PlaceConfigurator = lazy(() => import("../../components/PlaceConfigurator"));
 const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
+const FALLBACK_USER_ID = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();
@@ -30,7 +31,7 @@ export default function Map() {
   const [flyToPlace, setFlyToPlace] = useState(false);
   const [resetKey, setResetKey] = useState(0);
   const [poiClickedCount, setPoiClickedCount] = useState(0);
-  const [navValue, setNavValue] = useState(0);
+  const [navValue, setNavValue] = useState(1); // default to map
   const handleAnyNav = () => setShowProfilePopup(false);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -57,18 +58,19 @@ export default function Map() {
 
   const handleHomeClick = () => {
     setOpenConfigurator(dispatch, false);
-    setResetKey((r) => r + 1);
+    setResetKey(r => r + 1);
     setNavValue(0);
   };
 
   const handleActivateMapClick = () => {
     setSelectingPoint(true);
     setOpenConfigurator(dispatch, true);
+    setNavValue(2); // configurator active
   };
 
   const handlePlaceSelected = async (place) => {
     await supabase.from("pins").insert({
-      author: profile?.user_id,
+      user_id: profile?.user_id ?? FALLBACK_USER_ID,
       country: place.country,
       city: place.city,
       address: place.address,
@@ -78,8 +80,9 @@ export default function Map() {
     });
     setSelectedPlace(place);
     setFlyToPlace(true);
-    setResetKey((r) => r + 1);
+    setResetKey(r => r + 1);
     setOpenConfigurator(dispatch, false);
+    setNavValue(1);
   };
 
   const handlePlacePick = (place) => {
@@ -87,30 +90,43 @@ export default function Map() {
     setSelectingPoint(false);
   };
 
-  const handleMapClick = async ({ lng, lat }) => {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${MAPBOX_ACCESS_TOKEN}&types=address,place,region,country,poi&limit=1`;
-    const { features } = await fetch(url).then((r) => r.json());
-    const feat = features[0] || {};
-    const context = feat.context || [];
-    handlePlacePick({
-      lat,
-      lng,
-      country: context.find((c) => c.id.startsWith("country"))?.text,
-      city: context.find((c) => c.id.startsWith("place"))?.text,
-      address: feat.text,
-      landmark: "",
-    });
+  const handleMapClick = async (place) => {
+    if (place.name) {
+      handlePlacePick(place);
+      return;
+    }
+
+    const { lng, lat } = place;
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+                `?access_token=${MAPBOX_ACCESS_TOKEN}` +
+                `&types=address,place,region,country,poi&limit=1`;
+
+    try {
+      const res = await fetch(url);
+      const { features = [] } = await res.json();
+      const feat = features[0] || {};
+      const context = feat.context || [];
+
+      handlePlacePick({
+        lat,
+        lng,
+        country: context.find(c => c.id.startsWith("country"))?.text,
+        city: context.find(c => c.id.startsWith("place"))?.text,
+        address: feat.text,
+        landmark: ""
+      });
+    } catch (err) {
+      console.error("Reverse geocode failed:", err);
+    }
   };
 
   const handleCancelConfigurator = () => {
-    setSelectedPlace(null);
-    setResetKey((r) => r + 1);
     setOpenConfigurator(dispatch, false);
-    setNavValue(0);
+    setSelectingPoint(false);
+    setSelectedPlace(null);
+    setResetKey(r => r + 1);
+    setNavValue(1);
   };
-
-  useEffect(() => { if (!miniSidenav) setNavValue(0); }, [miniSidenav]);
-  useEffect(() => { if (!openConfigurator) setNavValue(0); }, [openConfigurator]);
 
   useEffect(() => {
     if (flyToPlace) {
@@ -118,8 +134,6 @@ export default function Map() {
       return () => clearTimeout(timer);
     }
   }, [flyToPlace]);
-
-  console.log("showProfilePopup:", showProfilePopup, "profile:", profile);
 
   return (
     <DashboardLayout>
@@ -133,12 +147,14 @@ export default function Map() {
                 onMapClick={handleMapClick}
                 onPoiClick={(place) => {
                   handlePlacePick(place);
-                  setPoiClickedCount((c) => c + 1);
+                  setPoiClickedCount(c => c + 1);
                   setFlyToPlace(false);
+                  setOpenConfigurator(dispatch, true);
+                  setNavValue(2);
                 }}
                 target={selectedPlace ? [selectedPlace.lng, selectedPlace.lat] : undefined}
                 flyOnTarget={flyToPlace}
-                resetKey={resetKey}
+                
               />
             </Suspense>
           </Grid>
@@ -151,34 +167,27 @@ export default function Map() {
         onHomeClick={handleHomeClick}
         onConfiguratorClick={handleActivateMapClick}
         poiClicked={poiClickedCount}
-        onProfileClick={() => {
-          setNavValue(2);
-          setShowProfilePopup(true)
-        }}
+        onProfileClick={() => setShowProfilePopup(true)}
         onAnyNav={handleAnyNav}
-      >
-        
-      </ResponsiveNavbar>
+      />
 
       {showProfilePopup && (
         <ProfilePopup user={profile} onClose={handleProfilePopupClose} />
       )}
 
       {openConfigurator && (
-       
-          <Suspense fallback={<div>Loading Configurator...</div>}>
-            <PlaceConfigurator
-              key={resetKey}
-              countryCode={null}
-              accessToken={MAPBOX_ACCESS_TOKEN}
-              initialData={selectedPlace}
-              onPlacePick={handlePlacePick}
-              onPlaceSelected={handlePlaceSelected}
-              onActivateMapClick={handleActivateMapClick}
-              onCancel={handleCancelConfigurator}
-            />
-          </Suspense>
-        
+        <Suspense fallback={<div>Loading Configurator...</div>}>
+          <PlaceConfigurator
+            key={resetKey}
+            countryCode={null}
+            accessToken={MAPBOX_ACCESS_TOKEN}
+            initialData={selectedPlace}
+            onPlacePick={handlePlacePick}
+            onPlaceSelected={handlePlaceSelected}
+            onActivateMapClick={handleActivateMapClick}
+            onCancel={handleCancelConfigurator}
+          />
+        </Suspense>
       )}
     </DashboardLayout>
   );

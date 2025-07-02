@@ -18,6 +18,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "App";
 import RootPopoverTest from "RootPopoverTest";
+import { SavedPinsProvider } from "components/SavedPinsContext";
 
 // Material Dashboard 2 React Context Provider
 import { MaterialUIControllerProvider } from "context";
@@ -29,8 +30,9 @@ const root = createRoot(container);
 root.render(
   <BrowserRouter>
     <MaterialUIControllerProvider>
-
-      <App />
+      <SavedPinsProvider>
+        <App />
+      </SavedPinsProvider>
     </MaterialUIControllerProvider>
   </BrowserRouter>
 );

@@ -82,7 +82,6 @@ export default function PlaceConfigurator({
   const [multiImageFiles, setMultiImageFiles] = useState([]);
 
   // open/close handlers
-  const handleClose = () => setOpenConfigurator(dispatch, false);
   const handleCancelForm = () => {
     setSelectedPlace(null);
     setForm({
@@ -165,12 +164,14 @@ export default function PlaceConfigurator({
     if (selectedPlace) {
       setForm((f) => ({
         ...f,
-        Name:
-          selectedPlace.text?.length
-            ? selectedPlace.text
-            : selectedPlace.name
-            ? selectedPlace.name
-            : selectedPlace.landmark || "",
+        Name:(
+      selectedPlace.name?.trim() ||
+      selectedPlace.text?.trim() ||
+      selectedPlace.address?.trim() ||    // ← new fallback
+      selectedPlace.landmark?.trim() ||
+      selectedPlace.category?.trim() ||
+      ""
+    ),
         Latitude: selectedPlace.lat,
         Longitude: selectedPlace.lng,
         countryName: selectedPlace.country,
@@ -181,15 +182,17 @@ export default function PlaceConfigurator({
 
   // update on initialData change
   useEffect(() => {
-    if (initialData) setSelectedPlace(initialData);
-  }, [initialData]);
+  if (initialData && Object.keys(initialData).length > 0) {
+    setSelectedPlace(initialData);
+  }
+}, [initialData]);
 
   return (
     <ConfiguratorRoot
       variant="persistent"
       anchor="right"
       open={openConfigurator}
-      onClose={handleClose}
+      onClose={handleCancelForm}
       ModalProps={{ hideBackdrop: true, disablePortal: false }}
       sx={{
     // only restyle the inner paper element
@@ -246,15 +249,12 @@ export default function PlaceConfigurator({
           Create a New Pin
         </MDTypography>
         <Icon
-          onClick={handleCancelForm}
-          sx={({ typography: { size }, palette: { dark, white } }) => ({
-            fontSize: `${size.lg} !important`,
-            color: darkMode ? white.main : dark.main,
-            cursor: "pointer",
-            transform: "translateY(5px)",
-          })}
+          onClick={e => {
+            e.stopPropagation();
+            handleCancelForm();
+          }}
         >
-          close
+          Close
         </Icon>
       </MDBox>
 
@@ -322,9 +322,9 @@ export default function PlaceConfigurator({
               onChange={(e) => setForm({ ...form, ["Post Summary"]: e.target.value })}
               sx={outlinedInputSx}
             />
-            <input type="hidden" name="Latitude" value={form.Latitude} />
-            <input type="hidden" name="Longitude" value={form.Longitude} />
-            <input type="hidden" name="countryName" value={form.countryName} />
+            <input type="visible" name="Latitude" value={form.Latitude} />
+            <input type="visible" name="Longitude" value={form.Longitude} />
+            <input type="visible" name="countryName" value={form.countryName} />
             <TextField
               fullWidth
               label="City"
@@ -389,7 +389,7 @@ export default function PlaceConfigurator({
               <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
                 Save Pin
               </Button>
-              <Button variant="outlined" onClick={handleCancelForm} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
+              <Button variant="outlined" onClick={e => {e.stopPropagation(); handleCancelForm();}} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
                 Cancel
               </Button>
             </MDBox>
