@@ -171,7 +171,7 @@ function PinCardForm({ onCancel, onSubmit, initialData = {}, countryName = "" })
         Name: form.Name,
         latitude: lat,
         longitude: lng,
-        user_id: authorId,
+        user_id: authorId || "920ae8e3-79d1-4303-905b-e35cbf68e3d5",
         Images: imageUrls.join(","),
         "Main Image": mainImageUrl,
       };

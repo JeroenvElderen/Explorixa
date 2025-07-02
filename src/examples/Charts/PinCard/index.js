@@ -40,8 +40,6 @@ function PinCard({ color = "info", title, description = "", date = "", imageurl 
       <MDBox padding="1rem">
         {/* Image container replacing the chart line */}
         <MDBox
-          variant="gradient"
-          bgColor={color}
           borderRadius="lg"
           coloredShadow={color}
           py={2}
@@ -49,14 +47,14 @@ function PinCard({ color = "info", title, description = "", date = "", imageurl 
           mt={-5}
           height={height}
           sx={{
-            backgroundImage: imageurl
-              ? `linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.2)), url(${imageurl})`
-              : "none",
+            backgroundImage: `url(${imageurl})`,
+            backgroundColor: "transparent",
+            backgroundBlendMode: "normal",
             backgroundSize: "cover",
             backgroundPosition: "center",
             backgroundRepeat: "no-repeat",
           }}
-          component={imageurl ? "div" : "div"}
+          component={"div"}
           aria-label={imagealt || title}
         >
           {!imageurl && (

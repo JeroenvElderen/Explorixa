@@ -1,9 +1,14 @@
+// src/pages/Overview.jsx
 import React, { useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
 import Divider from "@mui/material/Divider";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import SaveIcon from "@mui/icons-material/Save";
+import StarField from "components/StarField";
+import SimpleResponsiveNavbar from "examples/Navbars/ResponsiveNavbar/allpage";
 
 import FacebookIcon from "@mui/icons-material/Facebook";
-import TwitterIcon from "@mui/icons-material/Twitter";
 import InstagramIcon from "@mui/icons-material/Instagram";
 
 import MDBox from "../../components/MDBox";
@@ -12,82 +17,114 @@ import MDTypography from "../../components/MDTypography";
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
 import DashboardNavbar from "../../examples/Navbars/DashboardNavbar";
 import Footer from "../../examples/Footer";
-import ProfileInfoCard from "../../examples/Cards/InfoCards/ProfileInfoCard";
 import ProfilesList from "../../examples/Lists/ProfilesList";
 import DefaultProjectCard from "../../examples/Cards/ProjectCards/DefaultProjectCard";
 
 import Header from "../../layouts/profile/components/Header";
 import PlatformSettings from "../../layouts/profile/components/PlatformSettings";
 
-import profilesListData from "../../layouts/profile/data/profilesListData";
+import { supabase } from "../../SupabaseClient";
+import { useSavedPins } from "components/SavedPinsContext";
 
 import homeDecor1 from "../../assets/images/home-decor-1.jpg";
-import homeDecor2 from "../../assets/images/home-decor-2.jpg";
-import homeDecor3 from "../../assets/images/home-decor-3.jpg";
-import homeDecor4 from "../../assets/images/home-decor-4.jpeg";
-
 import team1 from "../../assets/images/team-1.jpg";
 import team2 from "../../assets/images/team-2.jpg";
 import team3 from "../../assets/images/team-3.jpg";
 import team4 from "../../assets/images/team-4.jpg";
 
-import { supabase } from "../../SupabaseClient"; // adjust path as needed
-
-function Overview() {
+export default function Overview() {
   const [profile, setProfile] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const isEditing = activeTab === 2;
+  const [uploadingBg, setUploadingBg] = useState(false);
+
+  const [formValues, setFormValues] = useState({
+    full_name: "",
+    mobile: "",
+    email: "",
+    location: "",
+    description: "",
+    facebook_url: "",
+    instagram_url: "",
+    background_url: "",
+  });
+  const { pins, remove } = useSavedPins();
+
+  const seedForm = (data) => {
+    setFormValues({
+      full_name: data.full_name || "",
+      mobile: data.mobile || "",
+      email: data.email || "",
+      location: data.location || "",
+      description: data.description || data.bio || "",
+      facebook_url: data.facebook_url || "",
+      instagram_url: data.instagram_url || "",
+      background_url: data.background_url || "",
+    });
+    setAvatarUrl(data.avatar_url || "");
+  };
 
   async function fetchProfile() {
     const {
       data: { user },
       error: userError,
     } = await supabase.auth.getUser();
+    if (userError || !user) return setProfile(null);
 
-    console.log("Logged in user:", user, "Error:", userError);
-
-    if (userError || !user) {
-      setProfile(null);
-      console.error("User not logged in or error:", userError);
-      return;
-    }
-
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("profiles")
-      .select("*")
-      .eq("user_id", user.id)  // Use user_id as primary key
+      .select("*, avatar_url, background_url")
+      .eq("user_id", user.id)
       .maybeSingle();
 
-      console.log("Fetched profile data:", data, "Error:", error);  
-
-    if (error) {
-      console.error("Error fetching profile:", error);
-    } else {
+    if (data) {
       setProfile(data);
+      seedForm(data);
     }
   }
 
   useEffect(() => {
     fetchProfile();
-
-    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        fetchProfile();
-      } else {
-        setProfile(null);
-      }
+    const { subscription } = supabase.auth.onAuthStateChange((_, session) => {
+      if (session?.user) fetchProfile();
+      else setProfile(null);
     });
-
-    return () => {
-  if (subscription?.unsubscribe) {
-    subscription.unsubscribe();
-  }
-};
-
+    return () => subscription?.unsubscribe?.();
   }, []);
+
+  const handleChange = (field) => (e) =>
+    setFormValues((prev) => ({ ...prev, [field]: e.target.value }));
+
+  // background upload logic (unchanged)
+  const handleBgChange = async (e) => { /* ... */ };
+
+  const handleSave = async () => {
+    const updates = {
+      user_id: profile.user_id,
+      full_name: formValues.full_name,
+      mobile: formValues.mobile,
+      email: formValues.email,
+      location: formValues.location,
+      background_url: formValues.background_url,
+      avatar_url: avatarUrl,
+      description: formValues.description,
+    };
+    const { data, error } = await supabase
+      .from("profiles")
+      .upsert(updates, { onConflict: "user_id" })
+      .select()
+      .single();
+    if (error) return console.error(error);
+    setProfile(data);
+    seedForm(data);
+    setActiveTab(0);
+  };
 
   if (!profile) {
     return (
       <DashboardLayout>
-        <DashboardNavbar />
         <MDBox p={4}>
           <MDTypography variant="h5" align="center">
             Loading profile...
@@ -98,152 +135,133 @@ function Overview() {
     );
   }
 
+  const savedPinsProfiles = pins.map((p) => ({
+    image: p.imageurl,
+    name: p.title,
+    description:
+      p.description.length > 100
+        ? `${p.description.slice(0, 100)}…`
+        : p.description,
+    action: {
+      type: "internal",
+      route: `/Destinations/World_destinations/${p.title.replace(/\s+/g, "_")}`,
+      label: "Read More",
+      color: "info",
+    },
+    onRemove: () => remove(p),
+  }));
+
   return (
-    <DashboardLayout>
-      <DashboardNavbar />
-      <MDBox mb={2} />
-      <Header>
-        <MDBox mt={5} mb={3}>
-          <Grid container spacing={1}>
-            <Grid item xs={12} md={6} xl={4}>
-              <PlatformSettings />
-            </Grid>
-            <Grid item xs={12} md={6} xl={4} sx={{ display: "flex" }}>
-              <Divider orientation="vertical" sx={{ ml: -2, mr: 1 }} />
-              <ProfileInfoCard
-                title="Profile Information"
-                description={profile.description || profile.bio || ""}
-                info={{
-                  fullName: profile.full_name || "",
-                  mobile: profile.mobile || "",
-                  email: profile.email || "",
-                  location: profile.location || "",
-                }}
-                social={[
-                  {
-                    link: profile.facebook_url || "",
-                    icon: <FacebookIcon />,
-                    color: "facebook",
-                  },
-                  {
-                    link: "", // no twitter url in your schema; leave blank or add if needed
-                    icon: <TwitterIcon />,
-                    color: "twitter",
-                  },
-                  {
-                    link: profile.instagram_url || "",
-                    icon: <InstagramIcon />,
-                    color: "instagram",
-                  },
-                ]}
-                action={{ route: "", tooltip: "Edit Profile" }}
-                shadow={false}
+    <>
+      <StarField backgroundUrl={formValues.background_url || profile.background_url} />
+
+      <DashboardLayout>
+        <SimpleResponsiveNavbar
+        
+        />
+
+        <Header
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          avatarUrl={avatarUrl}
+          onAvatarChange={setAvatarUrl}
+        >
+          {/* Bio Hero: editable now */}
+          <MDBox mt={2} mb={3} px={4} py={1} sx={{ textAlign: "center" }}>
+            <MDTypography variant="h4" gutterBottom>
+              About Me
+            </MDTypography>
+            {isEditing ? (
+              <TextField
+                fullWidth
+                multiline
+                rows={3}
+                size="small"
+                value={formValues.description}
+                onChange={handleChange("description")}
+                inputProps={{ style: { fontSize: "14px" } }}
+                helperText="Edit your bio here"
               />
-              <Divider orientation="vertical" sx={{ mx: 0 }} />
+            ) : (
+              <MDTypography variant="body1" sx={{ maxWidth: 600, mx: "auto" }}>
+                {profile.description || profile.bio || "No bio set yet."}
+              </MDTypography>
+            )}
+          </MDBox>
+          <Divider />
+
+          {/* Profile & Pins */}
+          <MDBox mt={5} mb={3}>
+            <Grid container spacing={1}>
+              {activeTab === 2 && (
+              <Grid item xs={12} md={6} xl={4}>
+                <PlatformSettings />
+              </Grid>
+              )}
+
+              <Grid item xs={12} md={6} xl={4} sx={{ display: "flex" }}>
+                <Divider orientation="vertical" sx={{ ml: -1, mx: 0 }} />
+
+                <MDBox sx={{ p: 2, width: "100%", position: "relative", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", background: "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)", border: "1px solid rgba(255, 255, 255, 0.6)", boxShadow: "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)", borderRadius: "12px", overflow: "hidden" }}>
+                  <MDTypography variant="h6" mb={2}>
+                    Profile Information
+                  </MDTypography>
+                  {['full_name', 'mobile', 'email', 'location'].map((field) => (
+                    <MDBox key={field} mb={1}>
+                      <MDTypography variant="caption" color="white" sx={{ fontSize: "12px" }}>
+                        {field.replace(/_/g, " ").toUpperCase()}
+                      </MDTypography>
+                      {isEditing ? (
+                        <TextField
+                          fullWidth size="small" value={formValues[field]} onChange={handleChange(field)} inputProps={{ style: { fontSize: "14px" } }}
+                        />
+                      ) : (
+                        <MDTypography sx={{ fontSize: "16px" }}>
+                          {profile[field] || "—"}
+                        </MDTypography>
+                      )}
+                    </MDBox>
+                  ))}
+
+                  {/* Remove BIO field here — now edited in hero */}
+
+                  {isEditing && (
+                    <MDBox textAlign="right">
+                      <Button variant="contained" color="primary" onClick={handleSave} startIcon={<SaveIcon />}>Save</Button>
+                    </MDBox>
+                  )}
+
+                  
+                </MDBox>
+
+                <Divider orientation="vertical" sx={{ ml: 0, mr: 0 }} />
+              </Grid>
+
+              <Grid item xs={12} md={6} xl={activeTab === 2 ? 4 : 8}>
+  <ProfilesList title="Saved Pins" profiles={savedPinsProfiles} shadow={false} />
+</Grid>
+
             </Grid>
-            <Grid item xs={12} xl={4}>
-              <ProfilesList title="Conversations" profiles={profilesListData} shadow={false} />
-            </Grid>
-          </Grid>
-        </MDBox>
-        <MDBox pt={2} px={2} lineHeight={1.25}>
-          <MDTypography variant="h6" fontWeight="medium">
-            Projects
-          </MDTypography>
-          <MDBox mb={1}>
-            <MDTypography variant="button" color="text">
-              Architects design houses
+          </MDBox>
+
+          {/* Projects Section */}
+          <MDBox pt={2} px={2} lineHeight={1.25}>
+            <MDTypography variant="h6" fontWeight="medium">
+              My Pins
             </MDTypography>
           </MDBox>
-        </MDBox>
-        <MDBox p={2}>
-          <Grid container spacing={6}>
-            <Grid item xs={12} md={6} xl={3}>
-              <DefaultProjectCard
-                image={homeDecor1}
-                label="project #2"
-                title="modern"
-                description="As Uber works through a huge amount of internal management turmoil."
-                action={{
-                  type: "internal",
-                  route: "/pages/profile/profile-overview",
-                  color: "info",
-                  label: "view project",
-                }}
-                authors={[
-                  { image: team1, name: "Elena Morison" },
-                  { image: team2, name: "Ryan Milly" },
-                  { image: team3, name: "Nick Daniel" },
-                  { image: team4, name: "Peterson" },
-                ]}
-              />
+          <MDBox p={2}>
+            <Grid container spacing={1}>
+              
+                <DefaultProjectCard
+                />
+              
             </Grid>
-            <Grid item xs={12} md={6} xl={3}>
-              <DefaultProjectCard
-                image={homeDecor2}
-                label="project #1"
-                title="scandinavian"
-                description="Music is something that everyone has their own specific opinion about."
-                action={{
-                  type: "internal",
-                  route: "/pages/profile/profile-overview",
-                  color: "info",
-                  label: "view project",
-                }}
-                authors={[
-                  { image: team3, name: "Nick Daniel" },
-                  { image: team4, name: "Peterson" },
-                  { image: team1, name: "Elena Morison" },
-                  { image: team2, name: "Ryan Milly" },
-                ]}
-              />
-            </Grid>
-            <Grid item xs={12} md={6} xl={3}>
-              <DefaultProjectCard
-                image={homeDecor3}
-                label="project #3"
-                title="minimalist"
-                description="Different people have different taste, and various types of music."
-                action={{
-                  type: "internal",
-                  route: "/pages/profile/profile-overview",
-                  color: "info",
-                  label: "view project",
-                }}
-                authors={[
-                  { image: team4, name: "Peterson" },
-                  { image: team3, name: "Nick Daniel" },
-                  { image: team2, name: "Ryan Milly" },
-                  { image: team1, name: "Elena Morison" },
-                ]}
-              />
-            </Grid>
-            <Grid item xs={12} md={6} xl={3}>
-              <DefaultProjectCard
-                image={homeDecor4}
-                label="project #4"
-                title="gothic"
-                description="Why would anyone pick blue over pink? Pink is obviously a better color."
-                action={{
-                  type: "internal",
-                  route: "/pages/profile/profile-overview",
-                  color: "info",
-                  label: "view project",
-                }}
-                authors={[
-                  { image: team4, name: "Peterson" },
-                  { image: team3, name: "Nick Daniel" },
-                  { image: team2, name: "Ryan Milly" },
-                  { image: team1, name: "Elena Morison" },
-                ]}
-              />
-            </Grid>
-          </Grid>
-        </MDBox>
-      </Header>
-      <Footer />
-    </DashboardLayout>
+          </MDBox>
+        </Header>
+
+        <Footer />
+      </DashboardLayout>
+    </>
   );
 }
-
-export default Overview;

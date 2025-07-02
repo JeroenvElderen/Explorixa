@@ -127,20 +127,34 @@ function DashboardNavbar({ absolute = false, light = false, isMini = false, vari
   return (
   <MDBox
     sx={{
-      backgroundColor: "rgba(13, 19, 37, 0.7)",
-      borderRadius: isBoxed ? "12px" : "0px",
-      border: isBoxed ? "1px solid" : "none",
-      borderColor: darkMode ? "#26304b" : "#e0e0e0",
-      mx: 0,
-      my: 0,
-      px: 0,
-    }}
+            display: "flex",
+            flexDirection: "column",
+            backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      background:
+        "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+      border: "1px solid rgba(255, 255, 255, 0.6)",
+      boxShadow:
+        "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+      borderRadius: "12px",
+      overflow: "hidden",
+          }}
   >
     <AppBar
       position={absolute ? "absolute" : navbarType}
       color="inherit"
       elevation={0}
-      sx={(theme) => navbar(theme, { transparentNavbar, absolute, light, darkMode })}
+      sx={{
+            display: "flex",
+            flexDirection: "column",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background: "transparent",
+            border: "1px solid rgba(255, 255, 255, 0.6)",
+            borderRadius: "12px",
+            overflow: "hidden",
+            scrollSnapAlign: "start",
+          }}
     >
       <Toolbar sx={(theme) => navbarContainer(theme)}>
         <MDBox color="inherit" mb={{ xs: 1, md: 0 }} sx={(theme) => navbarRow(theme, { isMini })}>

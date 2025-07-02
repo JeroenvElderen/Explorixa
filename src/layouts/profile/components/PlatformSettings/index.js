@@ -32,7 +32,18 @@ function PlatformSettings() {
   const [newsletter, setNewsletter] = useState(false);
 
   return (
-    <Card sx={{ boxShadow: "none" }}>
+    <Card sx={{
+      position: "relative",
+      // Glass-metal styling:
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      background: "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+      border: "1px solid rgba(255, 255, 255, 0.6)",
+      boxShadow:
+        "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+      borderRadius: "12px",
+      overflow: "hidden",
+    }}>
       <MDBox p={2}>
         <MDTypography variant="h6" fontWeight="medium" textTransform="capitalize">
           platform settings
@@ -44,7 +55,22 @@ function PlatformSettings() {
         </MDTypography>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={followsMe} onChange={() => setFollowsMe(!followsMe)} />
+            <Switch checked={followsMe} onChange={() => setFollowsMe(!followsMe)}
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": {
+                  // thumb color
+                  color: "#F18F01",
+                  // track when checked
+                  "& + .MuiSwitch-track": {
+                    backgroundColor: "#F18F01 !important",
+                  },
+                },
+                // track when unchecked
+                "& .MuiSwitch-track": {
+                  backgroundColor: "rgba(255,255,255,0.4)",
+                },
+              }}
+            />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
@@ -54,7 +80,21 @@ function PlatformSettings() {
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={answersPost} onChange={() => setAnswersPost(!answersPost)} />
+            <Switch checked={answersPost} onChange={() => setAnswersPost(!answersPost)}
+              sx={{
+                "& .MuiSwitch-switchBase.Mui-checked": {
+                  // thumb color
+                  color: "#F18F01",
+                  // track when checked
+                  "& + .MuiSwitch-track": {
+                    backgroundColor: "#F18F01 !important",
+                  },
+                },
+                // track when unchecked
+                "& .MuiSwitch-track": {
+                  backgroundColor: "rgba(255,255,255,0.4)",
+                },
+              }} />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
@@ -64,7 +104,21 @@ function PlatformSettings() {
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={mentionsMe} onChange={() => setMentionsMe(!mentionsMe)} />
+            <Switch checked={mentionsMe} onChange={() => setMentionsMe(!mentionsMe)} 
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                // thumb color
+                color: "#F18F01",
+                // track when checked
+                "& + .MuiSwitch-track": {
+                  backgroundColor: "#F18F01 !important",
+                },
+              },
+              // track when unchecked
+              "& .MuiSwitch-track": {
+                backgroundColor: "rgba(255,255,255,0.4)",
+              },
+            }} />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
@@ -79,7 +133,21 @@ function PlatformSettings() {
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={newLaunches} onChange={() => setNewLaunches(!newLaunches)} />
+            <Switch checked={newLaunches} onChange={() => setNewLaunches(!newLaunches)} 
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                // thumb color
+                color: "#F18F01",
+                // track when checked
+                "& + .MuiSwitch-track": {
+                  backgroundColor: "#F18F01 !important",
+                },
+              },
+              // track when unchecked
+              "& .MuiSwitch-track": {
+                backgroundColor: "rgba(255,255,255,0.4)",
+              },
+            }} />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
@@ -89,7 +157,21 @@ function PlatformSettings() {
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={productUpdate} onChange={() => setProductUpdate(!productUpdate)} />
+            <Switch checked={productUpdate} onChange={() => setProductUpdate(!productUpdate)} 
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                // thumb color
+                color: "#F18F01",
+                // track when checked
+                "& + .MuiSwitch-track": {
+                  backgroundColor: "#F18F01 !important",
+                },
+              },
+              // track when unchecked
+              "& .MuiSwitch-track": {
+                backgroundColor: "rgba(255,255,255,0.4)",
+              },
+            }} />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
@@ -99,7 +181,21 @@ function PlatformSettings() {
         </MDBox>
         <MDBox display="flex" alignItems="center" mb={0.5} ml={-1.5}>
           <MDBox mt={0.5}>
-            <Switch checked={newsletter} onChange={() => setNewsletter(!newsletter)} />
+            <Switch checked={newsletter} onChange={() => setNewsletter(!newsletter)} 
+            sx={{
+              "& .MuiSwitch-switchBase.Mui-checked": {
+                // thumb color
+                color: "#F18F01",
+                // track when checked
+                "& + .MuiSwitch-track": {
+                  backgroundColor: "#F18F01 !important",
+                },
+              },
+              // track when unchecked
+              "& .MuiSwitch-track": {
+                backgroundColor: "rgba(255,255,255,0.4)",
+              },
+            }} />
           </MDBox>
           <MDBox width="80%" ml={0.5}>
             <MDTypography variant="button" fontWeight="regular" color="text">
