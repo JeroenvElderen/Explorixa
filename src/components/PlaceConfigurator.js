@@ -164,14 +164,14 @@ export default function PlaceConfigurator({
     if (selectedPlace) {
       setForm((f) => ({
         ...f,
-        Name:(
-      selectedPlace.name?.trim() ||
-      selectedPlace.text?.trim() ||
-      selectedPlace.address?.trim() ||    // ← new fallback
-      selectedPlace.landmark?.trim() ||
-      selectedPlace.category?.trim() ||
-      ""
-    ),
+        Name: (
+          selectedPlace.name?.trim() ||
+          selectedPlace.text?.trim() ||
+          selectedPlace.address?.trim() ||    // ← new fallback
+          selectedPlace.landmark?.trim() ||
+          selectedPlace.category?.trim() ||
+          ""
+        ),
         Latitude: selectedPlace.lat,
         Longitude: selectedPlace.lng,
         countryName: selectedPlace.country,
@@ -182,10 +182,10 @@ export default function PlaceConfigurator({
 
   // update on initialData change
   useEffect(() => {
-  if (initialData && Object.keys(initialData).length > 0) {
-    setSelectedPlace(initialData);
-  }
-}, [initialData]);
+    if (initialData && Object.keys(initialData).length > 0) {
+      setSelectedPlace(initialData);
+    }
+  }, [initialData]);
 
   return (
     <ConfiguratorRoot
@@ -195,23 +195,23 @@ export default function PlaceConfigurator({
       onClose={handleCancelForm}
       ModalProps={{ hideBackdrop: true, disablePortal: false }}
       sx={{
-    // only restyle the inner paper element
-    "& .MuiDrawer-paper": {
-      backdropFilter: "blur(20px)",
-      top: 15,
-      right: 15,
-      bottom: 15,
-      height: "97vh",
-      WebkitBackdropFilter: "blur(20px)",
-      background:
-        "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
-      border: "1px solid rgba(255, 255, 255, 0.6)",
-      boxShadow:
-        "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
-      borderRadius: "12px",
-      overflow: "hidden",
-    },
-  }}
+        // only restyle the inner paper element
+        "& .MuiDrawer-paper": {
+          backdropFilter: "blur(20px)",
+          top: 15,
+          right: 15,
+          bottom: 15,
+          height: "97vh",
+          WebkitBackdropFilter: "blur(20px)",
+          background:
+            "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+          border: "1px solid rgba(255, 255, 255, 0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+          borderRadius: "12px",
+          overflow: "hidden",
+        },
+      }}
       PaperProps={{
         sx: {
           zIndex: 1200,
@@ -223,7 +223,7 @@ export default function PlaceConfigurator({
             width: "calc(100vw - 30px) !important",
             maxWidth: "calc(100vw - 30px) !important",
             height: "calc(100vh - 30px) !important",
-            
+
           },
           [theme.breakpoints.up("sm")]: {
             width: 400,
@@ -292,17 +292,57 @@ export default function PlaceConfigurator({
         </FormControl>
 
         {/* Map search */}
-        <PlaceSearch
-          countryCode={searchCountry || null}
-          accessToken={accessToken}
-          onPlaceSelected={(p) => {
-            setSelectedPlace(p);
-            onPlacePick?.(p);
-          }}
-          onActivateMapClick={onActivateMapClick}
-          inputClass="place-search-input"
-          suggestionClass="place-search-suggestions"
-        />
+        {/* Map search */}
+<PlaceSearch
+  countryCode={searchCountry || null}
+  accessToken={accessToken}
+  onPlaceSelected={async (p) => {
+    // 1) Pull out coordinates (Mapbox gives you p.center === [lng, lat])
+    const [lng, lat] = Array.isArray(p.center)
+      ? p.center
+      : [p.lng, p.lat];
+
+    // 2) Prepare Title & Address for your UI/payload
+    const name    = p.text       || p.landmark || "";
+    const address = p.place_name || "";
+
+    // 3) Build the reverse-geocode URL WITHOUT encoding the comma
+    const url =
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
+      `${lng},${lat}.json` +
+      `?access_token=${accessToken}`;
+    console.log("Reverse-geocode URL:", url);
+
+    // 4) Fetch & pick out country/place from the full feature stack
+    let country = "", city = "";
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const { features = [] } = await res.json();
+      // find the first feature of type "place" or "region"
+      city    = features.find(f => f.place_type.includes("place"))?.text
+             || features.find(f => f.place_type.includes("region"))?.text
+             || "";
+      // find the first feature of type "country"
+      country = features.find(f => f.place_type.includes("country"))?.text || "";
+    } catch (err) {
+      console.error("Reverse-geocode failed:", err);
+    }
+
+    // 5) Merge into your place object and fire off
+    const enriched = { ...p, name, address, lat, lng, country, city };
+    console.log("→ enriched place:", enriched);
+    setSelectedPlace(enriched);
+    onPlacePick?.(enriched);
+  }}
+  onActivateMapClick={onActivateMapClick}
+  inputClass="place-search-input"
+  suggestionClass="place-search-suggestions"
+/>
+
+
+
+
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
@@ -324,6 +364,13 @@ export default function PlaceConfigurator({
             />
             <input type="visible" name="Latitude" value={form.Latitude} />
             <input type="visible" name="Longitude" value={form.Longitude} />
+            <TextField
+              fullWidth
+              label="Country"
+              value={form.countryName}
+              onChange={(e) => setForm({ ...form, countryName: e.target.value })}
+              sx={outlinedInputSx}
+            />
             <input type="visible" name="countryName" value={form.countryName} />
             <TextField
               fullWidth
@@ -389,7 +436,7 @@ export default function PlaceConfigurator({
               <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
                 Save Pin
               </Button>
-              <Button variant="outlined" onClick={e => {e.stopPropagation(); handleCancelForm();}} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
+              <Button variant="outlined" onClick={e => { e.stopPropagation(); handleCancelForm(); }} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
                 Cancel
               </Button>
             </MDBox>

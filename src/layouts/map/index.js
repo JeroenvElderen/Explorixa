@@ -1,6 +1,5 @@
 import React, { lazy, Suspense, useState, useEffect } from "react";
 import Grid from "@mui/material/Grid";
-import Box from "@mui/material/Box";
 import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
@@ -8,34 +7,31 @@ import ResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar";
 import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import BottomNavigation from "@mui/material/BottomNavigation";
-import BottomNavigationAction from "@mui/material/BottomNavigationAction";
-import HomeIcon from "@mui/icons-material/Home";
-import SearchIcon from "@mui/icons-material/Search";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ProfilePopup from "layouts/ProfilePopup";
 
 const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
-const PlaceConfigurator = lazy(() => import("../../components/PlaceConfigurator"));
+const PlaceConfigurator   = lazy(() => import("../../components/PlaceConfigurator"));
+
 const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
-const FALLBACK_USER_ID = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
+const FALLBACK_USER_ID    = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();
-  const { openConfigurator, miniSidenav } = controller;
+  const { openConfigurator } = controller;
 
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile]             = useState(null);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
-  const [selectingPoint, setSelectingPoint] = useState(false);
-  const [selectedPlace, setSelectedPlace] = useState(null);
-  const [flyToPlace, setFlyToPlace] = useState(false);
-  const [resetKey, setResetKey] = useState(0);
-  const [poiClickedCount, setPoiClickedCount] = useState(0);
-  const [navValue, setNavValue] = useState(1); // default to map
-  const handleAnyNav = () => setShowProfilePopup(false);
-  const theme = useTheme();
+  const [selectingPoint, setSelectingPoint]     = useState(false);
+  const [selectedPlace, setSelectedPlace]       = useState(null);
+  const [flyToPlace, setFlyToPlace]             = useState(false);
+  const [resetKey, setResetKey]                 = useState(0);
+  const [poiClickedCount, setPoiClickedCount]   = useState(0);
+  const [navValue, setNavValue]                 = useState(1);
+
+  const theme    = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Load user profile once
   useEffect(() => {
     async function loadProfile() {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -65,15 +61,15 @@ export default function Map() {
   const handleActivateMapClick = () => {
     setSelectingPoint(true);
     setOpenConfigurator(dispatch, true);
-    setNavValue(2); // configurator active
+    setNavValue(2);
   };
 
   const handlePlaceSelected = async (place) => {
     await supabase.from("pins").insert({
       user_id: profile?.user_id ?? FALLBACK_USER_ID,
-      country: place.country,
-      city: place.city,
-      address: place.address,
+      country:  place.country,
+      city:     place.city,
+      address:  place.address,
       landmark: place.landmark,
       latitude: place.lat,
       longitude: place.lng,
@@ -90,30 +86,34 @@ export default function Map() {
     setSelectingPoint(false);
   };
 
+  // Single async reverse‐geocode handler for both map & POI clicks
   const handleMapClick = async (place) => {
-    if (place.name) {
-      handlePlacePick(place);
-      return;
-    }
-
     const { lng, lat } = place;
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
-                `?access_token=${MAPBOX_ACCESS_TOKEN}` +
-                `&types=address,place,region,country,poi&limit=1`;
+    const url =
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
+      `${lng},${lat}.json` +
+      `?access_token=${MAPBOX_ACCESS_TOKEN}` +
+      `&types=address,place,region,country,poi&limit=1`;
 
     try {
       const res = await fetch(url);
       const { features = [] } = await res.json();
       const feat = features[0] || {};
-      const context = feat.context || [];
+      const ctx  = feat.context || [];
+
+      const country = ctx.find(c => c.id.startsWith("country"))?.text || "";
+      const city    = ctx.find(c => c.id.startsWith("place"))?.text
+                    || ctx.find(c => c.id.startsWith("region"))?.text
+                    || "";
 
       handlePlacePick({
+        ...place,
+        address:  feat.text     || place.name || "",
+        landmark: place.landmark || "",
+        country,
+        city,
         lat,
         lng,
-        country: context.find(c => c.id.startsWith("country"))?.text,
-        city: context.find(c => c.id.startsWith("place"))?.text,
-        address: feat.text,
-        landmark: ""
       });
     } catch (err) {
       console.error("Reverse geocode failed:", err);
@@ -128,6 +128,7 @@ export default function Map() {
     setNavValue(1);
   };
 
+  // Clear flyToPlace after animation
   useEffect(() => {
     if (flyToPlace) {
       const timer = setTimeout(() => setFlyToPlace(false), 1000);
@@ -140,13 +141,13 @@ export default function Map() {
       <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0 }}>
         <Grid container spacing={3}>
           <Grid item xs={12}>
-            <Suspense fallback={<div style={{ textAlign: "center", padding: 40 }}>Loading map...</div>}>
+            <Suspense fallback={<div style={{ textAlign:"center", padding:40 }}>Loading map…</div>}>
               <WorldMapComponent
                 accessToken={MAPBOX_ACCESS_TOKEN}
                 selectingPoint={selectingPoint}
                 onMapClick={handleMapClick}
-                onPoiClick={(place) => {
-                  handlePlacePick(place);
+                onPoiClick={async (place) => {
+                  await handleMapClick(place);
                   setPoiClickedCount(c => c + 1);
                   setFlyToPlace(false);
                   setOpenConfigurator(dispatch, true);
@@ -154,7 +155,6 @@ export default function Map() {
                 }}
                 target={selectedPlace ? [selectedPlace.lng, selectedPlace.lat] : undefined}
                 flyOnTarget={flyToPlace}
-                
               />
             </Suspense>
           </Grid>
@@ -168,7 +168,7 @@ export default function Map() {
         onConfiguratorClick={handleActivateMapClick}
         poiClicked={poiClickedCount}
         onProfileClick={() => setShowProfilePopup(true)}
-        onAnyNav={handleAnyNav}
+        onAnyNav={() => setShowProfilePopup(false)}
       />
 
       {showProfilePopup && (
@@ -176,7 +176,7 @@ export default function Map() {
       )}
 
       {openConfigurator && (
-        <Suspense fallback={<div>Loading Configurator...</div>}>
+        <Suspense fallback={<div>Loading Configurator…</div>}>
           <PlaceConfigurator
             key={resetKey}
             countryCode={null}

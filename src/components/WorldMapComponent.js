@@ -127,6 +127,7 @@ function createClusterCanvas(baseHex) {
   const grad = ctx.createLinearGradient(0, 0, size, size);
   grad.addColorStop(0, `rgba(${rgb},0.85)`);
   grad.addColorStop(1, `rgba(${rgb},0.7)`);
+
   ctx.fillStyle = grad;
   ctx.beginPath();
   ctx.arc(size/2, size/2, r, 0, 2 * Math.PI);
