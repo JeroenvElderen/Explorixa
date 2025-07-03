@@ -14,6 +14,7 @@ import Select from "@mui/material/Select";
 import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 import { useTheme } from "@mui/material/styles";
+import imageCompression from "browser-image-compression";
 
 import { useMaterialUIController, setOpenConfigurator } from "context";
 import { supabase } from "../SupabaseClient";
@@ -43,20 +44,36 @@ export default function PlaceConfigurator({
 }) {
   const inputHeight = 48;
   const outlinedInputSx = {
+    "& .MuiOutlinedInput-root": {
+      minHeight: inputHeight,
+
+      // default outline
+      "& .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#F18F01",
+      },
+
+      // hover state
+      "&:hover .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#F18F01CC",
+      },
+
+      // focused state
+      "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+        borderColor: "#F18F01",
+      },
+    },
+
     "& .MuiOutlinedInput-input": {
       height: inputHeight,
       boxSizing: "border-box",
       padding: "12px 14px",
-    },
-    "& .MuiOutlinedInput-root": {
-      minHeight: inputHeight,
     },
   };
 
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator, darkMode } = controller;
   const theme = useTheme();
-
+const [mainImageStatus, setMainImageStatus] = useState("idle");
   const [selectedPlace, setSelectedPlace] = useState(initialData);
   const [searchCountry, setSearchCountry] = useState(initialCountryCode || "");
   const [form, setForm] = useState({
@@ -104,18 +121,31 @@ export default function PlaceConfigurator({
     onCancel?.();
   };
 
-  // upload helper
+  // upload helper (with compression)
   const uploadImage = async (file) => {
-    const ext = file.name.split(".").pop();
+    // 1) compress down to max 1000px width/height
+    const compressedFile = await imageCompression(file, {
+      maxWidthOrHeight: 1000,
+      useWebWorker: true,
+      // optional: adjust quality between 0.6–1.0
+      initialQuality: 0.8,
+    });
+
+    // 2) build a UUID path (same as before)
+    const ext = compressedFile.name.split(".").pop();
     const path = `${uuidv4()}.${ext}`;
+
+    // 3) upload the compressed blob
     const { error } = await supabase.storage
       .from(BUCKET)
-      .upload(path, file, {
+      .upload(path, compressedFile, {
         cacheControl: "3600",
         upsert: false,
-        contentType: file.type,
+        contentType: compressedFile.type,
       });
     if (error) throw error;
+
+    // 4) get the public URL
     const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
     return data.publicUrl;
   };
@@ -149,8 +179,6 @@ export default function PlaceConfigurator({
       }
       const { error } = await supabase.from("pins").insert([payload]);
       if (error) throw error;
-      alert("Pin saved!");
-      window.location.reload();
       onPlaceSelected?.(payload);
       handleCancelForm();
     } catch (err) {
@@ -254,7 +282,7 @@ export default function PlaceConfigurator({
             handleCancelForm();
           }}
         >
-          Close
+          X
         </Icon>
       </MDBox>
 
@@ -267,21 +295,69 @@ export default function PlaceConfigurator({
           overflowY: "auto",
           pointerEvents: "auto",
         }}
-        pt={0}
+        pt={1}
         pb={3}
         px={{ xs: 2, sm: 3 }}
       >
         {/* Country filter */}
-        <FormControl fullWidth variant="standard" sx={{ mb: { xs: 1.5, sm: 2 } }}>
-          <InputLabel id="search-country-label">Search Country</InputLabel>
+        <FormControl fullWidth variant="outlined" sx={{ mb: { xs: 1.5, sm: 2 } }}>
+          <InputLabel
+            id="search-country-label"
+            sx={{
+              color: "#fff",
+              "&.Mui-focused": { color: "#fff" },
+              "&.MuiInputLabel-shrink": { color: "#fff" },
+            }}
+          >
+            Search Country
+          </InputLabel>
+
           <Select
             labelId="search-country-label"
+            label="Search Country"
             value={searchCountry}
             onChange={(e) => {
               setSearchCountry(e.target.value);
               setSelectedPlace(null);
             }}
-            sx={{ height: "48px" }}
+            // --- outline styles ---
+            sx={{
+              height: "48px",
+              width: "100%",
+              // default outline
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#F18F01",
+              },
+              // hover outline
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#F18F01CC",
+              },
+              // focus outline
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#F18F01",
+              },
+            }}
+
+            // --- menu (dropdown) styles ---
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  bgcolor: "rgba(241,143,1,1) !important",
+                  border: "1px solid #F18F01",
+                  mt: 1,
+                  "& .MuiMenuItem-root": {
+                    color: "#fff",
+                  },
+                  "& .MuiMenuItem-root:hover": {
+                    bgcolor: "rgba(0,0,0,0.2)",
+                  },
+                  "& .MuiMenuItem-root.Mui-selected, & .MuiMenuItem-root[aria-selected='true']": {
+                    bgcolor: "rgba(241,143,1,0.8)",
+                    color: "white",
+                  },
+                },
+              },
+            }}
           >
             {COUNTRY_OPTIONS.map((opt) => (
               <MenuItem key={opt.code} value={opt.code}>
@@ -291,54 +367,53 @@ export default function PlaceConfigurator({
           </Select>
         </FormControl>
 
+
         {/* Map search */}
-        {/* Map search */}
-<PlaceSearch
-  countryCode={searchCountry || null}
-  accessToken={accessToken}
-  onPlaceSelected={async (p) => {
-    // 1) Pull out coordinates (Mapbox gives you p.center === [lng, lat])
-    const [lng, lat] = Array.isArray(p.center)
-      ? p.center
-      : [p.lng, p.lat];
+        <PlaceSearch
+          countryCode={searchCountry || null}
+          accessToken={accessToken}
+          onPlaceSelected={async (p) => {
+            console.log("Mapbox result:", p);
+            // 1) Pull out coordinates (Mapbox gives you p.center === [lng, lat])
+            const [lng, lat] = Array.isArray(p.center)
+              ? p.center
+              : [p.lng, p.lat];
 
-    // 2) Prepare Title & Address for your UI/payload
-    const name    = p.text       || p.landmark || "";
-    const address = p.place_name || "";
+            // 2) Prepare Title & Address for your UI/payload
+            const name = p.text || p.landmark || "";
+            const address = p.place_name || "";
 
-    // 3) Build the reverse-geocode URL WITHOUT encoding the comma
-    const url =
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
-      `${lng},${lat}.json` +
-      `?access_token=${accessToken}`;
-    console.log("Reverse-geocode URL:", url);
+            // 3) Build the reverse-geocode URL WITHOUT encoding the comma
+            const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${accessToken}`;
+            console.log("Reverse-geocode URL:", url);
 
-    // 4) Fetch & pick out country/place from the full feature stack
-    let country = "", city = "";
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
-      const { features = [] } = await res.json();
-      // find the first feature of type "place" or "region"
-      city    = features.find(f => f.place_type.includes("place"))?.text
-             || features.find(f => f.place_type.includes("region"))?.text
-             || "";
-      // find the first feature of type "country"
-      country = features.find(f => f.place_type.includes("country"))?.text || "";
-    } catch (err) {
-      console.error("Reverse-geocode failed:", err);
-    }
 
-    // 5) Merge into your place object and fire off
-    const enriched = { ...p, name, address, lat, lng, country, city };
-    console.log("→ enriched place:", enriched);
-    setSelectedPlace(enriched);
-    onPlacePick?.(enriched);
-  }}
-  onActivateMapClick={onActivateMapClick}
-  inputClass="place-search-input"
-  suggestionClass="place-search-suggestions"
-/>
+            // 4) Fetch & pick out country/place from the full feature stack
+            let country = "", city = "";
+            try {
+              const res = await fetch(url);
+              if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+              const { features = [] } = await res.json();
+              // find the first feature of type "place" or "region"
+              city = features.find(f => f.place_type.includes("place"))?.text
+                || features.find(f => f.place_type.includes("region"))?.text
+                || "";
+              // find the first feature of type "country"
+              country = features.find(f => f.place_type.includes("country"))?.text || "";
+            } catch (err) {
+              console.error("Reverse-geocode failed:", err);
+            }
+
+            // 5) Merge into your place object and fire off
+            const enriched = { ...p, name, address, lat, lng, country, city };
+            console.log("→ enriched place:", enriched);
+            setSelectedPlace(enriched);
+            onPlacePick?.(enriched);
+          }}
+          onActivateMapClick={onActivateMapClick}
+          inputClass="place-search-input"
+          suggestionClass="place-search-suggestions"
+        />
 
 
 
@@ -353,6 +428,13 @@ export default function PlaceConfigurator({
               value={form.Name}
               onChange={(e) => setForm({ ...form, Name: e.target.value })}
               required
+              InputLabelProps={{
+                sx: {
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": { color: "#fff" },
+                },
+              }}
               sx={{ mt: { xs: 1, sm: 2 }, ...outlinedInputSx }}
             />
             <TextField
@@ -360,31 +442,99 @@ export default function PlaceConfigurator({
               label="Post Summary"
               value={form["Post Summary"]}
               onChange={(e) => setForm({ ...form, ["Post Summary"]: e.target.value })}
+              InputLabelProps={{
+                sx: {
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": { color: "#fff" },
+                },
+              }}
               sx={outlinedInputSx}
             />
-            <input type="visible" name="Latitude" value={form.Latitude} />
-            <input type="visible" name="Longitude" value={form.Longitude} />
+            <input type="hidden" name="Latitude" value={form.Latitude} />
+            <input type="hidden" name="Longitude" value={form.Longitude} />
             <TextField
               fullWidth
               label="Country"
               value={form.countryName}
               onChange={(e) => setForm({ ...form, countryName: e.target.value })}
+              InputLabelProps={{
+                sx: {
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": { color: "#fff" },
+                },
+              }}
               sx={outlinedInputSx}
             />
-            <input type="visible" name="countryName" value={form.countryName} />
+            <input type="hidden" name="countryName" value={form.countryName} />
             <TextField
               fullWidth
               label="City"
               value={form.City}
               onChange={(e) => setForm({ ...form, City: e.target.value })}
+              InputLabelProps={{
+                sx: {
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": { color: "#fff" },
+                },
+              }}
               sx={outlinedInputSx}
             />
-            <FormControl fullWidth>
-              <InputLabel>Category</InputLabel>
+            <FormControl fullWidth variant="outlined" sx={{ mb: { xs: 1.5, sm: 2 } }}>
+              <InputLabel
+                sx={{
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": {
+                    color: "#fff",
+                  }
+                }}
+              >
+                Category
+              </InputLabel>
               <Select
+                labelId="category-label"
+                label="category"
+                variant="outlined"
                 value={form.Category}
                 onChange={(e) => setForm({ ...form, Category: e.target.value })}
-                sx={{ height: "48px" }}
+                sx={{
+                  // default outline
+                  "& .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#F18F01",
+                  },
+                  // hover outline
+                  "&:hover .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#F18F01CC",
+                  },
+                  // focused outline (root gets Mui-focused)
+                  "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                    borderColor: "#F18F01",
+                  },
+                  height: "48px",
+                }}
+                // --- menu (dropdown) styles ---
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      bgcolor: "rgba(241,143,1,1) !important",
+                      border: "1px solid #F18F01",
+                      mt: 1,
+                      "& .MuiMenuItem-root": {
+                        color: "#fff",
+                      },
+                      "& .MuiMenuItem-root:hover": {
+                        bgcolor: "rgba(0,0,0,0.2)",
+                      },
+                      "& .MuiMenuItem-root.Mui-selected, & .MuiMenuItem-root[aria-selected='true']": {
+                        bgcolor: "rgba(241,143,1,0.8)",
+                        color: "white",
+                      },
+                    },
+                  },
+                }}
               >
                 <MenuItem value="Category1">Category1</MenuItem>
                 <MenuItem value="Category2">Category2</MenuItem>
@@ -398,6 +548,13 @@ export default function PlaceConfigurator({
               onChange={(e) => setForm({ ...form, Information: e.target.value })}
               multiline
               rows={2}
+              InputLabelProps={{
+                sx: {
+                  color: "#fff",
+                  "&.Mui-focused": { color: "#fff" },
+                  "&.MuiInputLabel-shrink": { color: "#fff" },
+                },
+              }}
               sx={{ "& .MuiInputBase-input": { padding: "12px" }, ...outlinedInputSx }}
             />
             <MDBox display="flex" gap={2}>
@@ -407,6 +564,13 @@ export default function PlaceConfigurator({
                 type="number"
                 value={form.Ranking}
                 onChange={(e) => setForm({ ...form, Ranking: e.target.value })}
+                InputLabelProps={{
+                  sx: {
+                    color: "#fff",
+                    "&.Mui-focused": { color: "#fff" },
+                    "&.MuiInputLabel-shrink": { color: "#fff" },
+                  },
+                }}
                 sx={outlinedInputSx}
               />
               <TextField
@@ -415,28 +579,37 @@ export default function PlaceConfigurator({
                 type="number"
                 value={form["Average Costs"]}
                 onChange={(e) => setForm({ ...form, ["Average Costs"]: e.target.value })}
+                InputLabelProps={{
+                  sx: {
+                    color: "#fff",
+                    "&.Mui-focused": { color: "#fff" },
+                    "&.MuiInputLabel-shrink": { color: "#fff" },
+                  },
+                }}
                 sx={outlinedInputSx}
               />
             </MDBox>
+            <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
             <div>
-              <Button onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
+              <Button variant="outlined" onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto", }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
                 Upload Main Image
               </Button>
               <input type="file" accept="image/*" ref={mainImageInputRef} style={{ display: "none" }} onChange={(e) => setMainImageFile(e.target.files[0])} />
               {mainImageFile && <span style={{ fontSize: 13 }}>{mainImageFile.name}</span>}
             </div>
             <div>
-              <Button onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
-                Upload Additional Images
+              <Button variant="outlined" onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto" }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
+                Additional Images
               </Button>
               <input type="file" accept="image/*" multiple ref={multiImageInputRef} style={{ display: "none" }} onChange={(e) => setMultiImageFiles(Array.from(e.target.files))} />
               {multiImageFiles.length > 0 && <span style={{ fontSize: 13 }}>{multiImageFiles.map((f) => f.name).join(", ")}</span>}
             </div>
+            </MDBox>
             <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
-              <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "auto" }, mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
+              <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "100%" }, backgroundColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
                 Save Pin
               </Button>
-              <Button variant="outlined" onClick={e => { e.stopPropagation(); handleCancelForm(); }} sx={{ width: { xs: "100%", sm: "auto" }, fontWeight: 600 }}>
+              <Button variant="outlined" onClick={e => { e.stopPropagation(); handleCancelForm(); }} sx={{ width: { xs: "100%", sm: "100%" }, borderColor: "#F18F01", color: "white !important", fontWeight: 600 }}>
                 Cancel
               </Button>
             </MDBox>

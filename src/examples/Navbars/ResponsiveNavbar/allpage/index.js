@@ -8,11 +8,11 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import BottomNavigation from "@mui/material/BottomNavigation";
 import BottomNavigationAction from "@mui/material/BottomNavigationAction";
 import HomeIcon from "@mui/icons-material/Home";
-import AddLocationIcon from "@mui/icons-material/AddLocation";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import MenuIcon from "@mui/icons-material/MenuOpen";
 import MenuOpenIcon from "@mui/icons-material/Menu";
-import { Navigate, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import MapIcon from "@mui/icons-material/Map";
 
 import {
   useMaterialUIController,
@@ -20,7 +20,6 @@ import {
   setOpenConfigurator,
 } from "../../../../context";
 import NotificationItem from "../../../../examples/Items/NotificationItem";
-import { MenuOpen } from "@mui/icons-material";
 
 export default function SimpleResponsiveNavbar({
   onHomeClick,
@@ -63,9 +62,9 @@ export default function SimpleResponsiveNavbar({
 
   const actions = [
     { icon: <HomeIcon />, onClick: () => navigate("/") },
-    { icon: <AddLocationIcon />, onClick: () => navigate("/map") },
+    { icon: <MapIcon />, onClick: () => navigate("/map") },
     { icon: <AccountCircleIcon />, onClick: () => navigate("/profile") },
-    { icon: miniSidenav ? <MenuOpenIcon /> : <MenuIcon />, onclick: () => setMiniSidenav(dispatch, !miniSidenav)}
+    { icon: miniSidenav ? <MenuOpenIcon /> : <MenuIcon />, onClick: () => setMiniSidenav(dispatch, !miniSidenav)}
   ];
 
   return (
