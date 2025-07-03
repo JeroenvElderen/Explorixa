@@ -1,9 +1,9 @@
 /**
 =========================================================
-* Material Dashboard 2 React - v2.2.0
+* Material home 2 React - v2.2.0
 =========================================================
 
-* Product Page: https://www.creative-tim.com/product/material-dashboard-react
+* Product Page: https://www.creative-tim.com/product/material-home-react
 * Copyright 2023 Creative Tim (https://www.creative-tim.com)
 
 Coded by www.creative-tim.com
@@ -23,18 +23,18 @@ import { ThemeProvider } from "@mui/material/styles";
 import CssBaseline from "@mui/material/CssBaseline";
 import Icon from "@mui/material/Icon";
 
-// Material Dashboard 2 React components
+// Material home 2 React components
 import MDBox from "./components/MDBox";
 
-// Material Dashboard 2 React example components
+// Material home 2 React example components
 import Sidenav from "./examples/Sidenav";
 import Configurator from "./examples/Configurator";
 
-// Material Dashboard 2 React themes
+// Material home 2 React themes
 import theme from "./assets/theme";
 import themeRTL from "./assets/theme/theme-rtl";
 
-// Material Dashboard 2 React Dark Mode themes
+// Material home 2 React Dark Mode themes
 import themeDark from "./assets/theme-dark";
 import themeDarkRTL from "./assets/theme-dark/theme-rtl";
 
@@ -43,10 +43,10 @@ import rtlPlugin from "stylis-plugin-rtl";
 import { CacheProvider } from "@emotion/react";
 import createCache from "@emotion/cache";
 
-// Material Dashboard 2 React routes
+// Material home 2 React routes
 import routes from "./routes";
 
-// Material Dashboard 2 React contexts
+// Material home 2 React contexts
 import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "./context";
 
 // ** Import AuthProvider from your AuthContext.js (create it if you haven't) **
@@ -72,7 +72,7 @@ export default function App() {
   const [onMouseEnter, setOnMouseEnter] = useState(false);
   const [rtlCache, setRtlCache] = useState(null);
   const { pathname } = useLocation();
-  const showConfiguratorButton = pathname ==="/dashboard";
+  const showConfiguratorButton = pathname ==="/home";
 
   // Cache for the rtl
   useMemo(() => {
@@ -128,7 +128,7 @@ export default function App() {
     return [];
   });
 
-  const isMapPage = pathname.toLowerCase() === "/dashboard";
+  const isMapPage = pathname.toLowerCase() === "/home";
 
   const configsButton = (
     <MDBox
@@ -160,12 +160,12 @@ export default function App() {
       <ThemeProvider theme={themeDarkRTL}>
         <CssBaseline />
         <AuthProvider>
-          {layout === "dashboard" && (
+          {layout === "home" && (
             <>
               <Sidenav
                 color={sidenavColor}
                 brand={(transparentSidenav) || whiteSidenav ? brandDark : brandDark}
-                brandName="Material Dashboard 2"
+                brandName="Material home 2"
                 routes={routes}
                 onMouseEnter={handleOnMouseEnter}
                 onMouseLeave={handleOnMouseLeave}
@@ -178,7 +178,7 @@ export default function App() {
           <Suspense fallback={<div style={{textAlign: "center", marginTop: 80 }}>Loading...</div>}>
           <Routes>
             {getRoutes(routes)}
-            <Route path="*" element={<Navigate to="/dashboard" />} />
+            <Route path="*" element={<Navigate to="/home" />} />
           </Routes>
           </Suspense>
         </AuthProvider>
@@ -188,7 +188,7 @@ export default function App() {
     <ThemeProvider theme={themeDark}>
       <CssBaseline />
       <AuthProvider>
-        {layout === "dashboard" && (
+        {layout === "home" && (
           <>
             <Sidenav
               color={sidenavColor}
@@ -205,7 +205,7 @@ export default function App() {
         {layout === "vr" }
         <Routes>
           {getRoutes(routes)}
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/home" />} />
         </Routes>
       </AuthProvider>
     </ThemeProvider>

@@ -14,6 +14,7 @@ import {
   Afghanistan, Albania, Algeria, AmericanSamoa, Andorra, Angola, Anguilla, Antarctica, AntiguaandBarbuda, Argentina, Armenia, Australia, Austria, Azerbaijan, Bahamas, Bahrain, Bangladesh, Barbados, Belarus, Belgium, Belize, Benin, Bhutan, Bolivia, BosniaandHerzegovina, Botswana, Brazil, BritishVirginIslands, BruneiDarussalam, Bulgaria, BurkinaFaso, Burundi, CaboVerde, Cambodia, Cameroon, Canada, CapeVerde, CentralAfricanRepublic, Chad, Chile, ChinaMainland, China, ChristmasIsland, CocosIslands, Colombia, Comoros, CongoBrazzaville, CongoKinshasa, CookIslands, CostaRica, CotedIvoire, Croatia, Cuba, Cyprus, CzechRepublic, Denmark, Djibouti, Dominica, DominicanRepublic, EastTimor, Ecuador, Egypt, ElSalvador, EquatorialGuinea, Eritrea, Estonia, Eswatini, Ethiopia, FalklandIslands, FederatedStatesofMicronesia, Fiji, Finland, France, FrenchGuiana, FrenchPolynesia, Gabon, Gambia, Georgia, Germany, Ghana, Greece, Greenland, Grenada, Guadeloupe, Guam, Guatemala, Guinea, GuineaBissau, Guyana, Haiti, Honduras, Hungary, Iceland, India, Indonesia, Iran, Iraq, Ireland, Israel, Italy, IvoryCoast, Jamaica, Japan, Jordan, Kazakhstan, Kenya, Kiribati, Kosovo, Kuwait, Kyrgyzstan, Laos, Latvia, Lebanon, Lesotho, Liberia, Libya, Liechtenstein, Lithuania, Luxembourg, Macedonia, Madagascar, Malawi, Malaysia, Maldives, Mali, Malta, Martinique, Mauritania, Mauritius, Mexico, Micronesia, Moldova, Monaco, Mongolia, Montenegro, Morocco, Mozambique, Myanmar, Namibia, Nauru, Nepal, Netherlands, NewCaledonia, NewZealand, Nicaragua, Niger, Nigeria, Niue, NorfolkIsland, NorthKorea, NorthMacedonia, Norway, Oman, Pakistan, Palau, Palestine, Panama, PapuaNewGuinea, Paraguay, Peru, Philippines, Poland, Portugal, Qatar, RepublicoftheSudan, Romania, Russia, Rwanda, SaintKittsandNevis, SaintLucia, Samoa, SanMarino, saotomeandprincipe, SaudiArabia, Senegal, Serbia, Seychelles, SierraLeone, Singapore, Slovakia, Slovenia, SolomonIslands, Somalia, SouthAfrica, SouthGeorgiaandtheSouthSandwichIslands, SouthKorea, SouthSudan, Spain, SriLanka, Sudan, StVincentandtheGrenadines, Suriname, SvalbardandJanMayen, Swaziland, Sweden, Switzerland, Syria, Taiwan, Tajikistan, Tanzania, Thailand, Togo, Tonga, TrinidadandTobago, Tunisia, Turkey, Turkmenistan, Tuvalu, Uganda, Ukraine, UnitedArabEmirates, UnitedKingdom, UnitedStates, Uruguay, Uzbekistan, Vanuatu, VaticanCity, Venezuela, Vietnam, WallisandFutunaIslands, WesternSahara, Yemen, Zambia, Zimbabwe
 } from './components/countries';
 import { AsiaPage } from "components/continent";
+import Home from "layouts/home";
 
 // @mui icons
 import Icon from "@mui/material/Icon";
@@ -29,11 +30,11 @@ const Dashboard = React.lazy(() => import ("./layouts/dashboard"));
 const routes = [
   {
     type: "collapse",
-    name: "Dashboard",
-    key: "dashboard",
+    name: "Home",
+    key: "home",
     icon: <Icon fontSize="small">dashboard</Icon>,
-    route: "/dashboard",
-    component: Dashboard,
+    route: "/home",
+    component: Home,
   }, 
   {
     type: "collapse",
