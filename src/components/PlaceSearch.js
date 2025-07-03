@@ -78,11 +78,13 @@ export default function PlaceSearch({
     // 5. Extract landmark and address
     const landmark =
       feature.properties?.name ||
+      feature.text ||
       feature.result?.text ||
       feature.result?.properties?.name ||
       "";
     const address =
       feature.properties?.full_address ||
+      feature.place_name ||
       feature.result?.place_name ||
       feature.result?.properties?.full_address ||
       "";

@@ -12,8 +12,7 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogTitle from "@mui/material/DialogTitle";
 import Button from "@mui/material/Button";
 
-mapboxgl.accessToken =
-  "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 const mapboxClient = MapboxClient({ accessToken: mapboxgl.accessToken });
 const geocodeService = MapboxGeocode({ accessToken: mapboxgl.accessToken });

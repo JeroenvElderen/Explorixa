@@ -184,7 +184,8 @@ export default function WorldMapComponent({
   const mapRef = useRef(null);
   const [popupData, setPopupData] = useState(null);
 
-  mapboxgl.accessToken = accessToken;
+  const token = accessToken || process.env.REACT_APP_MAPBOX_TOKEN;
+  mapboxgl.accessToken = token;
 
   // Initialize & tear down the map
   useEffect(() => {

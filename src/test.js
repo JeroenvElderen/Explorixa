@@ -16,7 +16,7 @@ import Login from './components/Login';
 import { MaterialUIControllerProvider } from "./context";
 import Overview from 'layouts/profile';
 
-const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiamVybmFuZWxkZXJlbiIsImEiOiJjbThzcjg0MHMwMzQ3MmxzZGs0ejdjajMwIn0.bHSf9YidjKH7z7I8HgvgdA';
+const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 
 function App() {
   const location = useLocation();

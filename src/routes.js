@@ -25,8 +25,17 @@ import { LocationOn, ModeOfTravel } from "@mui/icons-material";
 
 const Map = React.lazy(() => import("./layouts/map"));
 const Dashboard = React.lazy(() => import ("./layouts/dashboard"));
+const Home = React.lazy(() => import("./layouts/home"));
 
 const routes = [
+  {
+    type: "route",
+    name: "Home",
+    key: "home",
+    icon: <Icon fontSize="small">home</Icon>,
+    route: "/",
+    component: Home,
+  },
   {
     type: "collapse",
     name: "Dashboard",

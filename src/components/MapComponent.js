@@ -18,7 +18,7 @@ const MapComponent = ({ searchLocation, accessToken }) => {
   useEffect(() => {
     mapboxgl.accessToken =
       accessToken ||
-      'pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbThzcjg0MHMwMzQ3MmxzZGs0ejdjajMwIn0.bHSf9YidjKH7z7I8HgvgdA';
+      process.env.REACT_APP_MAPBOX_TOKEN;
 
     const map = new mapboxgl.Map({
       container: 'map',
