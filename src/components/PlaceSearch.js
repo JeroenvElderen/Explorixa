@@ -130,9 +130,51 @@ export default function PlaceSearch({
             language: "en",          // ← changed to string to avoid split() error
             limit: 5,
           }}
-          inputClass="md-input"
-          suggestionsClass="md-suggestions"
-        
+          theme={{
+          variables: {
+            // solid orange dropdown background
+            colorBackground: "#F18F01",
+            // you can leave hover/active lighter/darker variants
+            colorBackgroundHover: "rgba(255,255,255,0.2)",
+            colorBackgroundActive: "rgba(255,255,255,0.3)",
+            colorPrimary: "#F18F01",
+            colorText: "#fff",
+          },
+          cssText: `
+            /* Transparent wrapper */
+            mapbox-search-box, .mapbox-search-box {
+              background: transparent !important;
+            }
+            /* INPUT: transparent background */
+            mapbox-search-box input {
+              background: transparent !important;
+              border: 1px solid #F18F01 !important;
+              border-radius: 6px !important;
+              padding: 0 12px 0 32px !important;
+              height: 48px !important;
+              color: #fff !important;
+            }
+            mapbox-search-box input:focus {
+              outline: 2px solid #F18F01 !important;
+            }
+            /* DROPDOWN: solid orange */
+            mapbox-search-box .mapboxgl-ctrl-geocoder--suggestions {
+              background: #F18F01 !important;
+            }
+            /* LIST ITEMS: keep them white on orange */
+            mapbox-search-box .mapboxgl-ctrl-geocoder--suggestions li {
+              color: #fff !important;
+            }
+            mapbox-search-box .mapboxgl-ctrl-geocoder--suggestions li:hover {
+              background: rgba(255,255,255,0.2) !important;
+              color: #000 !important;
+            }
+            mapbox-search-box .mapboxgl-ctrl-geocoder--suggestions li[aria-selected='true'] {
+              background: rgba(255,255,255,0.3) !important;
+              color: #000 !important;
+            }
+          `,
+          }}
         />
       </MDBox>
     </MDBox>

@@ -171,10 +171,6 @@ export default function Map() {
         onAnyNav={() => setShowProfilePopup(false)}
       />
 
-      {showProfilePopup && (
-        <ProfilePopup user={profile} onClose={handleProfilePopupClose} />
-      )}
-
       {openConfigurator && (
         <Suspense fallback={<div>Loading Configurator…</div>}>
           <PlaceConfigurator
