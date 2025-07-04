@@ -48,7 +48,23 @@ function OrdersOverview({ cities = [], countryName }) {
   }, [filteredCities]);
 
   return (
-    <Card sx={{ height: "100%" }}>
+    <Card sx={{
+                  height: "100%",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  background:
+                    "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+                  border: "1px solid rgba(243, 143, 1, 0.6)",
+                  boxShadow:
+                    "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+                  borderRadius: "12px",
+                  "&::-webkit-scrollbar": { width: 0, height: 0 },
+                  "&::-webkit-scrollbar-track": { background: "transparent" },
+                  "&::-webkit-scrollbar-thumb": { background: "transparent" },
+                  scrollbarWidth: "none",
+                  scrollbarColor: "transparent transparent",
+                  "-ms-overflow-style": "none",
+                }}>
       <MDBox pt={3} px={3}>
         <MDTypography variant="h6" fontWeight="medium">
           Cities in {countryName || "The country"} 
