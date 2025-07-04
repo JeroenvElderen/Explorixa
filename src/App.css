@@ -47,3 +47,68 @@ html, body, #root {
   min-height: 0; /* prevents flex overflow */
   height: 100%;
 }
+
+/* === Quill Toolbar Icons (Clean + Robust) === */
+
+/* Quill picker label default */
+.ql-toolbar .ql-picker-label {
+  color: white !important;
+}
+
+/* Quill picker label hover */
+.ql-toolbar .ql-picker-label:hover {
+  color: #F18F01 !important;
+}
+
+/* Quill picker items inside dropdown */
+.ql-toolbar .ql-picker-options {
+  background-color: #222;
+  border: 1px solid #F18F01;
+}
+
+.ql-toolbar .ql-picker-item {
+  color: white !important;
+}
+
+.ql-toolbar .ql-picker-item:hover {
+  color: #F18F01 !important;
+}
+
+/* Fix dropdown arrow */
+.ql-toolbar .ql-picker-label::after {
+  border-top: 6px solid white;
+}
+
+.ql-toolbar .ql-picker-label:hover::after {
+  border-top: 6px solid #F18F01 !important;
+}
+
+
+/* Default state: white for all icon elements */
+.ql-toolbar button svg * {
+  stroke: white !important;
+  
+}
+
+/* Hover state */
+.ql-toolbar button:hover svg *,
+.ql-toolbar .ql-picker-label:hover svg *,
+.ql-toolbar .ql-picker-item:hover svg * {
+  stroke: #F18F01 !important;
+  
+}
+
+/* Active formatting buttons (e.g., bold/italic selected) */
+.ql-toolbar .ql-active svg * {
+  stroke: #F18F01 !important;
+  
+}
+
+/* Picker dropdown arrow */
+.ql-toolbar .ql-picker-label::after {
+  border-top: 6px solid white;
+}
+.ql-toolbar .ql-picker-label:hover::after {
+  border-top: 6px solid #F18F01 !important;
+}
+

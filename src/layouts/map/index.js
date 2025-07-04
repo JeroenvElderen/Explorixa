@@ -65,15 +65,6 @@ export default function Map() {
   };
 
   const handlePlaceSelected = async (place) => {
-    await supabase.from("pins").insert({
-      user_id: profile?.user_id ?? FALLBACK_USER_ID,
-      country:  place.country,
-      city:     place.city,
-      address:  place.address,
-      landmark: place.landmark,
-      latitude: place.lat,
-      longitude: place.lng,
-    });
     setSelectedPlace(place);
     setFlyToPlace(true);
     setResetKey(r => r + 1);
@@ -175,6 +166,7 @@ export default function Map() {
         <Suspense fallback={<div>Loading Configurator…</div>}>
           <PlaceConfigurator
             key={resetKey}
+            userId={profile?.user_id ?? FALLBACK_USER_ID}
             countryCode={null}
             accessToken={MAPBOX_ACCESS_TOKEN}
             initialData={selectedPlace}

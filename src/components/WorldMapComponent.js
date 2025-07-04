@@ -129,7 +129,7 @@ const countryNameToIso = {
 
 // Map ISO → hex color
 const countryColors = {
-  AF: "#0072C6", AL: "#E41E20", DZ: "#006233", AD: "#003893", AO: "#D21034",
+  AF: "#007A36", AL: "#E41E20", DZ: "#006233", AD: "#003893", AO: "#D21034",
   AR: "#74ACDF", AM: "#D90012", AU: "#00247D", AT: "#ED2939", AZ: "#00B3E3",
   BS: "#009CA6", BH: "#B10021", BD: "#006A4E", BB: "#00267F", BY: "#D22730",
   BE: "#FFD90C", BZ: "#003F87", BJ: "#FCD116", BM: "#DA291C", BT: "#FFCC00",
@@ -153,7 +153,7 @@ const countryColors = {
   ML: "#FCD116", MT: "#CF142B", MH: "#00247D", MQ: "#00267F", MR: "#006233",
   MU: "#EA2839", MX: "#006847", FM: "#75AADB", MD: "#0033A0", MC: "#ED2939",
   MN: "#C4272F", ME: "#D6081B", MA: "#C1272D", MZ: "#009739", MM: "#FECB00",
-  NA: "#003580", NR: "#002B7F", NP: "#DC143C", NL: "#21468B", NZ: "#00247D",
+  NA: "#003580", NR: "#002B7F", NP: "#DC143C", NL: "#FF4F00", NZ: "#00247D",
   NI: "#0067C6", NE: "#E05206", NG: "#008751", KP: "#024FA2", MK: "#D20000",
   NO: "#BA0C2F", OM: "#C8102E", PK: "#01411C", PW: "#0085CA", PS: "#007A3D",
   PA: "#005293", PG: "#000000", PY: "#D52B1E", PE: "#D91023", PH: "#0038A8",
@@ -162,7 +162,7 @@ const countryColors = {
   SM: "#5EB6E4", ST: "#008751", SA: "#006C35", SN: "#00853F", RS: "#0C4076",
   SC: "#007847", SL: "#1EB53A", SG: "#EF3340", SK: "#0B4EA2", SI: "#005DA4",
   SB: "#215B33", SO: "#4189DD", ZA: "#007847", KR: "#003478", SS: "#078930",
-  ES: "#AA151B", LK: "#FFB700", SD: "#E31B23", SR: "#377E3F", SE: "#006AA7",
+  ES: "#AA151B", LK: "#FFB700", SD: "#E31B23", SR: "#377E3F", SE: "#005583",
   CH: "#D52B1E", SY: "#CE1126", TW: "#FE0000", TJ: "#006400", TZ: "#1EB53A",
   TH: "#A51931", TG: "#006A4E", TO: "#C10000", TT: "#CE1126", TN: "#E70013",
   TR: "#E30A17", TM: "#007C2E", TV: "#0198D1", UG: "#FCDC04", UA: "#005BBB",

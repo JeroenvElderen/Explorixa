@@ -15,11 +15,18 @@ import InputLabel from "@mui/material/InputLabel";
 import FormControl from "@mui/material/FormControl";
 import { useTheme } from "@mui/material/styles";
 import imageCompression from "browser-image-compression";
+import SimpleMDE from "react-simplemde-editor";
+import "easymde/dist/easymde.min.css";
+import ReactQuill from "react-quill";
+import "react-quill/dist/quill.snow.css";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
 
 import { useMaterialUIController, setOpenConfigurator } from "context";
 import { supabase } from "../SupabaseClient";
 import { v4 as uuidv4 } from "uuid";
-import zIndex from "@mui/material/styles/zIndex";
+import "../App.css";
 
 // storage bucket
 const BUCKET = "pins-images";
@@ -35,6 +42,7 @@ const COUNTRY_OPTIONS = [
 
 export default function PlaceConfigurator({
   countryCode: initialCountryCode,
+  userId,
   accessToken,
   onPlacePick,
   onActivateMapClick,
@@ -73,9 +81,10 @@ export default function PlaceConfigurator({
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator, darkMode } = controller;
   const theme = useTheme();
-const [mainImageStatus, setMainImageStatus] = useState("idle");
+  const [mainImageStatus, setMainImageStatus] = useState("idle");
   const [selectedPlace, setSelectedPlace] = useState(initialData);
   const [searchCountry, setSearchCountry] = useState(initialCountryCode || "");
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [form, setForm] = useState({
     Name: "",
     "Post Summary": "",
@@ -159,6 +168,7 @@ const [mainImageStatus, setMainImageStatus] = useState("idle");
     }
     try {
       const payload = {
+        user_id: userId,
         Name: form.Name,
         "Post Summary": form["Post Summary"],
         Information: form.Information,
@@ -242,7 +252,7 @@ const [mainImageStatus, setMainImageStatus] = useState("idle");
       }}
       PaperProps={{
         sx: {
-          zIndex: 1200,
+          zIndex: 1100,
           pointerEvents: "auto",
           display: "flex",
           flexDirection: "column",
@@ -541,22 +551,20 @@ const [mainImageStatus, setMainImageStatus] = useState("idle");
                 <MenuItem value="Category3">Category3</MenuItem>
               </Select>
             </FormControl>
-            <TextField
-              fullWidth
-              label="Information"
-              value={form.Information}
-              onChange={(e) => setForm({ ...form, Information: e.target.value })}
-              multiline
-              rows={2}
-              InputLabelProps={{
-                sx: {
-                  color: "#fff",
-                  "&.Mui-focused": { color: "#fff" },
-                  "&.MuiInputLabel-shrink": { color: "#fff" },
-                },
-              }}
-              sx={{ "& .MuiInputBase-input": { padding: "12px" }, ...outlinedInputSx }}
-            />
+            <div>
+              <label style={{ color: "#fff", marginBottom: 8, display: "block" }}>
+                Information
+              </label>
+              <Button
+                variant="outlined"
+                fullWidth
+                sx={{ borderColor: "#F18F01", color: "#fff", textTransform: "none" }}
+                onClick={() => setIsEditorOpen(true)}
+              >
+                Open text editor
+              </Button>
+            </div>
+
             <MDBox display="flex" gap={2}>
               <TextField
                 fullWidth
@@ -590,20 +598,20 @@ const [mainImageStatus, setMainImageStatus] = useState("idle");
               />
             </MDBox>
             <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
-            <div>
-              <Button variant="outlined" onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto", }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
-                Upload Main Image
-              </Button>
-              <input type="file" accept="image/*" ref={mainImageInputRef} style={{ display: "none" }} onChange={(e) => setMainImageFile(e.target.files[0])} />
-              {mainImageFile && <span style={{ fontSize: 13 }}>{mainImageFile.name}</span>}
-            </div>
-            <div>
-              <Button variant="outlined" onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto" }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
-                Additional Images
-              </Button>
-              <input type="file" accept="image/*" multiple ref={multiImageInputRef} style={{ display: "none" }} onChange={(e) => setMultiImageFiles(Array.from(e.target.files))} />
-              {multiImageFiles.length > 0 && <span style={{ fontSize: 13 }}>{multiImageFiles.map((f) => f.name).join(", ")}</span>}
-            </div>
+              <div>
+                <Button variant="outlined" onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto", }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
+                  Upload Main Image
+                </Button>
+                <input type="file" accept="image/*" ref={mainImageInputRef} style={{ display: "none" }} onChange={(e) => setMainImageFile(e.target.files[0])} />
+                {mainImageFile && <span style={{ fontSize: 13 }}>{mainImageFile.name}</span>}
+              </div>
+              <div>
+                <Button variant="outlined" onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto" }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
+                  Additional Images
+                </Button>
+                <input type="file" accept="image/*" multiple ref={multiImageInputRef} style={{ display: "none" }} onChange={(e) => setMultiImageFiles(Array.from(e.target.files))} />
+                {multiImageFiles.length > 0 && <span style={{ fontSize: 13 }}>{multiImageFiles.map((f) => f.name).join(", ")}</span>}
+              </div>
             </MDBox>
             <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
               <Button variant="contained" type="submit" sx={{ width: { xs: "100%", sm: "100%" }, backgroundColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, fontWeight: 600 }}>
@@ -619,6 +627,94 @@ const [mainImageStatus, setMainImageStatus] = useState("idle");
           </MDBox>
         </form>
       </MDBox>
+      <Dialog
+        open={isEditorOpen}
+        onClose={() => setIsEditorOpen(false)}
+        fullWidth
+        maxWidth="md"
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            background:
+              "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255, 255, 255, 0.6)",
+            boxShadow:
+              "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+          },
+        }}
+      >
+        <DialogTitle>Edit Information</DialogTitle>
+        <DialogContent>
+          <MDBox
+            sx={{
+              // Toolbar base
+              "& .ql-toolbar": {
+                backgroundColor: "rgba(241,143,1,0.2)",
+                borderColor: "#F18F01 !important",
+
+              },
+              "& .ql-toolbar .ql-picker-item:hover": {
+                color: "#F18F01 !important",
+              },
+              "& .ql-toolbar .ql-picker-label:hover::after": {
+                borderTop: "6px solid #F18F01 !important",
+
+              },
+
+              // Active format (bold, italic, etc.)
+              "& .ql-toolbar .ql-active, & .ql-toolbar .ql-active svg": {
+                color: "#F18F01 !important",
+                stroke: "#F18F01 !important",
+                fill: "#F18F01 !important",
+              },
+
+              // Dropdown menu
+              "& .ql-toolbar .ql-picker-options": {
+                backgroundColor: "#222",
+                borderColor: "#F18F01 !important",
+                color: "white !important",
+              },
+              // Editor area
+              "& .ql-container": {
+                borderColor: "#F18F01 !important",
+              },
+              "& .ql-editor": {
+                backgroundColor: "transparent",
+                color: "white !important",
+                minHeight: "300px",
+              },
+            }}
+          >
+            <ReactQuill
+              className="custon-quill"
+              theme="snow"
+              value={form.Information}
+              onChange={(val) => setForm({ ...form, Information: val })}
+              style={{ marginBottom: "1rem" }}
+              modules={{
+                toolbar: [
+                  [{ header: [1, 2, 3, false] }],
+                  ["bold", "italic", "underline"], // no "link"
+                  [{ list: "ordered" }, { list: "bullet" }],
+                ],
+              }}
+
+            />
+          </MDBox>
+
+          <Button
+            variant="outlined"
+            onClick={() => setIsEditorOpen(false)}
+            sx={{ borderColor: "#F18F01", color: "#fff", mt: 0 }}
+          >
+            Done
+          </Button>
+        </DialogContent>
+      </Dialog>
+
     </ConfiguratorRoot>
+
   );
 }

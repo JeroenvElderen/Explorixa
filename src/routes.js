@@ -38,19 +38,19 @@ const routes = [
   }, 
   {
     type: "collapse",
+    name: "Map",
+    key: "map",
+    icon: <PublicIcon fontsize="small" />,
+    route: "/map",
+    component: Map,
+  },
+  {
+    type: "collapse",
     name: "Destinations",
     key: "destinations",
     icon: <LocationOnIcon fontSize="small" />,
     flyout: false,
     children: [
-      {
-        type: "collapse",
-        name: "Map",
-        key: "map",
-        icon: <PublicIcon fontSize="small" />,
-        route: "/map",
-        component: Map,
-      },
       {
       type: "collapse",
         name: "World desitnations",
