@@ -106,10 +106,15 @@ export default function PlaceSearch({
   if (!accessToken) return null;
 
   return (
-    
+
     <MDBox display="flex" flexDirection="column" width="100%" position="relative">
-      <MDBox display="flex" alignItems="center">
+      <MDBox display="flex" alignItems="center" width="100%" sx={{
+        "& .mapbox-search-box": {
+          width: "100% !important",
+        }
+      }}>
         <SearchBox
+          style={{ width: "100%" }}
           accessToken={accessToken}
           placeholder="Search for a place…"
           value={searchText}
@@ -131,19 +136,21 @@ export default function PlaceSearch({
             limit: 5,
           }}
           theme={{
-          variables: {
-            // solid orange dropdown background
-            colorBackground: "#F18F01",
-            // you can leave hover/active lighter/darker variants
-            colorBackgroundHover: "rgba(255,255,255,0.2)",
-            colorBackgroundActive: "rgba(255,255,255,0.3)",
-            colorPrimary: "#F18F01",
-            colorText: "#fff",
-          },
-          cssText: `
+            variables: {
+              // solid orange dropdown background
+              colorBackground: "#F18F01",
+              // you can leave hover/active lighter/darker variants
+              colorBackgroundHover: "rgba(255,255,255,0.2)",
+              colorBackgroundActive: "rgba(255,255,255,0.3)",
+              colorPrimary: "#F18F01",
+              colorText: "white",
+            },
+            cssText: `
             /* Transparent wrapper */
             mapbox-search-box, .mapbox-search-box {
               background: transparent !important;
+              width: 500px;
+              color: #fff;
             }
             /* INPUT: transparent background */
             mapbox-search-box input {
@@ -153,6 +160,10 @@ export default function PlaceSearch({
               padding: 0 12px 0 32px !important;
               height: 48px !important;
               color: #fff !important;
+              &::placeholder {
+              color: #fff !important;
+              opacity: 1;
+              }
             }
             mapbox-search-box input:focus {
               outline: 2px solid #F18F01 !important;

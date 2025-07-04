@@ -243,7 +243,7 @@ export default function PlaceConfigurator({
           WebkitBackdropFilter: "blur(20px)",
           background:
             "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
-          border: "1px solid rgba(255, 255, 255, 0.6)",
+          border: "1px solid rgba(243, 143, 1, 0.6)",
           boxShadow:
             "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
           borderRadius: "12px",
@@ -291,8 +291,13 @@ export default function PlaceConfigurator({
             e.stopPropagation();
             handleCancelForm();
           }}
+          sx={{ 
+            cursor: "pointer",
+            color: "#F18F01",
+            fontSize: "24px !important",
+          }}
         >
-          X
+          close
         </Icon>
       </MDBox>
 
@@ -379,6 +384,7 @@ export default function PlaceConfigurator({
 
 
         {/* Map search */}
+        
         <PlaceSearch
           countryCode={searchCountry || null}
           accessToken={accessToken}
@@ -599,18 +605,53 @@ export default function PlaceConfigurator({
             </MDBox>
             <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>
               <div>
-                <Button variant="outlined" onClick={() => mainImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto", }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
-                  Upload Main Image
+                <Button 
+                variant={mainImageFile ? "contained" : "outlined"}
+                onClick={() => mainImageInputRef.current.click()} 
+                sx={{ 
+                  width: { xs: "138px !important", sm: "auto", }, 
+                  borderColor: !mainImageFile ? "#F18F01": undefined,
+                  color: !mainImageFile ? "white !important" : "white !important", 
+                  mb: { xs: 1, sm: 0 }, 
+                  textTransform: "none", 
+                  ...(mainImageFile && {
+                    backgroundColor: "rgba(241,143,1,0.5) !important",
+                    color: "#fff !important",
+                    "&:hover": {
+                      backgroundColor: "#D17C01 !important",
+                    }
+                  })
+                  }}
+                  >
+                  {mainImageFile ? "Image uploaded" : "Upload Main Image"}
+                  
                 </Button>
                 <input type="file" accept="image/*" ref={mainImageInputRef} style={{ display: "none" }} onChange={(e) => setMainImageFile(e.target.files[0])} />
-                {mainImageFile && <span style={{ fontSize: 13 }}>{mainImageFile.name}</span>}
+                
               </div>
               <div>
-                <Button variant="outlined" onClick={() => multiImageInputRef.current.click()} sx={{ width: { xs: "138px !important", sm: "auto" }, borderColor: "#F18F01", color: "white !important", mb: { xs: 1, sm: 0 }, textTransform: "none" }}>
-                  Additional Images
+                <Button 
+                variant={multiImageFiles.length ? "contained" : "outlined"}
+                onClick={() => multiImageInputRef.current.click()} 
+                sx={{ 
+                  width: { xs: "138px !important", sm: "auto", }, 
+                  borderColor: !multiImageFiles.length ? "#F18F01": undefined,
+                  color: !multiImageFiles ? "white !important" : "white !important", 
+                  mb: { xs: 1, sm: 0 }, 
+                  textTransform: "none", 
+                  ...(multiImageFiles.length && {
+                    backgroundColor: "rgba(241,143,1,0.5) !important",
+                    color: "#fff !important",
+                    "&:hover": {
+                      backgroundColor: "#D17C01 !important",
+                    }
+                  })
+                  }}>
+                    {multiImageFiles.length ? "Images uploaded" : "Additional Images"}
+                  
                 </Button>
                 <input type="file" accept="image/*" multiple ref={multiImageInputRef} style={{ display: "none" }} onChange={(e) => setMultiImageFiles(Array.from(e.target.files))} />
-                {multiImageFiles.length > 0 && <span style={{ fontSize: 13 }}>{multiImageFiles.map((f) => f.name).join(", ")}</span>}
+                
               </div>
             </MDBox>
             <MDBox display="flex" flexDirection={{ xs: "column", sm: "row" }} gap={{ xs: 1, sm: 2 }} mt={1}>

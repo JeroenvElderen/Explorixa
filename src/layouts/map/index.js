@@ -11,7 +11,7 @@ import ProfilePopup from "layouts/ProfilePopup";
 
 const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
 const PlaceConfigurator   = lazy(() => import("../../components/PlaceConfigurator"));
-
+ 
 const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
 const FALLBACK_USER_ID    = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
 
