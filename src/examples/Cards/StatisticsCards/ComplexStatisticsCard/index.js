@@ -28,7 +28,26 @@ import MDTypography from "../../../../components/MDTypography";
 
 function ComplexStatisticsCard({ color = "info", title, count, percentage = { color: "success", amount: "", label: "" }, icon, description = "" }) {
   return (
-    <Card>
+    <Card
+      sx={{
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        background:
+          "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+        border: "1px solid rgba(243, 143, 1, 0.6)",
+        boxShadow:
+          "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+        borderRadius: "12px",
+
+        "&::-webkit-scrollbar": { width: 0, height: 0 },
+        "&::-webkit-scrollbar-track": { background: "transparent" },
+        "&::-webkit-scrollbar-thumb": { background: "transparent" },
+
+        scrollbarWidth: "none",
+        scrollbarColor: "transparent transparent",
+        "-ms-overflow-style": "none",
+      }}
+    >
       <MDBox display="flex" justifyContent="space-between" pt={1} px={2}>
         <MDBox
           variant="gradient"
