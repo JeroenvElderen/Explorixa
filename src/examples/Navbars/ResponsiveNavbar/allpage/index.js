@@ -97,7 +97,7 @@ export default function SimpleResponsiveNavbar({
             p: GAP,
             backdropFilter: 'blur(20px)',
             background: 'linear-gradient(145deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
-            border: '1px solid rgba(255,255,255,0.6)',
+            border: '1px solid rgba(241,143,1,0.6)',
             borderRadius: '60px',
             boxShadow: 'inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)',
           }}>
