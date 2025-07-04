@@ -9,7 +9,7 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import routes from 'routes';
 import { useSavedPins } from '../components/SavedPinsContext';
-
+import DOMPurify from "dompurify";
 // Recursively find route by country name or key (case-insensitive)
 function findRouteByName(items, name) {
   const needle = name?.toString().toLowerCase().trim();
@@ -86,7 +86,7 @@ export default function PopupComponent({ data, onClose }) {
       >
         <ThemeProvider theme={themeDark}>
           {/* Wrap PinCard in a relative container */}
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: 'relative' }} onClick={onClose} >
             <PinCard
               color="info"
               title={
@@ -95,9 +95,7 @@ export default function PopupComponent({ data, onClose }) {
                 </Typography>
               }
               description={
-                <div style={{ minHeight: '125px', maxHeight: '125px', overflowY: 'auto', padding: '14px', boxSizing: 'border-box', color: 'white' }}>
-                  {data.description}
-                </div>
+                data.description
               }
               date={formattedDate}
               imageurl={data.imageurl}

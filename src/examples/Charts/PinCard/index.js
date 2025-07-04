@@ -4,6 +4,7 @@ import PropTypes from "prop-types";
 import Card from "@mui/material/Card";
 import Divider from "@mui/material/Divider";
 import Icon from "@mui/material/Icon";
+import DOMPurify from "dompurify";
 
 import MDBox from "../../../components/MDBox";
 import MDTypography from "../../../components/MDTypography";
@@ -71,7 +72,7 @@ function PinCard({ color = "info", title, description = "", date = "", imageurl 
 
         <MDBox pt={3} pb={1} px={1}>
           <MDTypography variant="h6" textTransform="capitalize">
-            {title || "Untitled" }
+            {title || "Untitled"}
           </MDTypography>
 
           {/* Description with animated truncation */}
@@ -80,21 +81,32 @@ function PinCard({ color = "info", title, description = "", date = "", imageurl 
             variant="button"
             color="text"
             fontWeight="light"
-            ref={contentRef}
-            onTransitionEnd={handleTransitionEnd}
             sx={{
-              maxHeight,
-              overflow: "hidden",
+              maxHeight: truncateDescription ? "4.5em" : "150px",
+              overflowY: truncateDescription ? "hidden" : "auto",
               transition: "max-height 0.5s ease",
-              display: "-webkit-box",
-              WebkitLineClamp: truncateDescription ? 3 : "unset",
-              WebkitBoxOrient: "vertical",
-              textOverflow: "ellipsis",
               whiteSpace: "normal",
+              pr: 1,
+              "& ul": {
+                listStyle: "disc",
+                marginLeft: "1.5rem",
+                paddingLeft: "1rem",
+              },
+              "& ol": {
+                listStyle: "decimal",
+                marginLeft: "1.5rem",
+                paddingLeft: "1rem",
+              },
+              "& li": {
+                marginBottom: "0.25rem",
+              },
             }}
           >
-            {description}
+            <div
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+            />
           </MDTypography>
+
 
           <Divider sx={{ my: 1 }} />
           <MDBox display="flex" alignItems="center">

@@ -10,14 +10,14 @@ import MDButton from "components/MDButton";
 
 // Material Dashboard 2 React example components
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
-import DashboardNavbar from "examples/Navbars/DashboardNavbar";
+import SimpleResponsiveNavbar from "examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "examples/Footer";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
 
 function Home() {
   return (
     <DashboardLayout>
-      <DashboardNavbar />
+      <SimpleResponsiveNavbar />
       <MDBox py={6} textAlign="center" bgColor="black" borderRadius="lg" mb={6}>
         <MDTypography variant="h2" fontWeight="bold" mb={2}>
           Welcome to Explorixa
