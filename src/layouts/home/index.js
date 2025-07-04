@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+
+// Supabase client
+import { supabase } from "../../SupabaseClient";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -15,9 +18,80 @@ import Footer from "examples/Footer";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
 
 function Home() {
+  const [cityCount, setCityCount] = useState(null);
+  const [pinCount, setPinCount] = useState(null);
+  const [profileCount, setProfileCount] = useState(null);
+  const [loadingCities, setLoadingCities] = useState(true);
+  const [loadingPins, setLoadingPins] = useState(true);
+  const [loadingProfiles, setLoadingProfiles] = useState(true);
+
+  useEffect(() => {
+    const fetchCityCount = async () => {
+      setLoadingCities(true);
+      const { count, error } = await supabase
+        .from("cities")
+        .select("*", { count: "exact", head: true });
+
+      if (error) {
+        console.error("Error fetching city count:", error);
+        setCityCount(0);
+      } else {
+        setCityCount(count);
+      }
+      setLoadingCities(false);
+    };
+    fetchCityCount();
+  }, []);
+
+  useEffect(() => {
+    const fetchPinCount = async () => {
+      setLoadingPins(true);
+      const { count, error } = await supabase
+        .from("pins")
+        .select("*", { count: "exact", head: true });
+
+      if (error) {
+        console.error("Error fetching pin count:", error);
+        setPinCount(0);
+      } else {
+        setPinCount(count);
+      }
+      setLoadingPins(false);
+    };
+    fetchPinCount();
+  }, []);
+
+  useEffect(() => {
+    const fetchProfileCount = async () => {
+      setLoadingProfiles(true);
+      const { count, error } = await supabase
+        .from("profiles")
+        .select("*", { count: "exact", head: true });
+
+      if (error) {
+        console.error("Error fetching profile count:", error);
+        setProfileCount(0);
+      } else {
+        setProfileCount(count);
+      }
+      setLoadingProfiles(false);
+    };
+    fetchProfileCount();
+  }, []);
+
+  const displayCityCount = loadingCities
+    ? "..."
+    : cityCount >= 1000
+    ? `${Math.floor(cityCount / 1000)}k+`
+    : cityCount.toLocaleString();
+
+  const displayPinCount = loadingPins ? "..." : pinCount.toLocaleString();
+  const displayProfileCount = loadingProfiles ? "..." : profileCount.toLocaleString();
+
   return (
     <DashboardLayout>
       <SimpleResponsiveNavbar />
+
       <MDBox py={6} textAlign="center" bgColor="black" borderRadius="lg" mb={6}>
         <MDTypography variant="h2" fontWeight="bold" mb={2}>
           Welcome to Explorixa
@@ -29,6 +103,7 @@ function Home() {
           Explore Map
         </MDButton>
       </MDBox>
+
       <MDBox mb={3}>
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
@@ -36,7 +111,7 @@ function Home() {
               color="primary"
               icon="public"
               title="Destinations"
-              count={"100+"}
+              count={displayCityCount}
               percentage={{ label: "around the world" }}
             />
           </Grid>
@@ -45,7 +120,7 @@ function Home() {
               color="success"
               icon="place"
               title="Pins Shared"
-              count={"10k"}
+              count={displayPinCount}
               percentage={{ label: "by our community" }}
             />
           </Grid>
@@ -54,12 +129,13 @@ function Home() {
               color="warning"
               icon="group"
               title="Travelers"
-              count={"5k"}
+              count={displayProfileCount}
               percentage={{ label: "joined us" }}
             />
           </Grid>
         </Grid>
       </MDBox>
+
       <Footer />
     </DashboardLayout>
   );
