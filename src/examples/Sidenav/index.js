@@ -30,7 +30,7 @@ import {
 import { useAuth } from "../../AuthContext";
 import { supabase } from "../../SupabaseClient";
 
-function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
+function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentSidenav, whiteSidenav, darkMode } = controller;
   const location = useLocation();
@@ -39,7 +39,10 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
   const isAuthenticated = Boolean(user);
 
   const hoverTimeoutRef = useRef(null);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
 
+  const sidenavRef = useRef(null);
   // Track flyout hovered menu key and open collapsible menus
   const [hoveredMenuKey, setHoveredMenuKey] = useState(null);
   const [openMenus, setOpenMenus] = useState({});
@@ -115,7 +118,17 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
 
   // Recursive function to render collapsible routes with flyout support
   const renderCollapse = (route, level = 0) => {
-    const { name, icon, noCollapse, key, href, route: routePath, children, flyout } = route;
+    const { 
+      name, 
+      icon, 
+      noCollapse, 
+      key, 
+      href, 
+      route: routePath, 
+      children, 
+      flyout,
+      sx= {}
+    } = route;
 
     const hasChildren = Array.isArray(children) && children.length > 0;
     const isFlyout = flyout === true;
@@ -126,7 +139,7 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
     }
 
     console.log(children)
-   
+
 
 
 
@@ -134,74 +147,83 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
       <div
         key={key}
         ref={isFlyout ? flyoutRefs.current[key] : null} // Attach ref for flyout menus
-        style={{ position: "relative", paddingLeft: level * 16 }}
+        style={{ position: "relative", paddingLeft: level * 8 }}
         onMouseEnter={() => isFlyout && onMouseEnterMenu(key)}
         onMouseLeave={() => isFlyout && onMouseLeaveMenu()}
       >
         {href ? (
-  <Link href={href} target="_blank" rel="noreferrer" sx={{ textDecoration: "none" }}>
-    <SidenavCollapse name={name} icon={icon} noCollapse={noCollapse} />
-  </Link>
-) : (
-  <NavLink
-  to={routePath || "#"}
-  onClick={(e) => {
-    if (hasChildren && !routePath) {
-      // Only prevent click if there's no route
-      e.preventDefault();
-      toggleMenu(key);
-    }
-  }}
-  style={{ textDecoration: "none" }}
->
-  <SidenavCollapse
-    name={name}
-    icon={icon}
-    active={location.pathname === routePath}
-    noCollapse={noCollapse}
-  />
-</NavLink>
-)}
+          <Link href={href} target="_blank" rel="noreferrer" sx={{ textDecoration: "none" }}>
+            <SidenavCollapse 
+            name={name} 
+            icon={icon} 
+            active={location.pathname === routePath}
+            noCollapse={noCollapse} 
+            sx={{
+              ...sx
+            }}
+            />
+          </Link>
+        ) : (
+          <NavLink
+            to={routePath || "#"}
+            onClick={(e) => {
+              if (hasChildren && !routePath) {
+                // Only prevent click if there's no route
+                e.preventDefault();
+                toggleMenu(key);
+              }
+            }}
+            style={{ textDecoration: "none" }}
+          >
+            <SidenavCollapse
+              name={name}
+              icon={icon}
+              active={location.pathname === routePath}
+              noCollapse={noCollapse}
+              sx={{
+              ...sx
+            }}
+            />
+          </NavLink>
+        )}
 
 
         {/* Normal collapsible children */}
         {hasChildren && !isFlyout && openMenus[key] && (
-  <MDBox
-    sx={{
-      ...(level >= 2
-        ? {
-            maxHeight: 200,
-            overflowY: "auto",
-            paddingRight: 1,
-            marginLeft: 2,
-          }
-        : {
-            paddingLeft: 2,
-          }),
-    }}
-  >
-    <List disablePadding>
-      {children.map((child) => renderCollapse(child, level + 1))}
-    </List>
-  </MDBox>
-)}
-
-
-
+          <MDBox
+            sx={{
+              ...(level >= 2
+                ? {
+                  maxHeight: 200,
+                  overflowY: "auto",
+                  paddingRight: 1,
+                  marginLeft: 2,
+                }
+                : {
+                  paddingLeft: 2,
+                }),
+            }}
+          >
+            <List disablePadding>
+              {children.map((child) => renderCollapse(child, level + 1))}
+            </List>
+          </MDBox>
+        )}
         {/* Flyout children */}
         {isFlyout && children && hoveredMenuKey === key && (
-  <FlyoutMenu
-    parentKey={key}
-    childrenRoutes={children}
-    hoveredMenuKey={hoveredMenuKey}
-    onCloseFlyout={() => setHoveredMenuKey(null)}
-    onHoverMenu={onMouseEnterMenu}
-    onMouseLeave={onMouseLeaveMenu}
-    anchorRect={flyoutRefs.current[key]?.current?.getBoundingClientRect()}
-    level={level}
-  />
-)}
-
+          <FlyoutMenu
+            parentKey={key}
+            childrenRoutes={children}
+            hoveredMenuKey={hoveredMenuKey}
+            onCloseFlyout={() => setHoveredMenuKey(null)}
+            onHoverMenu={onMouseEnterMenu}
+            onMouseLeave={onMouseLeaveMenu}
+            anchorRect={flyoutRefs.current[key]?.current?.getBoundingClientRect()}
+            isMobile={isMobile}
+            sidenavRef={sidenavRef}
+            level={level}
+          />
+        )}
       </div>
     );
   };
@@ -264,20 +286,36 @@ function Sidenav({ color="info", brand="", brandName, routes, ...rest }) {
       variant="permanent"
       ownerState={{ transparentSidenav, whiteSidenav, miniSidenav, darkMode }}
       sx={{
-        zIndex: 1301,
-    // only restyle the inner paper element
-    "& .MuiDrawer-paper": {
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
-      background:
-        "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
-      border: "1px solid rgba(255, 255, 255, 0.6)",
-      boxShadow:
-        "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
-      borderRadius: "12px",
-      overflow: "hidden",
-    },
-  }}
+        zIndex: 1201,
+        // only restyle the inner paper element
+        "& .MuiDrawer-paper": {
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          background:
+            "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+          border: "1px solid rgba(243, 143, 1, 0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+          borderRadius: "12px",
+
+          "&::-webkit-scrollbar": { width: 0, height: 0 },
+          "&::-webkit-scrollbar-track": { background: "transparent" },
+          "&::-webkit-scrollbar-thumb": { background: "transparent" },
+
+          scrollbarWidth: "none",
+          scrollbarColor: "transparent transparent",
+          "-ms-overflow-style": "none",
+          // always apply overflow
+          overflow: "auto",
+
+          // on mobile, make it full-height so it can scroll
+          ...(isMobile && {
+            zIndex: 1000,
+            height: "78vh",
+            top: 0,
+          })
+        },
+      }}
     >
       <MDBox pt={3} pb={1} px={4} textAlign="center" position="relative">
         <MDBox

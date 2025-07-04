@@ -14,6 +14,7 @@ import MenuIcon from "@mui/icons-material/MenuOpen";
 import MenuOpenIcon from "@mui/icons-material/Menu";
 import MapIcon from "@mui/icons-material/Map";
 import { useNavigate } from "react-router-dom";
+import IconButton from "@mui/material/IconButton";
 
 import {
   useMaterialUIController,
@@ -38,6 +39,7 @@ export default function SimpleResponsiveNavbar({
 
   const theme = useTheme();
   const isMobile = useMediaQuery("(max-width:1199.95px)");
+  const isDesktop = !isMobile;
 
   const ICON_SIZE = 24;
   const GAP = theme.spacing(1);
@@ -51,7 +53,25 @@ export default function SimpleResponsiveNavbar({
     if (openConfigurator) setOpenConfigurator(dispatch, false);
   };
 
-  if (!isMobile) return null;
+  if (isDesktop) {
+  return (
+    <AppBar position="fixed" elevation={0} sx={{ top: 16, right: 16, width: "auto", pointerEvents: "auto", background: "transparent", boxShadow: "none" }}>
+      <IconButton
+        onClick={() => {
+          onAnyNav?.();
+          closeConfigurator();
+          onConfiguratorClick?.();
+        }}
+        sx={{
+          bgcolor: "rgba(255,255,255,0.2)",
+          "&:hover": { bgcolor: "rgba(255,255,255,0.3)" },
+        }}
+      >
+        <AddLocationIcon sx={{ color: "#fff" }} />
+      </IconButton>
+    </AppBar>
+  );
+}
 
   const handleNavClick = (actionFn) => {
     onAnyNav?.();
@@ -136,7 +156,7 @@ export default function SimpleResponsiveNavbar({
               backdropFilter: "blur(20px)",
               background:
                 "linear-gradient(145deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)",
-              border: "1px solid rgba(255,255,255,0.6)",
+              border: "1px solid rgba(243, 143, 1, 0.6)",
               borderRadius: "60px",
               boxShadow:
                 "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
