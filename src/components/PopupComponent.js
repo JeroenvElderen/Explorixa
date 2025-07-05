@@ -10,6 +10,8 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import routes from 'routes';
 import { useSavedPins } from '../components/SavedPinsContext';
 import DOMPurify from "dompurify";
+import RowPinCard from 'examples/Charts/PinCard/RowPinCard';
+
 // Recursively find route by country name or key (case-insensitive)
 function findRouteByName(items, name) {
   const needle = name?.toString().toLowerCase().trim();
@@ -43,7 +45,7 @@ export default function PopupComponent({ data, onClose }) {
   const matchedRoute = findRouteByName(routes, countryName);
   const fallbackRoute = `/Destinations/World_destinations/${countryName.replace(/\s+/g, '_')}`;
   const countryPath = matchedRoute || fallbackRoute;
-
+  const CardComponent = isMobile ? RowPinCard : PinCard;
   const handleSave = e => {
     e.stopPropagation();
     if (isSaved) remove({ id: pinId });
@@ -87,7 +89,7 @@ export default function PopupComponent({ data, onClose }) {
         <ThemeProvider theme={themeDark}>
           {/* Wrap PinCard in a relative container */}
           <Box sx={{ position: 'relative' }} onClick={onClose} >
-            <PinCard
+            <CardComponent
               color="info"
               title={
                 <Typography variant="h6" align="center" sx={{ mt: -1, mb: 1, fontWeight: 800, color: 'white' }}>
@@ -109,7 +111,7 @@ export default function PopupComponent({ data, onClose }) {
               size="small"
               sx={{
                 position: 'absolute',
-                bottom: 12,
+                bottom: 34,
                 right: 12,
                 p: 1,
                 color: 'error.main',
@@ -132,10 +134,10 @@ export default function PopupComponent({ data, onClose }) {
               marginTop: '16px',
               padding: '12px 0',
               textAlign: 'center',
-              background: 'linear-gradient(195deg, rgb(73,163,241), rgb(26,115,232))',
+              background: 'linear-gradient(195deg, rgb(241,143,1), rgba(241,143,1,0.5))',
               color: '#fff',
-              borderRadius: '0 0 6px 6px',
-              boxShadow: '0 2px 4px -1px rgb(26 115 232 / 20%), 0 4px 5px 0 rgb(26 115 232 / 14%), 0 1px 10px 0 rgb(26 115 232 / 12%)',
+              borderRadius: '12px',
+              boxShadow: '0 2px 4px -1px rgb(241 143 1 / 20%), 0 4px 5px 0 rgb(241 143 1 / 14%), 0 1px 10px 0 rgb(241 143 1 / 12%)',
               textDecoration: 'none',
               cursor: 'pointer',
               fontWeight: 600,

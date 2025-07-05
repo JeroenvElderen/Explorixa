@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
 import { grey } from "@mui/material/colors";
+
 
 import MDBox from "../../../components/MDBox";
 import MDTypography from "../../../components/MDTypography";
@@ -15,6 +16,7 @@ import bgImage from "../../../assets/images/bg-sign-up-cover.jpeg";
 import { supabase } from "../../../SupabaseClient"; // adjust path as needed
 
 function Cover() {
+  const navigate = useNavigate();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -56,6 +58,7 @@ function Cover() {
       setEmail("");
       setPassword("");
       setAgreeTerms(false);
+      navigate("/profile");
     }
   };
 

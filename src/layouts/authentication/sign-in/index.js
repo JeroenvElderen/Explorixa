@@ -49,7 +49,7 @@ function Basic() {
     } else {
       // You can store user data or tokens here if needed
       // Optionally, redirect user after login
-      navigate("/dashboard"); // Change this route as needed
+      navigate("/profile"); // Change this route as needed
     }
   };
 
