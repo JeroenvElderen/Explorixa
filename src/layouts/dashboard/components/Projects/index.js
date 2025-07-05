@@ -278,7 +278,7 @@ export default function Projects({ country }) {
                           }}
                           dangerouslySetInnerHTML={{ __html: countryData[card.key] || '' }} />
                         {!isPending && (
-                          <Button variant="outlined" sx={{ mt: 2, borderColor: "#F18F01" }} onClick={(e) => { e.stopPropagation(); handleOpenEditor(card.key); }}>
+                          <Button variant="outlined" sx={{ mt: 2, borderColor: "#F18F01", color: "white !important" }} onClick={(e) => { e.stopPropagation(); handleOpenEditor(card.key); }}>
                             Request update
                           </Button>
                         )}

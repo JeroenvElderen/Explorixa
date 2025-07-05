@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import Card from "@mui/material/Card";
 import Checkbox from "@mui/material/Checkbox";
+import { grey } from "@mui/material/colors";
 
 import MDBox from "../../../components/MDBox";
 import MDTypography from "../../../components/MDTypography";
@@ -9,7 +10,7 @@ import MDInput from "../../../components/MDInput";
 import MDButton from "../../../components/MDButton";
 
 import CoverLayout from "../../../layouts/authentication/components/CoverLayout";
-
+import BasicLayout from "../components/BasicLayout";
 import bgImage from "../../../assets/images/bg-sign-up-cover.jpeg";
 import { supabase } from "../../../SupabaseClient"; // adjust path as needed
 
@@ -59,18 +60,38 @@ function Cover() {
   };
 
   return (
-    <CoverLayout image={bgImage}>
-      <Card>
+    <BasicLayout image={bgImage}>
+      <Card
+        sx={{
+          display: "flex",
+          gap: 2,
+          flexWrap: "wrap",
+          p: 2,
+          borderRadius: 2,
+          background: "rgba(255,255,255,0.1)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: "1px solid rgba(243,143,1,0.6)",
+        }}
+      >
         <MDBox
-          variant="gradient"
-          bgColor="info"
-          borderRadius="lg"
-          coloredShadow="success"
+          variant="contained"
           mx={2}
           mt={-3}
           p={3}
           mb={1}
           textAlign="center"
+          sx={{
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background:
+              "linear-gradient(0deg, rgba(241,143,1,0.5) 0%, rgba(241,143,1,1) 100%) !important",
+            border: "1px solid rgba(241, 143, 1, 0.6)",
+            boxShadow:
+              "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+            borderRadius: "12px",
+            overflow: "auto",
+          }}
         >
           <MDTypography variant="h4" fontWeight="medium" color="white" mt={1}>
             Join us today
@@ -114,16 +135,27 @@ function Cover() {
                 required
               />
             </MDBox>
+            {/* 
             <MDBox display="flex" alignItems="center" ml={-1} mb={2}>
               <Checkbox
                 checked={agreeTerms}
                 onChange={() => setAgreeTerms(!agreeTerms)}
+                sx={{
+                  // unchecked icon color:
+                  color: grey[500],
+                  // checked icon color:
+                  "&.MuiCheckbox-colorPrimary.Mui-checked .MuiSvgIcon-root": {
+                    color: "rgba(241,143,1,1)",
+                    background: "rgba(241,143,1,0.5) !important",
+                    borderColor: "rgba(241,143,1,0.5) !important"
+                  },
+                }}
               />
               <MDTypography
                 variant="button"
                 fontWeight="regular"
                 color="text"
-                sx={{ cursor: "pointer", userSelect: "none", ml: -1 }}
+                sx={{ cursor: "pointer", userSelect: "none", ml: -1, width: 1 }}
                 onClick={() => setAgreeTerms(!agreeTerms)}
               >
                 &nbsp;&nbsp;I agree to the&nbsp;
@@ -133,12 +165,14 @@ function Cover() {
                 href="#"
                 variant="button"
                 fontWeight="bold"
-                color="info"
-                textGradient
+                sx={{
+                  color: "#F18F01"
+                }}
               >
                 Terms and Conditions
               </MDTypography>
             </MDBox>
+            */}
 
             {errorMessage && (
               <MDTypography color="error" variant="body2" mb={2}>
@@ -151,13 +185,17 @@ function Cover() {
               </MDTypography>
             )}
 
-            <MDBox mt={4} mb={1}>
+            <MDBox mt={4} mb={1}
+            >
               <MDButton
-                variant="gradient"
+                variant="contained"
                 color="info"
                 fullWidth
                 type="submit"
                 disabled={loading}
+                sx={{
+                  background: "#F18F01 !important"
+                }}
               >
                 {loading ? "Signing up..." : "Sign Up"}
               </MDButton>
@@ -170,9 +208,10 @@ function Cover() {
                   component={Link}
                   to="/authentication/sign-in"
                   variant="button"
-                  color="info"
                   fontWeight="medium"
-                  textGradient
+                  sx={{
+                    color: "#F18F01"
+                  }}
                 >
                   Sign In
                 </MDTypography>
@@ -181,7 +220,7 @@ function Cover() {
           </MDBox>
         </MDBox>
       </Card>
-    </CoverLayout>
+    </BasicLayout>
   );
 }
 

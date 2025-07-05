@@ -92,15 +92,19 @@ function DefaultNavbar({ transparent, light, action }) {
         position="absolute"
         left={0}
         zIndex={3}
-        sx={({
-          palette: { transparent: transparentColor, white, background },
-          functions: { rgba },
-        }) => ({
-          backgroundColor: transparent
-            ? transparentColor.main
-            : rgba(darkMode ? background.sidenav : white.main, 0.8),
-          backdropFilter: transparent ? "none" : `saturate(200%) blur(30px)`,
-        })}
+        sx={{
+        
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          background:
+            "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+          border: "1px solid rgba(243, 143, 1, 0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+          borderRadius: "12px",
+          overflow: "auto",
+        
+      }}
       >
         <MDBox
           component={Link}
@@ -110,11 +114,20 @@ function DefaultNavbar({ transparent, light, action }) {
           pl={{ xs: 0, lg: 1 }}
         >
           <MDTypography variant="button" fontWeight="bold" color={light ? "white" : "dark"}>
-            Material Dashboard 2
+            Explorixa
           </MDTypography>
         </MDBox>
         <MDBox color="inherit" display={{ xs: "none", lg: "flex" }} m={0} p={0}>
-          <DefaultNavbarLink icon="donut_large" name="dashboard" route="/dashboard" light={light} />
+          <DefaultNavbarLink icon="home" name="home" route="/home" light={light} sx={{
+    // target MUI SvgIcon or legacy material-icon
+    "& .MuiSvgIcon-root, & .material-icons": {
+      color: "#F18F01 !important",     // orange for the icon
+    },
+    // target the label Typography
+    "& .MuiTypography-root": {
+      color: "#FFFFFF !important",     // white for the text
+    },
+  }}/>
           <DefaultNavbarLink icon="person" name="profile" route="/profile" light={light} />
           <DefaultNavbarLink
             icon="account_circle"
