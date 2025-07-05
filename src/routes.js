@@ -368,7 +368,7 @@ const routes = [
     route: "/profile",
     component: Profile,
   },
-  {
+  /*{
     type: "collapse",
     name: "Tables",
     key: "tables",
@@ -399,7 +399,7 @@ const routes = [
     icon: <Icon fontSize="small">notifications</Icon>,
     route: "/notifications",
     component: Notifications,
-  },
+  }, */
   {
     type: "collapse",
     name: "Sign In",
