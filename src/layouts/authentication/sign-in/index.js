@@ -55,32 +55,51 @@ function Basic() {
 
   return (
     <BasicLayout image={bgImage}>
-      <Card>
+      <Card
+        sx={{
+          display: "flex",
+          gap: 2,
+          flexWrap: "wrap",
+          p: 2,
+          borderRadius: 2,
+          background: "rgba(255,255,255,0.1)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: "1px solid rgba(243,143,1,0.6)",
+        }}>
         <MDBox
-          variant="gradient"
-          bgColor="info"
-          borderRadius="lg"
-          coloredShadow="info"
+          variant="contained"
           mx={2}
           mt={-3}
           p={2}
           mb={1}
           textAlign="center"
+          sx={{
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background:
+              "linear-gradient(0deg, rgba(241,143,1,0.5) 0%, rgba(241,143,1,1) 100%) !important",
+            border: "1px solid rgba(241, 143, 1, 0.6)",
+            boxShadow:
+              "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
+            borderRadius: "12px",
+            overflow: "auto",
+          }}
         >
           <MDTypography variant="h4" fontWeight="medium" color="white" mt={1}>
             Sign in
           </MDTypography>
           <Grid container spacing={3} justifyContent="center" sx={{ mt: 1, mb: 2 }}>
-            <Grid item xs={2}>
-              <MDTypography component={MuiLink} href="#" variant="body1" color="white">
+            {/* <Grid item xs={2}>
+             <MDTypography component={MuiLink} href="#" variant="body1" color="white">
                 <FacebookIcon color="inherit" />
               </MDTypography>
-            </Grid>
-            <Grid item xs={2}>
+            </Grid> */}
+            {/* <Grid item xs={2}>
               <MDTypography component={MuiLink} href="#" variant="body1" color="white">
                 <GitHubIcon color="inherit" />
               </MDTypography>
-            </Grid>
+            </Grid> */}
             <Grid item xs={2}>
               <MDTypography component={MuiLink} href="#" variant="body1" color="white">
                 <GoogleIcon color="inherit" />
@@ -98,6 +117,34 @@ function Basic() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                InputLabelProps={{
+                  sx: {
+                    color: "white",
+                    "&.Mui-focused": {
+                      color: "white !important",
+                    }
+                  }
+                }}
+                sx={{
+                  // target the root OutlinedInput element
+                  "& .MuiOutlinedInput-root": {
+                    // default (unfocused) state
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#F18F01",
+                      color: "white !important"
+                    },
+                    // hover state
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#D37500",
+                      color: "white !important",
+                    },
+                    // focused state
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#F18F01",
+                      color: "white !important"
+                    },
+                  },
+                }}
               />
             </MDBox>
             <MDBox mb={2}>
@@ -108,10 +155,59 @@ function Basic() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                InputLabelProps={{
+                  sx: {
+                    color: "white",
+                    "&.Mui-focused": {
+                      color: "white !important",
+                    }
+                  }
+                }}
+                sx={{
+                  // target the root OutlinedInput element
+                  "& .MuiOutlinedInput-root": {
+                    // default (unfocused) state
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#F18F01",
+                      color: "white !important"
+                    },
+                    // hover state
+                    "&:hover .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#D37500",
+                      color: "white !important",
+                    },
+                    // focused state
+                    "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                      borderColor: "#F18F01",
+                      color: "white !important"
+                    },
+                  },
+                }}
               />
             </MDBox>
             <MDBox display="flex" alignItems="center" ml={-1}>
-              <Switch checked={rememberMe} onChange={handleSetRememberMe} />
+              <Switch 
+              checked={rememberMe} 
+              onChange={handleSetRememberMe}
+                sx={{
+    // Thumb color when checked
+    "& .MuiSwitch-switchBase.Mui-checked": {
+      color: "#F18F01",
+      // Hover/active state on the thumb
+      "&:hover": {
+        backgroundColor: "rgba(241,143,1,0.08)",
+      },
+    },
+    // Track color when checked
+    "& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track": {
+      backgroundColor: "#F18F01 !important",
+    },
+    // Optional: track transition speed
+    "& .MuiSwitch-track": {
+      transition: "background-color 300ms ease",
+    },
+  }} 
+  />
               <MDTypography
                 variant="button"
                 fontWeight="regular"
@@ -130,7 +226,20 @@ function Basic() {
             )}
 
             <MDBox mt={4} mb={1}>
-              <MDButton variant="gradient" color="info" fullWidth type="submit" disabled={loading}>
+              <MDButton
+                variant="contained"
+                sx={{
+                  background: "#F18F01",
+                  color: "white !important",
+                  transition: "background 0.3s ease",    // smooth transition
+                  "&:hover": {
+                    background: "#D37500",               // your hover color
+                  },
+                }}
+                fullWidth
+                type="submit"
+                disabled={loading}
+              >
                 {loading ? "Signing in..." : "Sign in"}
               </MDButton>
             </MDBox>
@@ -141,9 +250,10 @@ function Basic() {
                   component={Link}
                   to="/authentication/sign-up"
                   variant="button"
-                  color="info"
                   fontWeight="medium"
-                  textGradient
+                  sx={{
+                    color: "#F18F01 !important"
+                  }}
                 >
                   Sign up
                 </MDTypography>

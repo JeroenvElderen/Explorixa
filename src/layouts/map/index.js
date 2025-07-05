@@ -144,7 +144,7 @@ export default function Map() {
                   setOpenConfigurator(dispatch, true);
                   setNavValue(2);
                 }}
-                target={selectedPlace ? [selectedPlace.lng, selectedPlace.lat] : undefined}
+                target={selectedPlace}
                 flyOnTarget={flyToPlace}
               />
             </Suspense>
