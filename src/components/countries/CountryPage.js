@@ -87,16 +87,40 @@ export default function CountryPage() {
 
     // Ensure country exists in DB
     useEffect(() => {
-        if (countryName && countryName !== "Overview") {
-            supabase
-                .from("countries")
-                .insert(
-                    { name: countryName, country_info: null, moving_info: null, animal_info: null },
-                    { onConflict: "name", ignoreDuplicates: true }
-                )
-                .then(({ error }) => error && console.error(error));
-        }
-    }, [countryName]);
+    if (!countryName || countryName === "Overview") return;
+
+    fetch(`https://restcountries.com/v3.1/name/${countryName}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const info = Array.isArray(data) && data[0];
+        if (!info) throw new Error("No country data");
+
+        const continent = info.region;
+        const pop = info.population;
+        const cca2 = info.cca2.toLowerCase();
+
+        // Upsert country with continent
+        return supabase
+          .from("countries")
+          .insert(
+            {
+              name: countryName,
+              continent,
+              country_info: null,
+              moving_info: null,
+              animal_info: null,
+            },
+            { onConflict: "name", ignoreDuplicates: true }
+          )
+          .then(({ error }) => error && console.error("Error inserting country:", error))
+          .then(() => ({ pop, cca2 }));
+      })
+      .then(({ pop, cca2 }) => {
+        setPopulation(pop);
+        setCountryCode(cca2);
+      })
+      .catch(console.error);
+  }, [countryName]);
 
     // ——— State ———
     const [pinCount, setPinCount] = useState(0);

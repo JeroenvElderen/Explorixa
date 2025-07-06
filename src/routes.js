@@ -14,6 +14,7 @@ import { AsiaPage, AfricaPage } from "components/continent";
 import Home from "layouts/home";
 import HomeIcon from "@mui/icons-material/Home";
 import CountryPage from "components/countries/CountryPage";
+import ContinentPage from "components/continent/ContinentPage";
 // @mui icons
 import Icon from "@mui/material/Icon";
 
@@ -49,7 +50,7 @@ const routes = [
         key: "africa",
         flyout: true,
         children: [
-          { name: "Overview", key: "africa-overview", type: "collapse", route: "/Destinations/World_destionations/Africa", component: AfricaPage, sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "africa-overview", type: "collapse", route: "/Destinations/World_destinations/Africa", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Algeria", key: "algeria", type: "collapse", route: "/Destinations/World_destinations/Africa/Algeria"},
           { name: "Angola", key: "angola", type: "collapse", route: "/Destinations/World_destinations/Africa/Angola" },
           { name: "Benin", key: "benin", type: "collapse", route: "/Destinations/World_destinations/Africa/Benin"},
@@ -108,7 +109,7 @@ const routes = [
         key: "antarctica",
         flyout: true,
         children: [
-          { name: "Overview", key: "Antarcica-overview", type: "collapse", route: "/Destinations/World_destionations/Antarctica", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "Antarcica-overview", type: "collapse", route: "/Destinations/World_destinations/Antarctica", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Antarctica", key: "antarctica", route: "/Destinations/World_destinations/Antarctica/Antarctica" }
         ]
       },
@@ -120,7 +121,7 @@ const routes = [
         component: AsiaPage,
         flyout: true,
         children: [
-          { name: "Overview", key: "Asia-overview", type: "collapse", route: "/Destinations/World_destionations/Asia", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "asia-overview", type: "collapse", route: "/Destinations/World_destinations/Asia", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Afghanistan", key: "afghanistan", route: "/Destinations/World_destinations/Asia/Afghanistan"},
           { name: "Azerbaijan", key: "azerbaijan", route: "/Destinations/World_destinations/Asia/Azerbaijan"},
           { name: "Bangladesh", key: "bangladesh", route: "/Destinations/World_destinations/Asia/Bangladesh"},
@@ -163,6 +164,7 @@ const routes = [
         key: "caribbean",
         flyout: true,
         children: [
+          { name: "Caribbean", key: "caribbean-overview", type: "collapse", route: "/Destinations/World_destinations/Caribbean", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Antigua and Barbuda", key: "antigua-and-barbuda", route: "/Destinations/World_destinations/Caribbean/Antigua_and_Barbuda"},
            {name: "Aruba", key: "aruba", route: "/Destinations/World_destinations/Caribbean/Aruba"},
           { name: "Bahamas", key: "bahamas", route: "/Destinations/World_destinations/Caribbean/Bahamas"},
@@ -195,7 +197,7 @@ const routes = [
         key: "central-america",
         flyout: true,
         children: [
-          { name: "Overview", key: "central-america-overview", type: "collapse", route: "/Destinations/World_destionations/Cental_America", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "central-america-overview", type: "collapse", route: "/Destinations/World_destinations/Cental_America", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Belize", key: "belize", route: "/Destinations/World_destinations/Central_America/Belize"},
           { name: "Costa Rica", key: "costarica", route: "/Destinations/World_destinations/Central_America/Costa_Rica"},
           { name: "El Salvador", key: "elsalvador", route: "/Destinations/World_destinations/Central_America/El_Salvador"},
@@ -211,7 +213,7 @@ const routes = [
         key: "europe",
         flyout: true,
         children: [
-          { name: "Overview", key: "europe-overview", type: "collapse", route: "/Destinations/World_destionations/Europe", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "europe-overview", type: "collapse", route: "/Destinations/World_destinations/Europe", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           {name: "Åland Islands", key: "alandislands", route: "/Destinations/World_destinations/Europe/Åland Islands"},
           { name: "Albania", key: "albania", route: "/Destinations/World_destinations/Europe/Albania"},
           { name: "Andorra", key: "andorra", route: "/Destinations/World_destinations/Europe/Andorra"},
@@ -274,7 +276,7 @@ const routes = [
         key: "middle-east",
         flyout: true,
         children: [
-          { name: "Overview", key: "middle-east-overview", type: "collapse", route: "/Destinations/World_destionations/Middle_East", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "middle-east-overview", type: "collapse", route: "/Destinations/World_destinations/Middle_East", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Bahrain", key: "bahrain", route: "/Destinations/World_destinations/Middle_East/Bahrain"},
           {name: "Golan", key: "golan", route: "/Destinations/World_destinations/Middle_East/Golan"},
           { name: "Iran", key: "iran", route: "/Destinations/World_destinations/Middle_East/Iran"},
@@ -298,7 +300,7 @@ const routes = [
         key: "north-america",
         flyout: true,
         children: [
-          { name: "Overview", key: "north-america-overview", type: "collapse", route: "/Destinations/World_destionations/North_America", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "north-america-overview", type: "collapse", route: "/Destinations/World_destinations/North_America", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Canada", key: "canada", route: "/Destinations/World_destinations/North_America/Canada"},
           { name: "Mexico", key: "mexico", route: "/Destinations/World_destinations/North_America/Mexico"},
           { name: "United States", key: "unitedstates", route: "/Destinations/World_destinations/North_America/United_States"}
@@ -310,7 +312,7 @@ const routes = [
         key: "oceania",
         flyout: true,
         children: [
-          { name: "Overview", key: "oceania-overview", type: "collapse", route: "/Destinations/World_destionations/Oceania", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "oceania-overview", type: "collapse", route: "/Destinations/World_destinations/Oceania", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Australia", key: "australia", route: "/Destinations/World_destinations/Oceania/Australia"},
           { name: "Fiji", key: "fiji", route: "/Destinations/World_destinations/Oceania/Fiji"},
           { name: "French Polynesia", key: "frenchpolynesia", route: "/Destinations/World_destinations/Oceania/French_Polynesia"},
@@ -334,7 +336,7 @@ const routes = [
         key: "south-america",
         flyout: true,
         children: [
-          { name: "Overview", key: "south-america-overview", type: "collapse", route: "/Destinations/World_destionations/South_America", component: '', sx: {backgroundColor: "rgba(241,143,1,1)"}},
+          { name: "Overview", key: "south-america-overview", type: "collapse", route: "/Destinations/World_destinations/South_America", sx: {backgroundColor: "rgba(241,143,1,1)"}},
           { name: "Argentina", key: "argentina", route: "/Destinations/World_destinations/South_America/Argentina"},
           { name: "Bolivia", key: "bolivia", route: "/Destinations/World_destinations/South_America/Bolivia"},
           { name: "Brazil", key: "brazil", route: "/Destinations/World_destinations/South_America/Brazil"},
@@ -351,6 +353,15 @@ const routes = [
       }
     ]  //this is the end before this add 
   },
+
+  // ─── one dynamic route for ALL continents ────────────────────
+  {
+  type: "route",
+  key: "continent-dynamic",
+  name: "ContinentPage",
+  route: "/Destinations/World_destinations/:continent",
+  component: ContinentPage,
+},
     //  ─── Only one Route for _all_ countries ────────────────────
   {
     type: "route",
