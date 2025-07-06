@@ -117,6 +117,7 @@ const countryNameToIso = {
   Slovakia: "SK", Slovenia: "SI", "Solomon Islands": "SB", Somalia: "SO",
   "South Africa": "ZA", "South Korea": "KR", "South Sudan": "SS",
   Spain: "ES", "Sri Lanka": "LK", Sudan: "SD", Suriname: "SR",
+  "Svalbard": "SJ", "Svalbard and Jan Mayen": "SJ",
   Sweden: "SE", Switzerland: "CH", Syria: "SY", Taiwan: "TW",
   Tajikistan: "TJ", Tanzania: "TZ", Thailand: "TH", Togo: "TG",
   Tonga: "TO", "Trinidad and Tobago": "TT", Tunisia: "TN", Turkey: "TR",
@@ -129,7 +130,7 @@ const countryNameToIso = {
 
 // Map ISO → hex color
 const countryColors = {
-  AF: "#007A36", AL: "#E41E20", DZ: "#006233", AD: "#003893", AO: "#D21034",
+  AF: "#CE1126", AL: "#CE1126", DZ: "#006233", AD: "#003893", AO: "#D21034",
   AR: "#74ACDF", AM: "#D90012", AU: "#00247D", AT: "#ED2939", AZ: "#00B3E3",
   BS: "#009CA6", BH: "#B10021", BD: "#006A4E", BB: "#00267F", BY: "#D22730",
   BE: "#FFD90C", BZ: "#003F87", BJ: "#FCD116", BM: "#DA291C", BT: "#FFCC00",
@@ -145,7 +146,7 @@ const countryColors = {
   GR: "#0D5EAF", GL: "#C60C30", GD: "#007847", GT: "#4997D0", GN: "#009460",
   GW: "#FFCD00", GY: "#009739", HT: "#00209F", HN: "#0073CF", HU: "#436F4D",
   IS: "#02529C", IN: "#FF9933", ID: "#FF0000", IR: "#239F40", IQ: "#CE1126",
-  IE: "#169B62", IL: "#0038B8", IT: "#008C45", JM: "#FFD100", JP: "#BC002D",
+  IE: "#169B62", IL: "#0038B8", IT: "#009246", JM: "#FFD100", JP: "#BC002D",
   JO: "#007847", KZ: "#00AFCA", KE: "#006600", KI: "#D21034", XK: "#244AA5",
   KW: "#007A3D", KG: "#FF0000", LA: "#002868", LV: "#9E3039", LB: "#E70013",
   LS: "#00209F", LR: "#002868", LY: "#239E46", LI: "#002171", LT: "#FDB913",
@@ -153,16 +154,17 @@ const countryColors = {
   ML: "#FCD116", MT: "#CF142B", MH: "#00247D", MQ: "#00267F", MR: "#006233",
   MU: "#EA2839", MX: "#006847", FM: "#75AADB", MD: "#0033A0", MC: "#ED2939",
   MN: "#C4272F", ME: "#D6081B", MA: "#C1272D", MZ: "#009739", MM: "#FECB00",
-  NA: "#003580", NR: "#002B7F", NP: "#DC143C", NL: "#21468B", NZ: "#00247D",
+  NA: "#003580", NR: "#002B7F", NP: "#DC143C", NL: "#FF9933", NZ: "#00247D",
   NI: "#0067C6", NE: "#E05206", NG: "#008751", KP: "#024FA2", MK: "#D20000",
   NO: "#BA0C2F", OM: "#C8102E", PK: "#01411C", PW: "#0085CA", PS: "#007A3D",
   PA: "#005293", PG: "#000000", PY: "#D52B1E", PE: "#D91023", PH: "#0038A8",
   PL: "#DC143C", PT: "#006600", QA: "#8D1B3D", RO: "#002B7F", RU: "#0039A6",
   RW: "#FFD100", KN: "#009739", LC: "#66CCFF", VC: "#009739", WS: "#002B7F",
   SM: "#5EB6E4", ST: "#008751", SA: "#006C35", SN: "#00853F", RS: "#0C4076",
-  SC: "#007847", SL: "#1EB53A", SG: "#EF3340", SK: "#0B4EA2", SI: "#005DA4",
+  SC: "#007847", SL: "#1EB53A", SG: "#EF3340", SJ: "#BA0C2F",
+  SK: "#0B4EA2", SI: "#005DA4",
   SB: "#215B33", SO: "#4189DD", ZA: "#007847", KR: "#003478", SS: "#078930",
-  ES: "#AA151B", LK: "#FFB700", SD: "#E31B23", SR: "#377E3F", SE: "#005583",
+  ES: "#AA151B", LK: "#FFB700", SD: "#E31B23", SR: "#377E3F", SE: "#006AA7",
   CH: "#D52B1E", SY: "#CE1126", TW: "#FE0000", TJ: "#006400", TZ: "#1EB53A",
   TH: "#A51931", TG: "#006A4E", TO: "#C10000", TT: "#CE1126", TN: "#E70013",
   TR: "#E30A17", TM: "#007C2E", TV: "#0198D1", UG: "#FCDC04", UA: "#005BBB",
@@ -357,57 +359,74 @@ export default function WorldMapComponent({
     };
   }, [accessToken]);
 
-  // 2) REALTIME SUBSCRIPTION (v2 API)
-  useEffect(() => {
-    if (!mapRef.current) return;
-    const map = mapRef.current;
+  // 2) POLLING (only update on new pins)
+useEffect(() => {
+  if (!mapRef.current) return;
+  const map = mapRef.current;
 
-    // subscribe to INSERTs on public.pins
-    const channel = supabase
-      .channel("realtime-pins")
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "pins" },
-        ({ new: pin }) => {
-          const iso = countryNameToIso[pin.countryName] || "default";
-          const feature = {
-            type: "Feature",
-            properties: {
-              pinId: pin.id,
-              title: pin.Name,
-              description: pin.Information,
-              imageurl: pin["Main Image"],
-              date: pin.created_at,
-              iso,
-            },
-            geometry: {
-              type: "Point",
-              coordinates: [pin.longitude, pin.latitude],
-            },
-          };
+  let renderedPinIds = new Set();
 
-          // register icon if needed
-          const imgId = `marker-${iso}`;
-          if (!map.hasImage(imgId)) {
-            const hex = countryColors[iso] || countryColors.default;
-            const canvas = createMarkerCanvas(hex, iso);
-            const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-            map.addImage(imgId, imgData);
-          }
+  const fetchPins = async () => {
+    const { data: pins, error } = await supabase.from("pins").select("*, countryName").order("created_at", { ascending: true });
+    if (error || !pins) return;
 
-          // append and redraw
-          const src = map.getSource("pins");
-          const data = src._data;
-          data.features.push(feature);
-          src.setData(data);
-        }
-      )
-      .subscribe();
+    const currentPinIds = new Set(pins.map(p => p.id));
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    // Only update if there's any new pin
+    let isNew = false;
+    for (let id of currentPinIds) {
+      if (!renderedPinIds.has(id)) {
+        isNew = true;
+        break;
+      }
+    }
+
+    if (!isNew) return;
+
+    // Update map and cache IDs
+    renderedPinIds = currentPinIds;
+
+    const features = pins.map(pin => ({
+      type: "Feature",
+      properties: {
+        pinId: pin.id,
+        title: pin.Name,
+        description: pin.Information,
+        imageurl: pin["Main Image"],
+        date: pin.created_at,
+        iso: countryNameToIso[pin.countryName] || "default",
+        countryName: pin.countryName,
+      },
+      geometry: {
+        type: "Point",
+        coordinates: [pin.longitude, pin.latitude],
+      },
+    }));
+
+    // Register any new marker icons
+    const existingImageIds = map.listImages();
+    new Set(features.map(f => f.properties.iso)).forEach(iso => {
+      const imgId = `marker-${iso}`;
+      if (!existingImageIds.includes(imgId)) {
+        const hex = countryColors[iso] || countryColors.default;
+        const canvas = createMarkerCanvas(hex, iso);
+        const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+        map.addImage(imgId, imgData);
+      }
+    });
+
+    const src = map.getSource("pins");
+    if (src) {
+      src.setData({ type: "FeatureCollection", features });
+    }
+  };
+
+  fetchPins();
+  const interval = setInterval(fetchPins, 5000);
+
+  return () => clearInterval(interval);
+}, []);
+
 
   // 3) Click-to-select-point handler
   useEffect(() => {

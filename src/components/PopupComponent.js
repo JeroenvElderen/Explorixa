@@ -40,32 +40,33 @@ export default function PopupComponent({ data, onClose }) {
   const [supPins, setSupPins] = useState([]);
   const [loadingSup, setLoadingSup] = useState(true);
   useEffect(() => {
-  let active = true;
-  (async () => {
-    const selectCols = 'id, "Name", "Main Image", created_at';
-    console.log('selectCols →', selectCols);
-    const { data: fetched, error } = await supabase
-      .from('pins')
-      .select(selectCols)
-      .order('created_at', { ascending: false });
+    let active = true;
+    (async () => {
+      const selectCols = 'id, "Name", "Main Image", created_at, "Information"';
+      console.log('selectCols →', selectCols);
+      const { data: fetched, error } = await supabase
+        .from('pins')
+        .select(selectCols)
+        .order('created_at', { ascending: false });
 
-    if (!active) return;
-    if (error) {
-      console.error('Supabase error fetching pins:', error);
-    } else {
+      if (!active) return;
+      if (error) {
+        console.error('Supabase error fetching pins:', error);
+      } else {
         const shaped = fetched.map(p => ({
-           id:       p.id.toString(),
-          title:    p.Name,
+          id: p.id.toString(),
+          description: p.Information ?? "",
+          title: p.Name,
           imageurl: p['Main Image'],
-          date:     p.created_at,
+          date: p.created_at,
         }));
         console.log('shaped supPins:', shaped);
         setSupPins(shaped);
-    }
-    setLoadingSup(false);
-  })();
-  return () => { active = false; };
-}, []);
+      }
+      setLoadingSup(false);
+    })();
+    return () => { active = false; };
+  }, []);
 
 
 
@@ -73,20 +74,45 @@ export default function PopupComponent({ data, onClose }) {
   if (!data) return null;
 
   // Prepare current pin object
-  const pinId = data.id?.toString() ?? data.title?.toString() ?? '';
+  // --- Find matching Supabase pin by title, if no numeric id present ---
+  const findMatchingSupPin = () => {
+    if (!data.title) return null;
+    return supPins.find(p =>
+      (p.title?.toString().trim().toLowerCase() === data.title.toString().trim().toLowerCase())
+    );
+  };
+
+  let pinId = data.id?.toString(); // Try to get PK if available
+
+  if (!pinId) {
+    // Fallback: match by title (case insensitive)
+    const matchingSupPin = findMatchingSupPin();
+    pinId = matchingSupPin?.id?.toString() ?? data.title?.toString();
+  }
+
   const currentPin = {
     id: pinId,
-    title: data.title.toString(),
-    description: data.description?.toString() ?? '',
-    imageurl: data.imageurl?.toString() ?? '',
+    title: data.title?.toString() ?? "",
+    description: data.description?.toString() ?? "",
+    imageurl: data.imageurl?.toString() ?? "",
     date: data.date
   };
 
+
   // Combined list for carousel on mobile
-  const carouselPins = [
-    currentPin,
-    ...supPins.filter(p => p.id?.toString() !== pinId)
-  ];
+  const normalizeId = id => id != null ? id.toString().trim() : "";
+
+  const pinsArray = [currentPin, ...supPins];
+  const seenIds = new Set();
+  const carouselPins = pinsArray.filter(pin => {
+    const id = normalizeId(pin.id);
+    if (!id || seenIds.has(id)) return false;
+    seenIds.add(id);
+    return true;
+  });
+
+
+
 
   // Helpers
   const formatTitle = pin => pin.title?.toString() ?? pin.id?.toString() ?? '';
@@ -103,21 +129,36 @@ export default function PopupComponent({ data, onClose }) {
 
   return (
     <div
+      onClick={onClose}
       onTouchStart={handleBackdropTouchStart}
       onTouchEnd={handleBackdropTouchEnd}
       style={{
-        position: 'fixed', top: 0, left: 0,
-        width: '100vw', height: '100vh',
-        backgroundColor: 'rgba(0,0,0,0.4)',
-        display: 'flex', justifyContent: 'center',
+        position: 'fixed', 
+        top: 16, 
+        left: 0,
+        width: '100vw', 
+        height: isMobile ? '500px' : '100vh',
+        backgroundColor: 'transparent',
+        display: 'flex', 
+        justifyContent: 'center',
         alignItems: isMobile ? 'flex-start' : 'center',
-        paddingTop: isMobile ? '20px' : 0,
-        zIndex: 9999
+        zIndex: 9999,
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: '90%', maxWidth: '500px', display: 'flex', flexDirection: 'column' }}
+        onTouchStart={e => e.stopPropagation()}
+        style={{
+          width: '100%',
+          maxWidth: 500,
+          margin: isMobile ? '0 0 10px 0' : '0 auto',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'transparent',
+          borderRadius: 16,
+          boxShadow: 'none',
+          // Remove any vertical padding here!
+        }}
       >
         <ThemeProvider theme={themeDark}>
 
@@ -125,11 +166,22 @@ export default function PopupComponent({ data, onClose }) {
             // Carousel only on mobile, inline with RowPinCards
             <Box
               sx={{
-                width: '100%', display: 'flex', overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch', touchAction: 'pan-x',
-                overscrollBehaviorX: 'contain', scrollSnapType: 'x mandatory',
-                scrollBehavior: 'smooth', flexWrap: 'nowrap', mt: 2, pb: 1,
-                '&::-webkit-scrollbar': { display: 'none' }, px: 1
+                position: 'fixed',
+                bottom: 130,
+                left: '2.5vw',
+                width: '95vw', 
+                display: 'flex', 
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch', 
+                touchAction: 'pan-x',
+                overscrollBehaviorX: 'contain', 
+                scrollSnapType: 'x mandatory',
+                scrollBehavior: 'smooth', 
+                flexWrap: 'nowrap', 
+                mt: 2, 
+                pb: 0,
+                '&::-webkit-scrollbar': { display: 'none' }, 
+                px: 0
               }}
             >
               {carouselPins.map(pin => {
@@ -143,15 +195,27 @@ export default function PopupComponent({ data, onClose }) {
                   saved
                     ? remove({ id: pin.id.toString() })
                     : save({
-                        id: pin.id.toString(), title: safeTitle,
-                        description: pin.description ?? '',
-                        imageurl: pin.imageurl ?? '',
-                        date: pin.date
-                      });
+                      id: pinId,
+                      description: pin.description ?? '',
+                      imageurl: pin.imageurl ?? '',
+                      date: pin.date
+                    });
                 };
 
+                console.log('currentPin:', currentPin);
+                console.log('supPins:', supPins);
+
                 return (
-                  <Box key={pin.id} sx={{ flex: '0 0 90%', minWidth: '90%', scrollSnapAlign: 'start', mr: 2, '&:last-of-type': { mr: 0 } }}>
+                  <Box 
+                  key={pin.id} 
+                  sx={{ 
+                    flex: '0 0 100%', 
+                    minWidth: '100%', 
+                    scrollSnapAlign: 'start', 
+                    mr: 2, 
+                    '&:last-of-type': { mr: 0 }
+                     }}
+                     >
                     <RowPinCard
                       color="info"
                       title={safeTitle}
