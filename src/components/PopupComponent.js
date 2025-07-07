@@ -256,8 +256,14 @@ export default function PopupComponent({ data, onClose }) {
                       minWidth: '100%',
                       scrollSnapAlign: 'start',
                       mr: 2,
-                      '&:last-of-type': { mr: 0 }
+                      '&:last-of-type': { mr: 0 },
+                      
                     }}
+                    onClick={() => {
+                        onClose();
+                        navigate(route);
+                      }}
+                      style={{cursor: 'pointer'}}
                   >
                     <RowPinCard
                       color="info"
@@ -287,7 +293,7 @@ export default function PopupComponent({ data, onClose }) {
                     />
                   </Box>
                 );
-              })}
+              })} 
             </Box>
           ) : (
             <Box sx={{ position: 'relative' }}>
