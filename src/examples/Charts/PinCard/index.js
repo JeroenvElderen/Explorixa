@@ -53,7 +53,7 @@ function PinCard({
     }
   }, [truncateDescription]);
 
-  const handleTransitionEnd = () => {
+  const handleTransitionEnd = () => { 
     if (!truncateDescription) {
       setMaxHeight("none");
     }
