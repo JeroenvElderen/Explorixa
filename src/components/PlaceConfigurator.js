@@ -179,6 +179,7 @@ export default function PlaceConfigurator({
         longitude: parseFloat(selectedPlace.lng),
         countryName: selectedPlace.country,
         City: selectedPlace.city,
+        iso: selectedPlace.iso || null,
       };
       if (mainImageFile) {
         payload["Main Image"] = await uploadImage(mainImageFile);
@@ -224,7 +225,11 @@ export default function PlaceConfigurator({
         Latitude: selectedPlace.lat,
         Longitude: selectedPlace.lng,
         countryName: selectedPlace.country,
-        City: selectedPlace.city,
+        City:
+  selectedPlace.iso && selectedPlace.iso.toUpperCase() === "PEAK"
+    ? ""
+    : selectedPlace.city || "",
+
       }));
     }
   }, [selectedPlace]);

@@ -15,6 +15,7 @@ import Home from "layouts/home";
 import HomeIcon from "@mui/icons-material/Home";
 import CountryPage from "components/countries/CountryPage";
 import ContinentPage from "components/continent/ContinentPage";
+import PinPage from "components/PinPage";
 // @mui icons
 import Icon from "@mui/material/Icon";
 
@@ -370,7 +371,13 @@ const routes = [
     route: "/Destinations/World_destinations/:continent/:countrySlug",
     component: CountryPage,
   },
-
+  {
+    type: "route",
+    key: "pin-dynamic",
+    name: "PinPage",
+    route: "/Destinations/World_destinations/:continent/:countrySlug/:pinSlug",
+    component: PinPage,
+  },
   {
     type: "collapse",
     name: "Profile",

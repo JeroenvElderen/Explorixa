@@ -5,6 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "../SupabaseClient";
 import PopupComponent from "./PopupComponent";
 import "./WorldMapComponent.css";
+import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 
 // "#RRGGBB" → "R,G,B"
 function hexToRgbString(hex) {
@@ -49,6 +50,8 @@ function createMarkerCanvas(baseHex, iso) {
   canvas.width = size;
   canvas.height = size + tail;
   const ctx = canvas.getContext("2d");
+
+  // Background circle
   const grad = ctx.createLinearGradient(0, 0, size, size);
   grad.addColorStop(0, `rgba(${rgb},0.85)`);
   grad.addColorStop(1, `rgba(${rgb},0.7)`);
@@ -56,14 +59,23 @@ function createMarkerCanvas(baseHex, iso) {
   ctx.beginPath();
   ctx.arc(size / 2, size / 2, r, 0, 2 * Math.PI);
   ctx.fill();
+
+  // Border
   ctx.strokeStyle = "rgba(255,255,255,0.4)";
   ctx.lineWidth = 1;
   ctx.stroke();
+
+  // Label (emoji or ISO text)
   ctx.fillStyle = "#fff";
-  ctx.font = "bold 12px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
+
+  const isEmoji = /[\u{1F300}-\u{1F6FF}]/u.test(iso); // emoji check
+  ctx.font = isEmoji ? "20px serif" : "bold 12px sans-serif";
+
   ctx.fillText(iso, size / 2, size / 2);
+
+  // Tail
   ctx.fillStyle = `rgba(${rgb},0.85)`;
   ctx.beginPath();
   ctx.moveTo(size / 2 - 7, size / 2 + r - 2);
@@ -71,8 +83,10 @@ function createMarkerCanvas(baseHex, iso) {
   ctx.lineTo(size / 2 + 7, size / 2 + r - 2);
   ctx.closePath();
   ctx.fill();
+
   return canvas;
 }
+
 
 // ── DROP YOUR COUNTRY LOOKUP TABLES HERE ──────────────────────────────────────
 // Map country name → ISO
@@ -170,7 +184,7 @@ const countryColors = {
   TR: "#E30A17", TM: "#007C2E", TV: "#0198D1", UG: "#FCDC04", UA: "#005BBB",
   AE: "#00732F", GB: "#00247D", US: "#3C3B6E", UY: "#0038A8", UZ: "#1EB53A",
   VU: "#009543", VA: "#FFD700", VE: "#F4D41E", VN: "#DA251D", YE: "#CE1126",
-  ZM: "#198A00", ZW: "#006400",
+  ZM: "#198A00", ZW: "#006400", PEAK: "#7B6F4B",
   default: "#888888",
 };
 
@@ -186,6 +200,7 @@ export default function WorldMapComponent({
   const mapRef = useRef(null);
   const [popupData, setPopupData] = useState(null);
   mapboxgl.accessToken = accessToken;
+  const geocoder = mbxGeocoding({ accessToken })
 
   // 1) Initial load: build map, fetch & draw existing pins
   useEffect(() => {
@@ -201,6 +216,8 @@ export default function WorldMapComponent({
     mapRef.current = map;
 
     map.on("load", async () => {
+      console.log("Map layers:", map.getStyle().layers.map(l => l.id));
+
       map.setFog({
         color: "rgb(17,17,17)",
         "high-color": "rgb(17,17,17)",
@@ -219,7 +236,7 @@ export default function WorldMapComponent({
           description: pin.Information,
           imageurl: pin["Main Image"],
           date: pin.created_at,
-          iso: countryNameToIso[pin.countryName] || "default",
+          iso: pin.iso || countryNameToIso[pin.countryName] || "default",
         },
         geometry: {
           type: "Point",
@@ -249,6 +266,16 @@ export default function WorldMapComponent({
         if (map.hasImage(imgId)) map.removeImage(imgId);
         map.addImage(imgId, imgData);
       });
+
+      // 🏔️ Explicitly add PEAK icon for mountain markers
+      if (!map.hasImage("marker-PEAK")) {
+        const peakColor = countryColors["PEAK"] || countryColors.default;
+        const canvas = createMarkerCanvas(peakColor, "🏔️");  // or use "PEAK" as label if you prefer
+        const ctx = canvas.getContext("2d");
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        map.addImage("marker-PEAK", imgData);
+      }
+
 
       // cluster icon
       const clusterCanvas = createClusterCanvas("#F18F01");
@@ -309,18 +336,167 @@ export default function WorldMapComponent({
       });
 
       // POI labels → open configurator on click
+      // POI labels → open configurator on click (place-label → tilequery → OSM)
       const poiLayer = map.getStyle().layers.find(l => l.id.includes("poi-label"));
       if (poiLayer) {
         map.moveLayer(poiLayer.id);
-        map.on("click", poiLayer.id, e => {
+        map.on("click", poiLayer.id, async (e) => {
           const feat = e.features[0];
-          const name = feat.properties.name_en || feat.properties.name || feat.properties.text || "";
-          const category = feat.properties.category || feat.properties.subcategory || feat.properties.classification || "";
-          const coords = feat.geometry.type === "Point" ? feat.geometry.coordinates : feat.geometry.coordinates[0];
-          const [lng, lat] = coords;
-          onPoiClick({ name, text: name, landmark: name, category, lat, lng });
+          const [lng, lat] = e.lngLat.toArray();
+
+          // STEP 1: Try to find city from rendered features
+          const placeLayerIds = map.getStyle().layers
+            .filter(l => l.id.includes("place-label"))
+            .map(l => l.id);
+          let city = map.queryRenderedFeatures(e.point, { layers: placeLayerIds })[0]
+            ?.properties.text || "";
+
+          // STEP 2: Fallback - Mapbox tilequery
+          if (!city) {
+            try {
+              const tqUrl =
+                `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/`
+                + `${lng},${lat}.json`
+                + `?layers=place_label&limit=1`
+                + `&access_token=${accessToken}`;
+              const tq = await fetch(tqUrl).then(r => r.json());
+              const props = tq.features?.[0]?.properties;
+              city = props?.name_en || props?.name || "";
+            } catch (err) {
+              console.warn("Tilequery error:", err);
+            }
+          }
+
+          // STEP 3: Fallback - OpenStreetMap/Nominatim
+          if (!city) {
+            try {
+              const osmUrl =
+                `https://nominatim.openstreetmap.org/reverse`
+                + `?format=json&addressdetails=1`
+                + `&lat=${lat}&lon=${lng}`
+                + `&zoom=14`;
+              const osm = await fetch(osmUrl).then(r => r.json());
+              const addr = osm.address || {};
+              city = addr.village || addr.hamlet || addr.town || addr.city || addr.municipality || addr.county || "";
+            } catch (err) {
+              console.warn("OSM reverse-geocode error:", err);
+            }
+          }
+
+          const props = feat.properties || {};
+          console.log("🧪 Feature properties:", props);
+
+          const name = props.name_en || props.name || props.text || "";
+          const category = props.category || props.subcategory || props.classification || "";
+          const natural = props.natural || "";
+          const maki = props.maki || "";
+
+          console.log("🗻 Checking peak logic...");
+          console.log("Natural:", natural);
+          console.log("Category:", category);
+          console.log("Maki:", maki);
+
+          const isMountainPeak =
+            /peak|mountain|hill|ridge|summit/i.test(category) ||
+            /peak|mountain|hill|ridge|summit/i.test(natural) ||
+            /peak|mountain|hill|ridge|summit/i.test(maki);
+
+          console.log("⛰️ Is mountain peak?", isMountainPeak);
+
+
+          console.log("Natural:", natural, "Category:", category, "IsMountainPeak:", isMountainPeak);
+
+
+
+          // STEP 6: Trigger your POI configurator
+          onPoiClick({
+            name,
+            text: name,
+            landmark: name,
+            category,
+            lat,
+            lng,
+            city: isMountainPeak ? "" : city,
+            iso: isMountainPeak ? "PEAK" : undefined,  // <-- override ISO to use custom color
+          });
+        });
+
+      }
+      const naturalLayer = map.getStyle().layers.find(l => l.id.includes("natural-point-label"));
+      if (naturalLayer) {
+        map.moveLayer(naturalLayer.id);
+
+        map.on("click", naturalLayer.id, async (e) => {
+          console.log("🟢 Click detected on natural-point-label");
+
+          const feat = e.features[0];
+          console.log("📦 Raw feature:", feat);
+
+          const props = feat.properties || {};
+          console.log("🧪 Feature properties:", props);
+
+          const name = props.name_en || props.name || props.text || "";
+          const category = props.category || props.subcategory || props.classification || "";
+          const natural = props.natural || "";
+          const maki = props.maki || "";
+
+          console.log("🗻 Checking peak logic...");
+          console.log("Natural:", natural);
+          console.log("Category:", category);
+          console.log("Maki:", maki);
+
+          const isMountainPeak =
+            /peak|mountain|hill|ridge|summit/i.test(category) ||
+            /peak|mountain|hill|ridge|summit/i.test(natural) ||
+            /peak|mountain|hill|ridge|summit/i.test(maki);
+
+          console.log("⛰️ Is mountain peak?", isMountainPeak);
+
+          const [lng, lat] = e.lngLat.toArray();
+
+          let city = "";
+          if (!isMountainPeak) {
+            console.log("🌍 Fetching city via OSM reverse geocoding...");
+            try {
+              const osmUrl =
+                `https://nominatim.openstreetmap.org/reverse`
+                + `?format=json&addressdetails=1`
+                + `&lat=${lat}&lon=${lng}`
+                + `&zoom=14`;
+
+              const osm = await fetch(osmUrl).then(r => r.json());
+              const addr = osm.address || {};
+
+              console.log("📬 OSM address result:", addr);
+
+              city = addr.village || addr.hamlet || addr.town || addr.city || addr.municipality || addr.county || "";
+              console.log("🏙️ Extracted city:", city);
+            } catch (err) {
+              console.warn("⚠️ OSM reverse-geocode error:", err);
+            }
+          } else {
+            console.log("⛰️ Skipping city lookup for mountain peak");
+          }
+
+          const finalPoi = {
+            name,
+            text: name,
+            landmark: name,
+            category,
+            lat,
+            lng,
+            city: isMountainPeak ? "" : city,
+            iso: isMountainPeak ? "PEAK" : undefined,
+          };
+
+          console.log("✅ Final POI:", finalPoi);
+
+          onPoiClick(finalPoi);
         });
       }
+
+
+
 
       // cluster expansion on click
       map.on("click", "clusters", e => {
@@ -360,72 +536,72 @@ export default function WorldMapComponent({
   }, [accessToken]);
 
   // 2) POLLING (only update on new pins)
-useEffect(() => {
-  if (!mapRef.current) return;
-  const map = mapRef.current;
+  useEffect(() => {
+    if (!mapRef.current) return;
+    const map = mapRef.current;
 
-  let renderedPinIds = new Set();
+    let renderedPinIds = new Set();
 
-  const fetchPins = async () => {
-    const { data: pins, error } = await supabase.from("pins").select("*, countryName").order("created_at", { ascending: true });
-    if (error || !pins) return;
+    const fetchPins = async () => {
+      const { data: pins, error } = await supabase.from("pins").select("*, countryName").order("created_at", { ascending: true });
+      if (error || !pins) return;
 
-    const currentPinIds = new Set(pins.map(p => p.id));
+      const currentPinIds = new Set(pins.map(p => p.id));
 
-    // Only update if there's any new pin
-    let isNew = false;
-    for (let id of currentPinIds) {
-      if (!renderedPinIds.has(id)) {
-        isNew = true;
-        break;
+      // Only update if there's any new pin
+      let isNew = false;
+      for (let id of currentPinIds) {
+        if (!renderedPinIds.has(id)) {
+          isNew = true;
+          break;
+        }
       }
-    }
 
-    if (!isNew) return;
+      if (!isNew) return;
 
-    // Update map and cache IDs
-    renderedPinIds = currentPinIds;
+      // Update map and cache IDs
+      renderedPinIds = currentPinIds;
 
-    const features = pins.map(pin => ({
-      type: "Feature",
-      properties: {
-        pinId: pin.id,
-        title: pin.Name,
-        description: pin.Information,
-        imageurl: pin["Main Image"],
-        date: pin.created_at,
-        iso: countryNameToIso[pin.countryName] || "default",
-        countryName: pin.countryName,
-      },
-      geometry: {
-        type: "Point",
-        coordinates: [pin.longitude, pin.latitude],
-      },
-    }));
+      const features = pins.map(pin => ({
+        type: "Feature",
+        properties: {
+          pinId: pin.id,
+          title: pin.Name,
+          description: pin.Information,
+          imageurl: pin["Main Image"],
+          date: pin.created_at,
+          iso: pin.iso || countryNameToIso[pin.countryName] || "default",
+          countryName: pin.countryName,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [pin.longitude, pin.latitude],
+        },
+      }));
 
-    // Register any new marker icons
-    const existingImageIds = map.listImages();
-    new Set(features.map(f => f.properties.iso)).forEach(iso => {
-      const imgId = `marker-${iso}`;
-      if (!existingImageIds.includes(imgId)) {
-        const hex = countryColors[iso] || countryColors.default;
-        const canvas = createMarkerCanvas(hex, iso);
-        const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
-        map.addImage(imgId, imgData);
+      // Register any new marker icons
+      const existingImageIds = map.listImages();
+      new Set(features.map(f => f.properties.iso)).forEach(iso => {
+        const imgId = `marker-${iso}`;
+        if (!existingImageIds.includes(imgId)) {
+          const hex = countryColors[iso] || countryColors.default;
+          const canvas = createMarkerCanvas(hex, iso);
+          const imgData = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height);
+          map.addImage(imgId, imgData);
+        }
+      });
+
+      const src = map.getSource("pins");
+      if (src) {
+        src.setData({ type: "FeatureCollection", features });
       }
-    });
+    };
 
-    const src = map.getSource("pins");
-    if (src) {
-      src.setData({ type: "FeatureCollection", features });
-    }
-  };
+    fetchPins();
+    const interval = setInterval(fetchPins, 5000);
 
-  fetchPins();
-  const interval = setInterval(fetchPins, 5000);
-
-  return () => clearInterval(interval);
-}, []);
+    return () => clearInterval(interval);
+  }, []);
 
 
   // 3) Click-to-select-point handler
