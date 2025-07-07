@@ -15,6 +15,9 @@ import TwitterIcon from "@mui/icons-material/Twitter";
 import FacebookIcon from "@mui/icons-material/Facebook";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import "slick-carousel/slick/slick.css";
+import "slick-carousel/slick/slick-theme.css";
+import Slider from "react-slick";
 
 import DashboardLayout from "../examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "../examples/Navbars/ResponsiveNavbar/allpage";
@@ -266,9 +269,73 @@ export default function PinPage() {
                             </Grid>
                         </Grid>
                     </CardActions>
+
                 </Card>
             </MDBox>
+            {/* === Image Carousel Here === */}
+            {(() => {
+                // Collect images: main + array (and filter empties)
+                const mainImg = pin["Main Image"];
+                let images = [];
+                if (typeof pin.Images === "string" && pin.Images.trim()) {
+                    try {
+                        const parsed = JSON.parse(pin.Images);
+                        if (Array.isArray(parsed)) {
+                            images = parsed;
+                        } else if (typeof parsed === "string") {
+                            images = [parsed];
+                        }
+                    } catch (e) {
+                        images = pin.Images.split(",").map(s => s.trim()).filter(Boolean);
+                    }
+                }
+                const allImages = [mainImg, ...images].filter(
+                    (img, idx, arr) => img && arr.indexOf(img) === idx
+                );
 
+
+                if (allImages.length === 0) return null;
+
+                // Carousel settings
+                const settings = {
+                    dots: true,
+                    infinite: true,
+                    speed: 500,
+                    slidesToShow: 2,   // <-- SHOW TWO IMAGES per "slide"
+                    slidesToScroll: 2, // <-- Scroll two at a time
+                    arrows: true,      // <-- Shows the arrows on sides
+                    adaptiveHeight: true,
+                    responsive: [
+                        {
+                            breakpoint: 900, // for mobile/tablet, only show 1 image
+                            settings: {
+                                slidesToShow: 1,
+                                slidesToScroll: 1,
+                            }
+                        }
+                    ]
+                };
+
+
+                return (
+                    <MDBox my={3} px={2}>
+                        <Slider {...settings}>
+                            {allImages.map((img, i) => (
+                                <MDBox
+                                    key={i}
+                                    component="img"
+                                    src={img}
+                                    alt={pin.Name + " image " + (i + 1)}
+                                    width="100%"
+                                    maxHeight="350px"
+                                    borderRadius="lg"
+                                    sx={{ objectFit: "cover", mx: "auto" }}
+                                />
+                            ))}
+                        </Slider>
+                    </MDBox>
+                );
+            })()}
             <MDBox mt={4} px={2}>
                 <Grid container spacing={3}>
                     <Grid item xs={12} md={8}>
