@@ -103,8 +103,13 @@ function Footer({ company = { href: "#", name: "Jeroen van Elderen"},
         })}
       >
         {renderLinks()}
+        <MDTypography variant="caption" color="textSecondary">
+    © <a href="https://www.mapbox.com/about/maps/" target="_blank" rel="noopener noreferrer">Mapbox</a>
+    {" "}© <a href="https://www.openstreetmap.org/about/" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors
+  </MDTypography>
       </MDBox>
     </MDBox>
+    
   );
 }
 

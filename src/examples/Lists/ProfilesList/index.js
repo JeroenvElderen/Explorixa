@@ -89,7 +89,7 @@ function ProfilesList({ title, profiles = [], shadow = true }) {
                   <MDTypography variant="button" fontWeight="medium" sx={{ ml: '10px' }}>
                     {item.name}
                   </MDTypography>
-                  <MDTypography variant="caption" color="text">
+                  <MDTypography variant="caption" color="text" sx={{ ml: '10px'}}>
                     {item.description}
                   </MDTypography>
                 </MDBox>

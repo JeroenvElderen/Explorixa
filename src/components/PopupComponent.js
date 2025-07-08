@@ -26,14 +26,7 @@ export default function PopupComponent({ data, onClose }) {
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const touchStartX = useRef(0);
   const [supPins, setSupPins] = useState([]);
-  // Carousel toggle state (by pin id)
   const [mobileToggles, setMobileToggles] = useState({});
-  const updateMobileToggle = (pinId, updates) => {
-    setMobileToggles(prev => ({
-      ...prev,
-      [pinId]: { ...(prev[pinId] || {}), ...updates }
-    }));
-  };
 
   // Desktop toggles
   const [isBeenThere, setIsBeenThere] = useState(false);
@@ -43,264 +36,214 @@ export default function PopupComponent({ data, onClose }) {
   const [isSavedLocal, setIsSavedLocal] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
 
-  // Fetch pins with all counts
+  // Fetch pins…
   useEffect(() => {
     let active = true;
     (async () => {
       const selectCols = 'id, "Name", "Main Image", created_at, "Information", been_there, want_to_go, saved_count';
-      const { data: fetched, error } = await supabase
+      const { data: fetched } = await supabase
         .from('pins')
         .select(selectCols)
         .order('created_at', { ascending: false });
-      if (!active) return;
-      if (!error && Array.isArray(fetched)) {
-        const shaped = fetched.map(p => ({
-          id: p.id.toString(),
-          description: p.Information ?? "",
-          title: p.Name,
-          imageurl: p['Main Image'],
-          date: p.created_at,
-          been_there: p.been_there || 0,
-          want_to_go: p.want_to_go || 0,
-          saved_count: p.saved_count || 0,
-        }));
-        setSupPins(shaped);
-      }
+      if (!active || !fetched) return;
+      setSupPins(fetched.map(p => ({
+        id: p.id.toString(),
+        title: p.Name,
+        description: p.Information ?? "",
+        imageurl: p['Main Image'],
+        date: p.created_at,
+        been_there: p.been_there || 0,
+        want_to_go: p.want_to_go || 0,
+        saved_count: p.saved_count || 0,
+      })));
     })();
-    return () => { active = false; };
+    return () => { active = false };
   }, []);
 
-  // Build pin info and look up DB id
+  // Build currentPin + path
   const pinTitle = data?.title?.toString() ?? "";
   const currentPin = {
     id: data?.id?.toString(),
     title: pinTitle,
-    description: data?.description?.toString() ?? "",
-    imageurl: data?.imageurl?.toString() ?? "",
-    date: data?.date
+    description: data?.description ?? "",
+    imageurl: data?.imageurl ?? "",
+    date: data?.date,
   };
   const realPinId = getRealPinId(currentPin, supPins);
+  const allowSave = Boolean(realPinId);
+  const rawCont = data?.continentName || data?.countryName || data?.title;
+  const rawCoun = data?.countryName || data?.title;
+  const contSlug = sluggify(rawCont);
+  const counSlug = sluggify(rawCoun);
+  const pinSlug = sluggify(data?.title);
+  const pinPath = `/Destinations/World_destinations/${contSlug}/${counSlug}/${pinSlug}`;
+  const formattedDate = data?.date ? new Date(data.date).toISOString().slice(0, 10) : '';
 
-  // Defensive: Only allow saving if DB id exists
-  const allowSave = realPinId && !isNaN(Number(realPinId));
-
-  // Compose carousel pins (deduped)
-  const normalizeId = id => id != null ? id.toString().trim() : "";
-  const pinsArray = [
-    { ...currentPin, id: realPinId }, // always use correct DB id
-    ...supPins
-  ];
-  const seenIds = new Set();
-  const carouselPins = pinsArray.filter(pin => {
-    const id = normalizeId(pin.id);
-    if (!id || seenIds.has(id)) return false;
-    seenIds.add(id);
+  // Carousel pins
+  const allPins = [{ ...currentPin, id: realPinId }, ...supPins];
+  const seen = new Set();
+  const carouselPins = allPins.filter(p => {
+    const id = p.id?.toString();
+    if (!id || seen.has(id)) return false;
+    seen.add(id);
     return true;
   });
 
-  // Carousel helpers
-  const formatTitle = pin => pin.title?.toString() ?? pin.id?.toString() ?? '';
-  const formattedDate = data?.date ? new Date(data.date).toISOString().slice(0, 10) : '';
-  const rawContinent = data?.continentName || data?.countryName || data?.title;
-  const rawCountry = data?.countryName || data?.title;
-  const rawPinTitle = data?.title;
-  const continentSlug = sluggify(rawContinent);
-  const countrySlug = sluggify(rawCountry);
-  const pinSlug = sluggify(rawPinTitle);
-  const pinPath = `/Destinations/World_destinations/${continentSlug}/${countrySlug}/${pinSlug}`;
-
-  // Set desktop counts/toggles from supPins (or reset on pin change)
+  // Reset desktop counts
   useEffect(() => {
-    const pinObj = supPins.find(p => p.id?.toString() === realPinId) || {};
-    setBeenThereCount(Number(pinObj.been_there) || 0);
-    setWantToGoCount(Number(pinObj.want_to_go) || 0);
-    setSavedCount(Number(pinObj.saved_count) || 0);
+    const db = supPins.find(p => p.id === realPinId) || {};
+    setBeenThereCount(db.been_there || 0);
+    setWantToGoCount(db.want_to_go || 0);
+    setSavedCount(db.saved_count || 0);
     setIsBeenThere(false);
     setIsWantToGo(false);
     setIsSavedLocal(false);
   }, [realPinId, supPins]);
 
-  // --- Early return: must come AFTER all hooks ---
   if (!data) return null;
 
-  // --- Touch backdrop handlers ---
-  const handleBackdropTouchStart = e => { touchStartX.current = e.touches[0].clientX; };
-  const handleBackdropTouchEnd = e => {
-    const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartX.current);
-    if (deltaX < 5) onClose();
+  // Touch handlers…
+  const handleTouchStart = e => { touchStartX.current = e.touches[0].clientX };
+  const handleTouchEnd = e => {
+    if (Math.abs(e.changedTouches[0].clientX - touchStartX.current) < 5) onClose();
   };
 
-  // --- Desktop handlers ---
-  const handleToggleBeenThere = async (e) => {
+  // Desktop handlers…
+  const handleToggleBeenThere = async e => {
     e.stopPropagation();
-    const newState = !isBeenThere;
-    const newCount = newState ? beenThereCount + 1 : Math.max(beenThereCount - 1, 0);
-    setIsBeenThere(newState);
-    setBeenThereCount(newCount);
-    await supabase.from("pins").update({ been_there: newCount }).eq("id", realPinId);
+    const nxt = !isBeenThere;
+    const cnt = nxt ? beenThereCount + 1 : Math.max(beenThereCount - 1, 0);
+    setIsBeenThere(nxt); setBeenThereCount(cnt);
+    await supabase.from('pins').update({ been_there: cnt }).eq('id', realPinId);
   };
-  const handleToggleWantToGo = async (e) => {
+  const handleToggleWantToGo = async e => {
     e.stopPropagation();
-    const newState = !isWantToGo;
-    const newCount = newState ? wantToGoCount + 1 : Math.max(wantToGoCount - 1, 0);
-    setIsWantToGo(newState);
-    setWantToGoCount(newCount);
-    await supabase.from("pins").update({ want_to_go: newCount }).eq("id", realPinId);
+    const nxt = !isWantToGo;
+    const cnt = nxt ? wantToGoCount + 1 : Math.max(wantToGoCount - 1, 0);
+    setIsWantToGo(nxt); setWantToGoCount(cnt);
+    await supabase.from('pins').update({ want_to_go: cnt }).eq('id', realPinId);
   };
-  const handleSave = async (e) => {
+  const handleSave = async e => {
     e.stopPropagation();
-    if (!allowSave) {
-      alert("Sorry, this pin is not a real database pin and can't be saved.");
-      return;
-    }
-    const newState = !isSavedLocal;
-    const newCount = newState ? savedCount + 1 : Math.max(savedCount - 1, 0);
-    setIsSavedLocal(newState);
-    setSavedCount(newCount);
-    await supabase.from("pins").update({ saved_count: newCount }).eq("id", realPinId);
-    if (newState) {
-      save({ ...currentPin, id: realPinId, saved_count: newCount });
-    } else {
-      remove({ id: realPinId });
-    }
+    if (!allowSave) return alert("This pin can’t be saved.");
+    const nxt = !isSavedLocal;
+    const cnt = nxt ? savedCount + 1 : Math.max(savedCount - 1, 0);
+    setIsSavedLocal(nxt); setSavedCount(cnt);
+    await supabase.from('pins').update({ saved_count: cnt }).eq('id', realPinId);
+    if (nxt) save({ ...currentPin, id: realPinId, saved_count: cnt });
+    else remove({ id: realPinId });
   };
 
-  // --- MOBILE carousel handlers ---
-  const makeMobileToggleHandler = (pin, key, dbCol, countKey) => async (e) => {
+  // Mobile handlers generator…
+  const mkToggle = (p, key, col, countKey) => async e => {
     e.stopPropagation();
-    const pinId = pin.id;
-    const curr = mobileToggles[pinId]?.[key] ?? false;
-    const currCount = mobileToggles[pinId]?.[countKey] ?? pin[dbCol] ?? 0;
-    const newVal = !curr;
-    const newCount = newVal ? currCount + 1 : Math.max(currCount - 1, 0);
-    updateMobileToggle(pinId, { [key]: newVal, [countKey]: newCount });
-    await supabase.from("pins").update({ [dbCol]: newCount }).eq("id", pinId);
+    const curr = mobileToggles[p.id]?.[key] ?? false;
+    const currCnt = mobileToggles[p.id]?.[countKey] ?? p[col] ?? 0;
+    const nxt = !curr;
+    const nxtCount = nxt ? currCnt + 1 : Math.max(currCnt - 1, 0);
+    setMobileToggles(m => ({
+      ...m,
+      [p.id]: { ...(m[p.id] || {}), [key]: nxt, [countKey]: nxtCount }
+    }));
+    await supabase.from('pins').update({ [col]: nxtCount }).eq('id', p.id);
   };
-  const makeMobileSaveHandler = (pin) => async (e) => {
+  const mkSave = p => async e => {
     e.stopPropagation();
-    const pinId = pin.id;
-    const isSaved = mobileToggles[pinId]?.isSaved ?? false;
-    const currCount = mobileToggles[pinId]?.savedCount ?? pin.saved_count ?? 0;
-    const newVal = !isSaved;
-    const newCount = newVal ? currCount + 1 : Math.max(currCount - 1, 0);
-    updateMobileToggle(pinId, { isSaved: newVal, savedCount: newCount });
-    await supabase.from("pins").update({ saved_count: newCount }).eq("id", pinId);
-    if (newVal) save({ ...pin, saved_count: newCount });
-    else remove({ id: pinId });
+    const saved = mobileToggles[p.id]?.isSaved ?? false;
+    const currCnt = mobileToggles[p.id]?.savedCount ?? p.saved_count ?? 0;
+    const nxtCnt = saved ? Math.max(currCnt - 1, 0) : currCnt + 1;
+    setMobileToggles(m => ({
+      ...m,
+      [p.id]: { ...(m[p.id] || {}), isSaved: !saved, savedCount: nxtCnt }
+    }));
+    await supabase.from('pins').update({ saved_count: nxtCnt }).eq('id', p.id);
+    if (!saved) save({ ...p, saved_count: nxtCnt });
+    else remove({ id: p.id });
   };
 
   return (
     <div
       onClick={onClose}
-      onTouchStart={handleBackdropTouchStart}
-      onTouchEnd={handleBackdropTouchEnd}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
       style={{
-        position: 'fixed',
-        top: 16,
-        left: 0,
-        width: '100vw',
+        position: 'fixed', top: 16, left: 0, width: '100vw',
         height: isMobile ? '500px' : '100vh',
-        backgroundColor: 'transparent',
-        display: 'flex',
+        background: 'transparent', display: 'flex',
         justifyContent: 'center',
-        alignItems: isMobile ? 'flex-start' : 'center',
-        zIndex: 9999,
+        alignItems: isMobile ? 'flex-start' : 'center', zIndex: 9999
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
         onTouchStart={e => e.stopPropagation()}
         style={{
-          width: '100%',
-          maxWidth: 500,
-          margin: isMobile ? '0 0 10px 0' : '0 auto',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'transparent',
-          borderRadius: 16,
-          boxShadow: 'none',
+          width: '100%', maxWidth: 500, margin: isMobile ? '0 0 10px' : '0 auto',
+          display: 'flex', flexDirection: 'column',
+          background: 'transparent', borderRadius: 16, boxShadow: 'none'
         }}
       >
         <ThemeProvider theme={themeDark}>
           {isMobile ? (
-            <Box
-              sx={{
-                position: 'fixed',
-                bottom: 130,
-                left: '2.5vw',
-                width: '95vw',
-                display: 'flex',
-                overflowX: 'auto',
-                WebkitOverflowScrolling: 'touch',
-                touchAction: 'pan-x',
-                overscrollBehaviorX: 'contain',
-                scrollSnapType: 'x mandatory',
-                scrollBehavior: 'smooth',
-                flexWrap: 'nowrap',
-                mt: 2,
-                pb: 0,
-                '&::-webkit-scrollbar': { display: 'none' },
-                px: 0
-              }}
-            >
-              {carouselPins.map(pin => {
-                const safeTitle = formatTitle(pin);
-                const route = `/Destinations/World_destinations/${continentSlug}/${countrySlug}/${sluggify(pin.title)}`;
-                const pinDate = pin.date ? new Date(pin.date).toISOString().slice(0, 10) : '';
-                const pinId = pin.id;
+            <Box sx={{
+              position: 'fixed', bottom: 130, left: '2.5vw', width: '95vw',
+              display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
+              touchAction: 'pan-x', overscrollBehaviorX: 'contain',
+              scrollSnapType: 'x mandatory', scrollBehavior: 'smooth',
+              flexWrap: 'nowrap', mt: 2, pb: 0, '&::-webkit-scrollbar': { display: 'none' }
+            }}>
+              {carouselPins.map(p => {
+                const safeTitle = p.title;
+                const route = `/Destinations/World_destinations/${contSlug}/${counSlug}/${sluggify(p.title)}`;
+                const pinDate = p.date ? new Date(p.date).toISOString().slice(0, 10) : '';
                 return (
-                  <Box
-                    key={pin.id}
+                  <Box key={p.id}
                     sx={{
-                      flex: '0 0 100%',
-                      minWidth: '100%',
-                      scrollSnapAlign: 'start',
-                      mr: 2,
-                      '&:last-of-type': { mr: 0 },
-                      
+                      flex: '0 0 100%', minWidth: '100%', scrollSnapAlign: 'start', mr: 2,
+                      '&:last-of-type': { mr: 0 }
                     }}
                     onClick={() => {
-                        onClose();
-                        navigate(route);
-                      }}
-                      style={{cursor: 'pointer'}}
+                      onClose();
+                      navigate(route, { state: { pin: p } });
+                    }}
+                    style={{ cursor: 'pointer' }}
                   >
                     <RowPinCard
                       color="info"
                       title={safeTitle}
-                      description={pin.description}
+                      description={p.description}
                       date={pinDate}
-                      imageurl={pin.imageurl}
+                      imageurl={p.imageurl}
                       imagealt={safeTitle}
                       height="150px"
-                      truncateDescription={true}
+                      truncateDescription
                       link={route}
                       linkLabel={`Go to ${safeTitle}`}
                       onLinkClick={() => {
                         onClose();
-                        navigate(route);
+                        navigate(route, { state: { pin: p } });
                       }}
-                      // Pass counts/toggles/handlers:
-                      isSaved={mobileToggles[pinId]?.isSaved ?? false}
-                      savedCount={mobileToggles[pinId]?.savedCount ?? pin.saved_count ?? 0}
-                      onSave={makeMobileSaveHandler(pin)}
-                      isBeenThere={mobileToggles[pinId]?.isBeenThere ?? false}
-                      beenThereCount={mobileToggles[pinId]?.beenThereCount ?? pin.been_there ?? 0}
-                      onBeenThere={makeMobileToggleHandler(pin, "isBeenThere", "been_there", "beenThereCount")}
-                      isWantToGo={mobileToggles[pinId]?.isWantToGo ?? false}
-                      wantToGoCount={mobileToggles[pinId]?.wantToGoCount ?? pin.want_to_go ?? 0}
-                      onWantToGo={makeMobileToggleHandler(pin, "isWantToGo", "want_to_go", "wantToGoCount")}
+                      isSaved={mobileToggles[p.id]?.isSaved ?? false}
+                      savedCount={mobileToggles[p.id]?.savedCount ?? p.saved_count ?? 0}
+                      onSave={mkSave(p)}
+                      isBeenThere={mobileToggles[p.id]?.isBeenThere ?? false}
+                      beenThereCount={mobileToggles[p.id]?.beenThereCount ?? p.been_there ?? 0}
+                      onBeenThere={mkToggle(p, 'isBeenThere', 'been_there', 'beenThereCount')}
+                      isWantToGo={mobileToggles[p.id]?.isWantToGo ?? false}
+                      wantToGoCount={mobileToggles[p.id]?.wantToGoCount ?? p.want_to_go ?? 0}
+                      onWantToGo={mkToggle(p, 'isWantToGo', 'want_to_go', 'wantToGoCount')}
                     />
                   </Box>
                 );
-              })} 
+              })}
             </Box>
           ) : (
             <Box sx={{ position: 'relative' }}>
               <PinCard
                 color="info"
                 title={
-                  <Typography variant="h6" align="center" sx={{ mt: -1, mb: 1, fontWeight: 800, color: 'white' }}>
+                  <Typography variant="h6" align="center"
+                    sx={{ mt: -1, mb: 1, fontWeight: 800, color: 'white' }}>
                     {data.title}
                   </Typography>
                 }
@@ -314,9 +257,8 @@ export default function PopupComponent({ data, onClose }) {
                 linkLabel={`Go to ${data.title}`}
                 onLinkClick={() => {
                   onClose();
-                  navigate(pinPath);
+                  navigate(pinPath, { state: { pin: currentPin } });
                 }}
-                // Pass all counts/toggles/handlers
                 isSaved={isSavedLocal}
                 savedCount={savedCount}
                 onSave={handleSave}

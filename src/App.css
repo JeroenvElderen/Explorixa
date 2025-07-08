@@ -112,3 +112,6 @@ html, body, #root {
   border-top: 6px solid #F18F01 !important;
 }
 
+.mapboxgl-ctrl-logo {
+  display: none !important;
+}

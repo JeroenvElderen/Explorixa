@@ -1,24 +1,32 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import CardActions from "@mui/material/CardActions";
+import DOMPurify from 'dompurify';
 import Avatar from "@mui/material/Avatar";
 import IconButton from "@mui/material/IconButton";
 import FlagIcon from "@mui/icons-material/Flag";
-import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
-import StarBorderIcon from '@mui/icons-material/StarBorder';
-import StarIcon from '@mui/icons-material/Star';
-import EmailIcon from "@mui/icons-material/Email";
-import TwitterIcon from "@mui/icons-material/Twitter";
-import FacebookIcon from "@mui/icons-material/Facebook";
+import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
+import StarBorderIcon from "@mui/icons-material/StarBorder";
+import StarIcon from "@mui/icons-material/Star";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import Slider from "react-slick";
-
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import TextField from "@mui/material/TextField";
+import Button from "@mui/material/Button";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import Checkbox from "@mui/material/Checkbox";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import DeleteIcon from "@mui/icons-material/Delete";
 import DashboardLayout from "../examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "../examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "../examples/Footer";
@@ -26,232 +34,382 @@ import MDBox from "./MDBox";
 import MDTypography from "./MDTypography";
 import { supabase } from "../SupabaseClient";
 import { useSavedPins } from "./SavedPinsContext";
+import PinMapCard from "./PinMapCard";
+import { Delete } from "@mui/icons-material";
+
+// Safely normalize your Images column into an array of URLs
+function normalizeImages(raw) {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw !== "string" || !raw.trim()) return [];
+    try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed;
+    } catch { }
+    const parts = raw.split(",").map((s) => s.trim()).filter(Boolean);
+    return parts.length > 1 ? parts : [raw.trim()];
+}
+
+const sluggify = (str) =>
+    str
+        ?.toString()
+        .trim()
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/\s+/g, "_")
+        .replace(/[^\w-]/g, "") ?? "";
 
 export default function PinPage() {
     const { pinSlug } = useParams();
-    const [pin, setPin] = useState(null);
+    const { state } = useLocation();
+    const pinFromState = state?.pin ?? null;
     const { pins, save, remove } = useSavedPins();
 
-    // User toggle states (local UI state only)
+    // Pin data & UI state
+    const [pin, setPin] = useState(pinFromState);
+    const [loading, setLoading] = useState(!pinFromState);
     const [isBeenThere, setIsBeenThere] = useState(false);
     const [isWantToGo, setIsWantToGo] = useState(false);
 
-    useEffect(() => {
-        const fetchPin = async () => {
-            const displayName = pinSlug.replace(/_/g, " ");
-            const { data, error } = await supabase
-                .from("pins")
-                .select("*, saved_count, been_there, want_to_go")
-                .eq("Name", displayName)
-                .single();
-            if (!error) {
-                setPin(data);
-            } else {
-                console.error("Error loading pin:", error);
-            }
-        };
-        fetchPin();
-    }, [pinSlug]);
+    // "Save to list" dialog state
+    const [listDialogOpen, setListDialogOpen] = useState(false);
+    const [lists, setLists] = useState([]);
+    const [selectedLists, setSelectedLists] = useState([]);
+    const [newListName, setNewListName] = useState("");
 
-    // Optionally: Reset local toggles on pin change
+    // Auth session & user
+    const [user, setUser] = useState(null);
+
+    // Subscribe to auth state, keep session.user in state
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+        });
+        const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+        });
+        return () => {
+            listener.subscription.unsubscribe();
+        };
+    }, []);
+
+    // Compute saved-state from context
+    const isSaved = pins.some((p) => p.id === pin?.id);
+
+    // Fetch the user's lists whenever the dialog is opened
+    useEffect(() => {
+        if (!listDialogOpen || !user) return;
+        (async () => {
+            const { data, error } = await supabase
+                .from("lists")
+                .select("id, name")
+                .eq("user_id", user.id);
+            if (!error) setLists(data);
+        })();
+    }, [listDialogOpen, user]);
+
+    // Handlers for the "save" / "unsave" workflow
+    const handleSaveClick = async () => {
+        if (!user) {
+            console.error("Please sign in to manage your saved pins");
+            return;
+        }
+
+        if (!isSaved) {
+            // Not yet saved → show "add to list" dialog
+            setListDialogOpen(true);
+            return;
+        }
+
+        // Already saved → remove from all of this user's lists
+        const { data: userLists, error: listErr } = await supabase
+            .from("lists")
+            .select("id")
+            .eq("user_id", user.id);
+        if (listErr) {
+            console.error(listErr);
+            return;
+        }
+        await supabase
+            .from("list_pins")
+            .delete()
+            .in("list_id", userLists.map((l) => l.id))
+            .eq("pin_id", pin.id);
+
+        // Also update the pin’s saved_count & context
+        await toggleSave();
+    };
+
+    const handleDeleteList = async (listId) => {
+        if (!user) return;
+        // remove from Supabase
+        const { error } = await supabase
+            .from("lists")
+            .delete()
+            .eq("id", listId)
+            .eq("user_id", user.id);
+        if (error) {
+            console.error("delete list failed", error);
+            return;
+        }
+        // update local UI state
+        setLists((prev) => prev.filter((l) => l.id !== listId));
+        // also remove from any checked boxes
+        setSelectedLists((prev) => prev.filter((id) => id !== listId));
+    };
+
+
+    const handleDialogClose = () => {
+        setListDialogOpen(false);
+        setSelectedLists([]);
+        setNewListName("");
+    };
+
+    const handleToggleList = (listId) => {
+        setSelectedLists((prev) =>
+            prev.includes(listId) ? prev.filter((id) => id !== listId) : [...prev, listId]
+        );
+    };
+
+    const handleCreateAndSave = async () => {
+        if (!user) return;
+
+        // 1) Optionally create a new list
+        let createdListId = null;
+        if (newListName.trim()) {
+            const { data, error } = await supabase
+                .from("lists")
+                .insert({ user_id: user.id, name: newListName.trim() })
+                .single();
+            if (!error) createdListId = data.id;
+        }
+
+        // 2) Upsert pin into each selected list
+        const allListIds = [...selectedLists, ...(createdListId ? [createdListId] : [])];
+        await Promise.all(
+            allListIds.map((listId) =>
+                supabase.from("list_pins").upsert({ list_id: listId, pin_id: pin.id })
+            )
+        );
+
+        // 3) Toggle save state
+        await toggleSave();
+        handleDialogClose();
+    };
+
+    // Original pin-actions
+    const toggleBeenThere = async () => {
+        const next = !isBeenThere;
+        const newCount = next
+            ? (pin.been_there || 0) + 1
+            : Math.max((pin.been_there || 1) - 1, 0);
+        setIsBeenThere(next);
+        setPin((p) => ({ ...p, been_there: newCount }));
+        await supabase.from("pins").update({ been_there: newCount }).eq("id", pin.id);
+    };
+
+    const toggleWantToGo = async () => {
+        const next = !isWantToGo;
+        const newCount = next
+            ? (pin.want_to_go || 0) + 1
+            : Math.max((pin.want_to_go || 1) - 1, 0);
+        setIsWantToGo(next);
+        setPin((p) => ({ ...p, want_to_go: newCount }));
+        await supabase.from("pins").update({ want_to_go: newCount }).eq("id", pin.id);
+    };
+
+    const toggleSave = async () => {
+        const newCount = isSaved
+            ? Math.max((pin.saved_count || 1) - 1, 0)
+            : (pin.saved_count || 0) + 1;
+        setPin((p) => ({ ...p, saved_count: newCount }));
+        await supabase.from("pins").update({ saved_count: newCount }).eq("id", pin.id);
+        isSaved ? remove(pin) : save(pin);
+    };
+
+    // Load pin data on mount / slug change
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            if (pinFromState) {
+                setPin({
+                    ...pinFromState,
+                    latitude: Number(pinFromState.latitude),
+                    longitude: Number(pinFromState.longitude),
+                    Images: normalizeImages(pinFromState.Images),
+                });
+                setLoading(false);
+                return;
+            }
+
+            setLoading(true);
+            const nameFromSlug = pinSlug.replace(/_/g, " ");
+            let { data: fullRaw, error: fullErr } = await supabase
+                .from("pins")
+                .select(`
+          *,
+          addedBy:profiles!pins_user_id_fkey(
+            full_name,
+            avatar_url,
+            user_id
+          )
+        `)
+                .eq("Name", nameFromSlug)
+                .single();
+
+            if ((fullErr || !fullRaw) && !cancelled) {
+                const { data: list, error: listErr } = await supabase
+                    .from("pins")
+                    .select(`id,"Name"`);
+                if (!listErr && list) {
+                    const map = {};
+                    list.forEach((r) => (map[sluggify(r.Name)] = r.id));
+                    const pid = map[sluggify(pinSlug)];
+                    if (pid) {
+                        const { data, error } = await supabase
+                            .from("pins")
+                            .select(`
+                *,
+                addedBy:profiles!pins_user_id_fkey(
+                  full_name,
+                  avatar_url,
+                  user_id
+                )
+              `)
+                            .eq("id", pid)
+                            .single();
+                        fullRaw = data;
+                        fullErr = error;
+                    }
+                }
+            }
+
+            if (!cancelled && fullRaw) {
+                setPin({
+                    ...fullRaw,
+                    latitude: Number(fullRaw.latitude),
+                    longitude: Number(fullRaw.longitude),
+                    Images: normalizeImages(fullRaw.Images),
+                    addedBy: fullRaw.addedBy
+                        ? {
+                            username: fullRaw.addedBy.full_name,
+                            avatarUrl: fullRaw.addedBy.avatar_url,
+                            userId: fullRaw.addedBy.user_id,
+                        }
+                        : null,
+                });
+            }
+            setLoading(false);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [pinSlug, pinFromState]);
+
+    // Reset toggles on pin change
     useEffect(() => {
         setIsBeenThere(false);
         setIsWantToGo(false);
     }, [pin?.id]);
 
-    if (!pin) return (
-        <DashboardLayout>
-            <SimpleResponsiveNavbar />
-            <MDBox p={4} textAlign="center">
-                <MDTypography variant="h5">Loading pin...</MDTypography>
-            </MDBox>
-            <Footer />
-        </DashboardLayout>
-    );
+    if (loading) {
+        return (
+            <DashboardLayout>
+                <SimpleResponsiveNavbar />
+                <MDBox p={4} textAlign="center">
+                    <MDTypography variant="h5">Loading pin…</MDTypography>
+                </MDBox>
+                <Footer />
+            </DashboardLayout>
+        );
+    }
+    if (!pin) {
+        return (
+            <DashboardLayout>
+                <SimpleResponsiveNavbar />
+                <MDBox p={4} textAlign="center">
+                    <MDTypography variant="h5">Pin not found.</MDTypography>
+                </MDBox>
+                <Footer />
+            </DashboardLayout>
+        );
+    }
 
-    const isSaved = pins.some((p) => p?.id === pin?.id);
-
-    // Toggle "Been There" with DB count update
-    const toggleBeenThere = async () => {
-        const newIsBeenThere = !isBeenThere;
-        setIsBeenThere(newIsBeenThere);
-        const newCount = newIsBeenThere
-            ? (pin.been_there || 0) + 1
-            : Math.max((pin.been_there || 1) - 1, 0);
-
-        // Update Supabase
-        const { error } = await supabase
-            .from("pins")
-            .update({ been_there: newCount })
-            .eq("id", pin.id);
-
-        if (error) {
-            console.error("Failed to update been_there:", error);
-            return;
-        }
-
-        // Fetch the updated pin row
-        const { data: refreshedPin, error: fetchError } = await supabase
-            .from("pins")
-            .select("*, been_there, want_to_go, saved_count")
-            .eq("id", pin.id)
-            .single();
-
-        if (fetchError) {
-            console.error("Failed to fetch updated pin:", fetchError);
-            return;
-        }
-        setPin(refreshedPin);
-    };
-
-    // Toggle "Want to Go" with DB count update
-    const toggleWantToGo = async () => {
-        const newIsWantToGo = !isWantToGo;
-        setIsWantToGo(newIsWantToGo);
-        const newCount = newIsWantToGo
-            ? (pin.want_to_go || 0) + 1
-            : Math.max((pin.want_to_go || 1) - 1, 0);
-
-        // Update Supabase
-        const { error } = await supabase
-            .from("pins")
-            .update({ want_to_go: newCount })
-            .eq("id", pin.id);
-
-        if (error) {
-            console.error("Failed to update want_to_go:", error);
-            return;
-        }
-
-        // Fetch the updated pin row
-        const { data: refreshedPin, error: fetchError } = await supabase
-            .from("pins")
-            .select("*, been_there, want_to_go, saved_count")
-            .eq("id", pin.id)
-            .single();
-
-        if (fetchError) {
-            console.error("Failed to fetch updated pin:", fetchError);
-            return;
-        }
-        setPin(refreshedPin);
-    };
-
-    // Toggle "Saved" (Heart)
-    const toggleSave = async () => {
-        const newCount = isSaved
-            ? Math.max((pin.saved_count || 1) - 1, 0)
-            : (pin.saved_count || 0) + 1;
-
-        // Update Supabase
-        const { error } = await supabase
-            .from("pins")
-            .update({ saved_count: newCount })
-            .eq("id", pin.id);
-
-        if (error) {
-            console.error("Failed to update saved_count:", error);
-            return;
-        }
-
-        // Fetch the updated pin row
-        const { data: refreshedPin, error: fetchError } = await supabase
-            .from("pins")
-            .select("*, saved_count, been_there, want_to_go")
-            .eq("id", pin.id)
-            .single();
-
-        if (fetchError) {
-            console.error("Failed to fetch updated pin:", fetchError);
-            return;
-        }
-
-        setPin(refreshedPin);
-        isSaved ? remove(refreshedPin) : save(refreshedPin);
-    };
-
-    const additionalImages = Array.isArray(pin.Images) ? pin.Images : [];
+    const additionalImages = normalizeImages(pin.Images);
 
     return (
         <DashboardLayout>
             <SimpleResponsiveNavbar />
-
-            <MDBox my={4} px={2}>
-                <Card sx={{
-                    backdropFilter: "blur(20px)",
-                    WebkitBackdropFilter: "blur(20px)",
-                    background:
-                        "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-                    border: "1px solid rgba(255, 255, 255, 0.6)",
-                    boxShadow:
-                        "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-                    borderRadius: "12px",
-                }}>
+            <MDBox my={1} px={2}>
+                <Card
+                    sx={{
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        background:
+                            "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+                        border: "1px solid rgba(255,255,255,0.6)",
+                        boxShadow:
+                            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+                        borderRadius: "12px",
+                    }}
+                >
                     <CardContent>
-                        <Grid container spacing={4} alignItems="center">
-                            {/* Title + subtitle + description */}
-                            <Grid item xs={12} md={6} mt={1} >
+                        <Grid container spacing={4} alignItems="center" justifyContent="space-between">
+                            <Grid item xs={12} md={6} mt={1}>
                                 {(pin.City || pin.countryName) && (
                                     <MDTypography variant="subtitle1" color="text">
-                                        {pin.City ? pin.City : ""}
-                                        {pin.City && pin.countryName ? ", " : ""}
+                                        {pin.City}
+                                        {pin.City && pin.countryName && ", "}
                                         {pin.countryName}
                                     </MDTypography>
                                 )}
                                 <MDTypography variant="h3" gutterBottom>
                                     {pin.Name}
                                 </MDTypography>
-
                                 <MDTypography variant="body2" color="text" sx={{ mt: 1 }}>
                                     {pin["Post Summary"]}
                                 </MDTypography>
                             </Grid>
-
-                            {/* Stats */}
-                            <Grid item xs={12} md={6}>
-                                <Grid container spacing={2} justifyContent="space-evenly">
-                                    <Grid item textAlign="center">
-                                        <IconButton
-                                            type="button"
-                                            size="large"
-                                            onClick={toggleBeenThere}
-                                        >
-                                            {isBeenThere
-                                                ? <FlagIcon sx={{ color: "green" }} />
-                                                : <OutlinedFlagIcon sx={{ color: "green" }} />}
-                                        </IconButton>
-                                        <MDTypography variant="h5">{pin.been_there ?? 0}</MDTypography>
-                                        <MDTypography variant="caption">Been here</MDTypography>
-                                    </Grid>
-                                    <Grid item textAlign="center">
-                                        <IconButton
-                                            type="button"
-                                            size="large"
-                                            onClick={toggleWantToGo}
-                                        >
-                                            {isWantToGo
-                                                ? <StarIcon sx={{ color: "gold" }} />
-                                                : <StarBorderIcon sx={{ color: "gold" }} />}
-                                        </IconButton>
-                                        <MDTypography variant="h5">{pin.want_to_go ?? 0}</MDTypography>
-                                        <MDTypography variant="caption">Want to go</MDTypography>
-                                    </Grid>
-                                    <Grid item textAlign="center">
-                                        <IconButton
-                                            type="button"
-                                            size="large"
-                                            sx={{ color: "error.main" }}
-                                            onClick={e => {
-                                                e.preventDefault();
-                                                e.stopPropagation();
-                                                toggleSave();
-                                            }}
-                                        >
-                                            {isSaved ? <FavoriteIcon /> : <FavoriteBorderIcon />}
-                                        </IconButton>
-                                        <MDTypography variant="h5">{pin.saved_count ?? 0}</MDTypography>
-                                        <MDTypography variant="caption">Saved</MDTypography>
-                                    </Grid>
+                            <Grid
+                                item
+                                xs={12}
+                                md="auto"
+                                container
+                                spacing={2}
+                                justifyContent="flex-end"
+                            >
+                                <Grid item textAlign="center">
+                                    <IconButton size="large" onClick={toggleBeenThere}>
+                                        {isBeenThere ? (
+                                            <FlagIcon sx={{ color: "green" }} />
+                                        ) : (
+                                            <OutlinedFlagIcon sx={{ color: "green" }} />
+                                        )}
+                                    </IconButton>
+                                    <MDTypography variant="h5">{pin.been_there ?? 0}</MDTypography>
+                                    <MDTypography variant="caption">Been here</MDTypography>
+                                </Grid>
+                                <Grid item textAlign="center">
+                                    <IconButton size="large" onClick={toggleWantToGo}>
+                                        {isWantToGo ? (
+                                            <StarIcon sx={{ color: "gold" }} />
+                                        ) : (
+                                            <StarBorderIcon sx={{ color: "gold" }} />
+                                        )}
+                                    </IconButton>
+                                    <MDTypography variant="h5">{pin.want_to_go ?? 0}</MDTypography>
+                                    <MDTypography variant="caption">Want to go</MDTypography>
+                                </Grid>
+                                <Grid item textAlign="center">
+                                    <IconButton
+                                        size="large"
+                                        sx={{ color: "error.main" }}
+                                        onClick={handleSaveClick}
+                                    >
+                                        {isSaved ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+                                    </IconButton>
+                                    <MDTypography variant="h5">{pin.saved_count ?? 0}</MDTypography>
+                                    <MDTypography variant="caption">Saved</MDTypography>
                                 </Grid>
                             </Grid>
                         </Grid>
@@ -269,132 +427,190 @@ export default function PinPage() {
                             </Grid>
                         </Grid>
                     </CardActions>
-
                 </Card>
             </MDBox>
-            {/* === Image Carousel Here === */}
-            {(() => {
-                // Collect images: main + array (and filter empties)
-                const mainImg = pin["Main Image"];
-                let images = [];
-                if (typeof pin.Images === "string" && pin.Images.trim()) {
-                    try {
-                        const parsed = JSON.parse(pin.Images);
-                        if (Array.isArray(parsed)) {
-                            images = parsed;
-                        } else if (typeof parsed === "string") {
-                            images = [parsed];
-                        }
-                    } catch (e) {
-                        images = pin.Images.split(",").map(s => s.trim()).filter(Boolean);
-                    }
-                }
-                const allImages = [mainImg, ...images].filter(
-                    (img, idx, arr) => img && arr.indexOf(img) === idx
-                );
 
-
-                if (allImages.length === 0) return null;
-
-                // Carousel settings
-                const settings = {
-                    dots: true,
-                    infinite: true,
-                    speed: 500,
-                    slidesToShow: 2,   // <-- SHOW TWO IMAGES per "slide"
-                    slidesToScroll: 2, // <-- Scroll two at a time
-                    arrows: true,      // <-- Shows the arrows on sides
-                    adaptiveHeight: true,
-                    responsive: [
-                        {
-                            breakpoint: 900, // for mobile/tablet, only show 1 image
-                            settings: {
-                                slidesToShow: 1,
-                                slidesToScroll: 1,
-                            }
-                        }
-                    ]
-                };
-
-
-                return (
-                    <MDBox my={3} px={2}>
-                        <Slider {...settings}>
-                            {allImages.map((img, i) => (
+            {additionalImages.length > 0 && (
+                <MDBox my={3} px={2}>
+                    <Slider
+                        dots
+                        infinite
+                        speed={500}
+                        slidesToShow={2}
+                        slidesToScroll={2}
+                        arrows
+                        adaptiveHeight
+                        responsive={[{ breakpoint: 900, settings: { slidesToShow: 1, slidesToScroll: 1 } }]}
+                    >
+                        {[pin["Main Image"], ...additionalImages]
+                            .filter((x, i, a) => x && a.indexOf(x) === i)
+                            .map((img, i) => (
                                 <MDBox
                                     key={i}
                                     component="img"
                                     src={img}
-                                    alt={pin.Name + " image " + (i + 1)}
+                                    alt={`${pin.Name} image ${i + 1}`}
                                     width="100%"
                                     maxHeight="350px"
                                     borderRadius="lg"
                                     sx={{ objectFit: "cover", mx: "auto" }}
                                 />
                             ))}
-                        </Slider>
-                    </MDBox>
-                );
-            })()}
+                    </Slider>
+                </MDBox>
+            )}
+
             <MDBox mt={4} px={2}>
                 <Grid container spacing={3}>
                     <Grid item xs={12} md={8}>
-                        <MDTypography variant="body1" mb={2} sx={{ lineHeight: 1.8 }}>
-                            {pin.Information}
-                        </MDTypography>
-
-                        {additionalImages.length > 0 && (
-                            <Grid container spacing={2}>
-                                {additionalImages.map((img, idx) => (
-                                    <Grid item xs={12} sm={6} key={idx}>
-                                        <MDBox
-                                            component="img"
-                                            src={img}
-                                            alt={pin.Name}
-                                            width="100%"
-                                            borderRadius="lg"
-                                        />
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <MDBox
-                            p={2}
-                            sx={{
-                                backdropFilter: "blur(20px)",
-                                WebkitBackdropFilter: "blur(20px)",
-                                background:
-                                    "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-                                border: "1px solid rgba(255, 255, 255, 0.6)",
-                                boxShadow:
-                                    "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-                                borderRadius: "12px",
+                        <div style={{ color: "white" }}
+                            dangerouslySetInnerHTML={{
+                                __html: DOMPurify.sanitize(pin.Information || '')
                             }}
-                        >
-                            <MDTypography variant="h6" mb={1}>
-                                Details
-                            </MDTypography>
-                            {pin.Category && (
-                                <MDTypography variant="body2" mb={0.5}>
-                                    Category: {pin.Category}
-                                </MDTypography>
-                            )}
-                            {pin.Ranking && (
-                                <MDTypography variant="body2" mb={0.5}>
-                                    Ranking: {pin.Ranking}
-                                </MDTypography>
-                            )}
-                            {pin["Average Costs"] && (
-                                <MDTypography variant="body2" mb={0.5}>
-                                    Average Cost: {pin["Average Costs"]}
-                                </MDTypography>
-                            )}
-                        </MDBox>
+                        />
                     </Grid>
-                </Grid>
-            </MDBox>
+                    <Grid item xs={12} md={4} container direction="column" spacing={2}>
+      <Grid item>
+        <PinMapCard pin={pin} />
+      </Grid>
+      <Grid item>
+        <MDBox
+          p={2}
+          sx={{
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            background:
+              "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+            border: "1px solid rgba(255,255,255,0.6)",
+            boxShadow:
+              "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+            borderRadius: "12px",
+          }}
+        >
+          <MDTypography variant="h6" mb={1}>
+            Details
+          </MDTypography>
+          {pin.Category && (
+            <MDTypography variant="body2" mb={0.5}>
+              Category: {pin.Category}
+            </MDTypography>
+          )}
+          {pin.Ranking && (
+            <MDTypography variant="body2" mb={0.5}>
+              Ranking: {pin.Ranking}
+            </MDTypography>
+          )}
+          {pin["Average Costs"] && (
+            <MDTypography variant="body2" mb={0.5}>
+              Average Cost: {pin["Average Costs"]}
+            </MDTypography>
+          )}
+        </MDBox>
+      </Grid>
+    </Grid>
+  </Grid>
+</MDBox>
+
+            {/* "Add to list" Dialog */}
+            <Dialog open={listDialogOpen} onClose={handleDialogClose}
+                PaperProps={{
+                    sx: {
+                        backdropFilter: "blur(20px)",
+                        WebkitBackdropFilter: "blur(20px)",
+                        background:
+                            "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+                        border: "1px solid rgba(255,255,255,0.6)",
+                        boxShadow:
+                            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+                        borderRadius: "12px",
+                        p: 2,                // inner padding
+                        minWidth: 300,       // grow to taste
+                    }
+                }}
+            >
+                <DialogTitle>Add to a list</DialogTitle>
+                <DialogContent
+                >
+                    <List>
+                        {lists.map((l) => (
+                            <ListItem
+                                key={l.id}
+                                dense
+                                secondaryAction={
+                                    <IconButton
+                                        sx={{
+                                            color: "#F18F01"
+                                        }}
+                                        edge="end"
+                                        onClick={() => handleDeleteList(l.id)}
+                                        size="small"
+                                    >
+                                        <DeleteIcon fontSize="small" />
+                                    </IconButton>
+                                }
+                            >
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            color="default"
+                                            disableRipple
+                                            checked={selectedLists.includes(l.id)}
+                                            onChange={() => handleToggleList(l.id)}
+                                            sx={{
+                                                // unchecked color
+                                                color: "#ccc",
+
+                                                // ensure the box is transparent when unchecked
+                                                "& .MuiSvgIcon-root": {
+                                                    fill: "transparent",
+                                                },
+
+                                                // checked overrides
+                                                "&.Mui-checked": {
+                                                    color: "#F18F01",
+
+                                                    // fill the box when checked
+                                                    "& .MuiSvgIcon-root": {
+                                                        fill: "#F18F01",
+                                                    },
+                                                },
+
+                                                // remove the blue hover ripple
+                                                "&:hover": {
+                                                    backgroundColor: "transparent",
+                                                },
+                                            }}
+                                        />
+                                    }
+                                    label={l.name}
+                                />
+                            </ListItem>
+                        ))}
+                    </List>
+                    <TextField
+                        margin="normal"
+                        fullWidth
+                        label="Or create new list"
+                        value={newListName}
+                        onChange={(e) => setNewListName(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button sx={{ color: "#F18F01", "&:hover": { backgroundColor: "transparent", color: "#fff" } }} onClick={handleDialogClose}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        sx={{
+                            background: "#F18F01 !important",
+                            color: "white !important"
+                        }}
+                        onClick={handleCreateAndSave}
+                        disabled={(!selectedLists.length && !newListName.trim()) || !user}
+                    >
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
             <Footer />
         </DashboardLayout>
     );

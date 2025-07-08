@@ -344,6 +344,14 @@ export default function WorldMapComponent({
           const feat = e.features[0];
           const [lng, lat] = e.lngLat.toArray();
 
+          const props = feat.properties || {};
+          console.log("🧪 Feature properties:", props);
+
+          const name = props.name_en || props.name || props.text || "";
+          const category = props.category || props.subcategory || props.classification || "";
+          const natural = props.natural || "";
+          const maki = props.maki || "";
+          
           // STEP 1: Try to find city from rendered features
           const placeLayerIds = map.getStyle().layers
             .filter(l => l.id.includes("place-label"))
@@ -351,21 +359,41 @@ export default function WorldMapComponent({
           let city = map.queryRenderedFeatures(e.point, { layers: placeLayerIds })[0]
             ?.properties.text || "";
 
-          // STEP 2: Fallback - Mapbox tilequery
-          if (!city) {
+          let address = "";
+
+          if (name) {
+            // Try Mapbox forward geocoding first
             try {
-              const tqUrl =
-                `https://api.mapbox.com/v4/mapbox.mapbox-streets-v8/tilequery/`
-                + `${lng},${lat}.json`
-                + `?layers=place_label&limit=1`
-                + `&access_token=${accessToken}`;
-              const tq = await fetch(tqUrl).then(r => r.json());
-              const props = tq.features?.[0]?.properties;
-              city = props?.name_en || props?.name || "";
+              const response = await geocoder.forwardGeocode({
+                query: name,
+                limit: 1,
+                // Optionally, provide country or proximity for better match:
+                // countries: ['FR'], // ISO country code if you know
+                // proximity: { longitude: lng, latitude: lat },
+              }).send();
+              if (response.body.features.length > 0) {
+                address = response.body.features[0].place_name;
+              }
             } catch (err) {
-              console.warn("Tilequery error:", err);
+              console.warn("Mapbox forward geocode error:", err);
             }
           }
+
+          if (!address) {
+            // Fallback: OSM reverse geocode
+            try {
+              const osmUrl =
+                `https://nominatim.openstreetmap.org/reverse`
+                + `?format=json&addressdetails=1`
+                + `&lat=${lat}&lon=${lng}`
+                + `&zoom=14`;
+              const osm = await fetch(osmUrl).then(r => r.json());
+              address = osm.display_name || "";
+            } catch (err) {
+              console.warn("OSM reverse-geocode error:", err);
+            }
+          }
+
 
           // STEP 3: Fallback - OpenStreetMap/Nominatim
           if (!city) {
@@ -383,13 +411,7 @@ export default function WorldMapComponent({
             }
           }
 
-          const props = feat.properties || {};
-          console.log("🧪 Feature properties:", props);
-
-          const name = props.name_en || props.name || props.text || "";
-          const category = props.category || props.subcategory || props.classification || "";
-          const natural = props.natural || "";
-          const maki = props.maki || "";
+          
 
           console.log("🗻 Checking peak logic...");
           console.log("Natural:", natural);
@@ -418,6 +440,7 @@ export default function WorldMapComponent({
             lng,
             city: isMountainPeak ? "" : city,
             iso: isMountainPeak ? "PEAK" : undefined,  // <-- override ISO to use custom color
+            address,
           });
         });
 
@@ -455,6 +478,7 @@ export default function WorldMapComponent({
           const [lng, lat] = e.lngLat.toArray();
 
           let city = "";
+          let address = "";
           if (!isMountainPeak) {
             console.log("🌍 Fetching city via OSM reverse geocoding...");
             try {
@@ -470,6 +494,7 @@ export default function WorldMapComponent({
               console.log("📬 OSM address result:", addr);
 
               city = addr.village || addr.hamlet || addr.town || addr.city || addr.municipality || addr.county || "";
+              address = osm.display_name || "";
               console.log("🏙️ Extracted city:", city);
             } catch (err) {
               console.warn("⚠️ OSM reverse-geocode error:", err);
@@ -487,6 +512,7 @@ export default function WorldMapComponent({
             lng,
             city: isMountainPeak ? "" : city,
             iso: isMountainPeak ? "PEAK" : undefined,
+            address,
           };
 
           console.log("✅ Final POI:", finalPoi);

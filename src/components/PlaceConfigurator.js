@@ -91,6 +91,7 @@ export default function PlaceConfigurator({
     Information: "",
     Category: "",
     Ranking: "",
+    
     "Average Costs": "",
     MainImage: "",
     Images: [],
@@ -226,9 +227,11 @@ export default function PlaceConfigurator({
         Longitude: selectedPlace.lng,
         countryName: selectedPlace.country,
         City:
-  selectedPlace.iso && selectedPlace.iso.toUpperCase() === "PEAK"
-    ? ""
-    : selectedPlace.city || "",
+          selectedPlace.iso && selectedPlace.iso.toUpperCase() === "PEAK"
+            ? ""
+            : selectedPlace.city || "",
+        
+
 
       }));
     }
@@ -504,6 +507,7 @@ export default function PlaceConfigurator({
               fullWidth
               label="City"
               value={form.City}
+              required
               onChange={(e) => setForm({ ...form, City: e.target.value })}
               InputLabelProps={{
                 sx: {
@@ -514,6 +518,7 @@ export default function PlaceConfigurator({
               }}
               sx={outlinedInputSx}
             />
+            
             <FormControl fullWidth variant="outlined" sx={{ mb: { xs: 1.5, sm: 2 } }}>
               <InputLabel
                 sx={{
