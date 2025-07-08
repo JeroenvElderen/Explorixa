@@ -36,9 +36,11 @@ function PinDetailCard({ pin, onClose }) {
           {new Date(pin.created_at).toLocaleDateString()} • {pin.countryName}
         </Typography>
 
-        <Typography variant="body1" color="white !important" sx={{ lineHeight: 1.8 }}>
-          {pin.Information}
-        </Typography>
+        <div
+          style={{ whiteSpace: "pre-wrap", color: "white" }}
+          dangerouslySetInnerHTML={{ __html: pin.Information }}
+        />
+
       </CardContent>
     </Card>
   );

@@ -5,9 +5,11 @@ import { Button, FormControl, Select, MenuItem } from "@mui/material";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
-
+import StarFieldOverall from "components/StarFieldOverall";
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
+import AllPinCard from "examples/Charts/PinCard/allpins";
+import Box from "@mui/material/Box";
 
 // Layout & other Dashboard bits
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
@@ -22,8 +24,10 @@ import OrdersOverview from "layouts/dashboard/components/OrdersOverview";
 // ——— Helpers ———
 function truncate(text, maxLength) {
     if (!text) return "";
-    return text.length > maxLength ? text.substring(0, maxLength) + "…" : text;
+    const plainText = text.replace(/<[^>]+>/g, ""); // strip HTML tags
+    return plainText.length > maxLength ? plainText.substring(0, maxLength) + "…" : plainText;
 }
+
 
 function timeAgo(date) {
     if (!date) return "";
@@ -87,40 +91,40 @@ export default function CountryPage() {
 
     // Ensure country exists in DB
     useEffect(() => {
-    if (!countryName || countryName === "Overview") return;
+        if (!countryName || countryName === "Overview") return;
 
-    fetch(`https://restcountries.com/v3.1/name/${countryName}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const info = Array.isArray(data) && data[0];
-        if (!info) throw new Error("No country data");
+        fetch(`https://restcountries.com/v3.1/name/${countryName}`)
+            .then((r) => r.json())
+            .then((data) => {
+                const info = Array.isArray(data) && data[0];
+                if (!info) throw new Error("No country data");
 
-        const continent = info.region;
-        const pop = info.population;
-        const cca2 = info.cca2.toLowerCase();
+                const continent = info.region;
+                const pop = info.population;
+                const cca2 = info.cca2.toLowerCase();
 
-        // Upsert country with continent
-        return supabase
-          .from("countries")
-          .insert(
-            {
-              name: countryName,
-              continent,
-              country_info: null,
-              moving_info: null,
-              animal_info: null,
-            },
-            { onConflict: "name", ignoreDuplicates: true }
-          )
-          .then(({ error }) => error && console.error("Error inserting country:", error))
-          .then(() => ({ pop, cca2 }));
-      })
-      .then(({ pop, cca2 }) => {
-        setPopulation(pop);
-        setCountryCode(cca2);
-      })
-      .catch(console.error);
-  }, [countryName]);
+                // Upsert country with continent
+                return supabase
+                    .from("countries")
+                    .insert(
+                        {
+                            name: countryName,
+                            continent,
+                            country_info: null,
+                            moving_info: null,
+                            animal_info: null,
+                        },
+                        { onConflict: "name", ignoreDuplicates: true }
+                    )
+                    .then(({ error }) => error && console.error("Error inserting country:", error))
+                    .then(() => ({ pop, cca2 }));
+            })
+            .then(({ pop, cca2 }) => {
+                setPopulation(pop);
+                setCountryCode(cca2);
+            })
+            .catch(console.error);
+    }, [countryName]);
 
     // ——— State ———
     const [pinCount, setPinCount] = useState(0);
@@ -305,6 +309,7 @@ export default function CountryPage() {
 
     return (
         <DashboardLayout>
+            <StarFieldOverall />
             <SimpleResponsiveNavbar />
             <MDBox py={3}>
                 {/* Top Stats */}
@@ -401,7 +406,7 @@ export default function CountryPage() {
                                 flexWrap: "wrap",
                                 p: 2,
                                 borderRadius: 2,
-                                background: "rgba(255,255,255,0.1)",
+                                background: "transparent",
                                 backdropFilter: "blur(10px)",
                                 WebkitBackdropFilter: "blur(10px)",
                                 border: "1px solid rgba(243,143,1,0.6)",
@@ -542,40 +547,73 @@ export default function CountryPage() {
 
 
                         {/* 2. Expanded / Collapsible Grid */}
-                        <MDBox mt={4.5}>
-                            <Grid container spacing={3}>
-                                {expandedPinId && allPins.find(p => p.id === expandedPinId) ? (
-                                    allPins
-                                        .filter(p => p.id === expandedPinId)
-                                        .map(pin => (
-                                            <Grid item xs={12} key={pin.id}>
-                                                <MDBox
-                                                    sx={{ cursor: "pointer" }}
-                                                    onClick={() => setExpandedPinId(null)}
-                                                >
-                                                    <PinDetailCard pin={pin} />
-                                                </MDBox>
-                                            </Grid>
-                                        ))
-                                ) : (
-                                    allPins.map((pin, idx) => (
-                                        <Grid item xs={12} md={6} lg={4} key={pin.id}>
-                                            <MDBox
-                                                sx={{ cursor: "pointer" }}
-                                                onClick={() => setExpandedPinId(pin.id)}
-                                            >
-                                                <PinCardWithTimeAgo
-                                                    pin={pin}
-                                                    idx={idx}
-                                                    truncateDescription
-                                                    isExpanded={false}
-                                                />
-                                            </MDBox>
-                                        </Grid>
-                                    ))
-                                )}
-                            </Grid>
-                        </MDBox>
+                        <MDBox
+  mt={4.5}
+  sx={{
+    display: "flex",
+    overflowX: "auto",
+    scrollSnapType: "x mandatory",
+    gap: 2,
+    px: 2,
+    py: 2,
+    cursor: "grab",
+    WebkitOverflowScrolling: "touch",
+    "&::-webkit-scrollbar": { display: "none" },
+  }}
+  onMouseDown={(e) => {
+    const container = e.currentTarget;
+    let startX = e.pageX - container.offsetLeft;
+    let scrollLeft = container.scrollLeft;
+
+    const onMouseMove = (e) => {
+      const x = e.pageX - container.offsetLeft;
+      const walk = x - startX;
+      container.scrollLeft = scrollLeft - walk;
+    };
+
+    const onMouseUp = () => {
+      container.removeEventListener("mousemove", onMouseMove);
+      container.removeEventListener("mouseup", onMouseUp);
+      container.removeEventListener("mouseleave", onMouseUp);
+    };
+
+    container.addEventListener("mousemove", onMouseMove);
+    container.addEventListener("mouseup", onMouseUp);
+    container.addEventListener("mouseleave", onMouseUp);
+  }}
+>
+  {allPins.map((pin) => (
+    <Box
+      key={pin.id}
+      sx={{
+        flex: "0 0 100%",
+        scrollSnapAlign: "start",
+        minWidth: "100%",
+        maxWidth: "100%",
+      }}
+      onClick={() => setExpandedPinId(pin.id)}
+    >
+      <AllPinCard
+        title={pin.Name}
+        description={pin.Information}
+        category={pin.Category}
+        imageurl={pin["Main Image"]}
+        imagealt={pin.Name}
+        date={timeAgo(pin.created_at)}
+        // Customize or connect logic as needed
+        isSaved={false}
+        savedCount={pin.savedCount}
+        onSave={() => {}}
+        isBeenThere={false}
+        beenThereCount={pin.beenThereCount}
+        onBeenThere={() => {}}
+        isWantToGo={false}
+        wantToGoCount={pin.wantToGoCount}
+        onWantToGo={() => {}}
+      />
+    </Box>
+  ))}
+</MDBox>
                     </>
 
 
