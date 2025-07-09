@@ -69,8 +69,8 @@ export default function StarField({ backgroundUrl }) {
         position: "fixed",
         top: 0,
         left: 0,
-        zIndex: -1,
-        background: "#000",
+        zIndex:-1,
+        background: "transparent",
       }}
     />
   );

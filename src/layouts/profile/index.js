@@ -1,5 +1,5 @@
 // src/pages/Overview.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Grid from "@mui/material/Grid";
 import Divider from "@mui/material/Divider";
 import TextField from "@mui/material/TextField";
@@ -21,7 +21,7 @@ import PlatformSettings from "../../layouts/profile/components/PlatformSettings"
 
 import { supabase } from "../../SupabaseClient";
 import { useSavedPins } from "components/SavedPinsContext";
-
+import { useNavigate } from "react-router-dom";
 // slugify helper
 const slugify = (str = "") =>
   str
@@ -39,7 +39,10 @@ export default function Overview() {
   const [avatarUrl, setAvatarUrl] = useState("");
   const isEditing = activeTab === 2;
 
+  const navigate = useNavigate();
+  
   const [formValues, setFormValues] = useState({
+    Username: "",
     full_name: "",
     mobile: "",
     email: "",
@@ -50,11 +53,13 @@ export default function Overview() {
     background_url: "",
   });
 
+  const bgInputRef = useRef(null);
   const { pins, remove } = useSavedPins();
 
   // Seed form state from Supabase profile row
   const seedForm = (data) => {
     setFormValues({
+      Username: data.Username || "",
       full_name: data.full_name || "",
       mobile: data.mobile || "",
       email: data.email || "",
@@ -100,6 +105,7 @@ export default function Overview() {
   const handleSave = async () => {
     const updates = {
       user_id: profile.user_id,
+      Username: formValues.Username,
       full_name: formValues.full_name,
       mobile: formValues.mobile,
       email: formValues.email,
@@ -180,6 +186,49 @@ export default function Overview() {
     };
   });
 
+    // 1) fire the file‐picker
+  const triggerBgUpload = () => bgInputRef.current?.click();
+
+  // 2) when they choose a file, upload it to Supabase
+  // 2) when they choose a file, upload it to Supabase
+const handleBgUpload = async (e) => {
+  const file = e.target.files?.[0];
+  if (!file || !profile) return;
+
+  // Derive extension and storage path
+  const ext = file.name.split(".").pop();
+  const path = `${profile.user_id}/background.${ext}`;
+
+  // Upload (upsert = overwrite)
+  const { error: uploadError } = await supabase
+    .storage
+    .from("pins-images")
+    .upload(path, file, { upsert: true });
+  if (uploadError) {
+    console.error(uploadError);
+    return;
+  }
+
+  // Get the public URL
+  const { data: { publicUrl } } = supabase
+    .storage
+    .from("pins-images")
+    .getPublicUrl(path);
+
+  // Append a cache-buster so the browser always fetches the new image
+  const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+
+  // Update form state with the new URL
+  setFormValues((prev) => ({
+    ...prev,
+    background_url: bustedUrl,
+  }));
+
+  // Reset the file input so picking the same file again fires onChange
+  e.target.value = "";
+};
+
+
   return (
     <>
       <StarField backgroundUrl={formValues.background_url || profile.background_url} />
@@ -246,7 +295,7 @@ export default function Overview() {
                   <MDTypography variant="h6" mb={2}>
                     Profile Information
                   </MDTypography>
-                  {["full_name", "mobile", "email", "location"].map((field) => (
+                  {["Username", "full_name", "mobile", "email", "location" ].map((field) => (
                     <MDBox key={field} mb={1}>
                       <MDTypography
                         variant="caption"
@@ -270,7 +319,39 @@ export default function Overview() {
                       )}
                     </MDBox>
                   ))}
-
+                    {/* ––– new background‐upload UI ––– */}
+  {isEditing && (
+    <MDBox mb={1}>
+      <MDTypography variant="caption" color="white" sx={{ fontSize: "12px" }}>
+        BACKGROUND IMAGE
+      </MDTypography>
+      <input
+        type="file"
+        accept="image/*"
+        ref={bgInputRef}
+        style={{ display: "none" }}
+        onChange={handleBgUpload}
+      />
+      <Button variant="outlined" size="small" onClick={triggerBgUpload} sx={{ mt: 1 }}>
+        Upload…
+      </Button>
+      {formValues.background_url && (
+        <MDBox mt={1}>
+          <img
+            src={formValues.background_url}
+            alt="bg preview"
+            style={{
+              width: "100%",
+              borderRadius: 4,
+              maxHeight: 100,
+              objectFit: "cover",
+            }}
+          />
+        </MDBox>
+      )}
+    </MDBox>
+  )}
+                  
                   {isEditing && (
                     <MDBox textAlign="right">
                       <Button

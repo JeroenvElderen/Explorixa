@@ -15,7 +15,7 @@ import breakpoints from "../../../../assets/theme/base/breakpoints";
 import backgroundImage from "../../../../assets/images/bg-profile.jpeg";
 import AddIcon from "@mui/icons-material/Add";
 
-function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange }) {
+function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange, backgroundUrl }) {
   const [tabsOrientation, setTabsOrientation] = useState("horizontal");
   const [tabValue, setTabValue] = useState(activeTab);
   const [profile, setProfile] = useState(null);
@@ -47,7 +47,7 @@ function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange })
       }
       const { data } = await supabase
         .from("profiles")
-        .select("full_name, avatar_url, user_id")
+        .select("Username, full_name, avatar_url, user_id")
         .eq("user_id", user.id)
         .single();
       if (data) setProfile(data);
@@ -92,8 +92,8 @@ function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange })
           backgroundPosition: '50%',
         }}
       />
-      <Card 
-      sx={{
+      <Card
+        sx={{
           position: "relative",
           mt: -8,
           mx: 3,
@@ -154,15 +154,30 @@ function Header({ children, activeTab, onTabChange, avatarUrl, onAvatarChange })
           </Grid>
           <Grid item>
             <MDTypography variant="h5" fontWeight="medium">
-              {profile.full_name}
+              {profile.Username}
             </MDTypography>
             <MDTypography variant="button" color="text">
-              {profile.full_name}'s Dashboard
+              {profile.Username}'s Dashboard
             </MDTypography>
           </Grid>
           <Grid item xs={12} md={6} lg={4} sx={{ ml: 'auto' }}>
             <AppBar position="static" >
-              <Tabs orientation={tabsOrientation} value={tabValue} onChange={handleTabChange} >
+              <Tabs orientation={tabsOrientation} value={tabValue} onChange={handleTabChange}
+                TabIndicatorProps={{
+                  sx: { backgroundColor: "#F18F01" }
+                }}
+                sx={{
+                  p: 2,
+                  width: "100%",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  background:
+                    "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+                  border: "1px solid rgba(255,255,255,0.6)",
+                  boxShadow:
+                    "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+                  borderRadius: "12px",
+                }} >
                 <Tab label="App" icon={<Icon>home</Icon>} value={0} />
                 <Tab label="Message" icon={<Icon>email</Icon>} value={1} />
                 <Tab label="Settings" icon={<Icon>settings</Icon>} value={2} />

@@ -158,7 +158,6 @@ export default function PinPage() {
         setSelectedLists((prev) => prev.filter((id) => id !== listId));
     };
 
-
     const handleDialogClose = () => {
         setListDialogOpen(false);
         setSelectedLists([]);
@@ -184,15 +183,24 @@ export default function PinPage() {
             if (!error) createdListId = data.id;
         }
 
-        // 2) Upsert pin into each selected list
+        // 2) Determine lists to save
         const allListIds = [...selectedLists, ...(createdListId ? [createdListId] : [])];
+
+        // If no lists chosen, just toggle save and close
+        if (allListIds.length === 0) {
+            await toggleSave();
+            handleDialogClose();
+            return;
+        }
+
+        // 3) Upsert pin into each selected list
         await Promise.all(
             allListIds.map((listId) =>
                 supabase.from("list_pins").upsert({ list_id: listId, pin_id: pin.id })
             )
         );
 
-        // 3) Toggle save state
+        // 4) Toggle save state
         await toggleSave();
         handleDialogClose();
     };
@@ -230,81 +238,87 @@ export default function PinPage() {
     // Load pin data on mount / slug change
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            if (pinFromState) {
-                setPin({
-                    ...pinFromState,
-                    latitude: Number(pinFromState.latitude),
-                    longitude: Number(pinFromState.longitude),
-                    Images: normalizeImages(pinFromState.Images),
-                });
-                setLoading(false);
-                return;
-            }
 
+        const loadPin = async () => {
             setLoading(true);
-            const nameFromSlug = pinSlug.replace(/_/g, " ");
-            let { data: fullRaw, error: fullErr } = await supabase
-                .from("pins")
-                .select(`
+
+            try {
+                const nameFromSlug = pinSlug?.replace(/_/g, " ");
+
+                // Try fetching pin by name
+                let { data: pinData, error } = await supabase
+                    .from("pins")
+                    .select(`
           *,
           addedBy:profiles!pins_user_id_fkey(
+          Username
             full_name,
             avatar_url,
             user_id
           )
         `)
-                .eq("Name", nameFromSlug)
-                .single();
+                    .eq("Name", nameFromSlug)
+                    .maybeSingle();
 
-            if ((fullErr || !fullRaw) && !cancelled) {
-                const { data: list, error: listErr } = await supabase
-                    .from("pins")
-                    .select(`id,"Name"`);
-                if (!listErr && list) {
-                    const map = {};
-                    list.forEach((r) => (map[sluggify(r.Name)] = r.id));
-                    const pid = map[sluggify(pinSlug)];
-                    if (pid) {
-                        const { data, error } = await supabase
+                // Fallback: try by slug-to-id mapping if above fails
+                if (!pinData && !cancelled) {
+                    const { data: allPins } = await supabase
+                        .from("pins")
+                        .select(`id, \"Name\"`);
+
+                    const slugMap = {};
+                    allPins?.forEach((p) => slugMap[sluggify(p.Name)] = p.id);
+                    const fallbackId = slugMap[sluggify(pinSlug)];
+
+                    if (fallbackId) {
+                        const { data: fallbackPin } = await supabase
                             .from("pins")
                             .select(`
-                *,
-                addedBy:profiles!pins_user_id_fkey(
-                  full_name,
-                  avatar_url,
-                  user_id
-                )
-              `)
-                            .eq("id", pid)
-                            .single();
-                        fullRaw = data;
-                        fullErr = error;
+              *,
+              addedBy:profiles!pins_user_id_fkey(
+                Username,
+                full_name,
+                avatar_url,
+                user_id
+              )
+            `)
+                            .eq("id", fallbackId)
+                            .maybeSingle();
+
+                        pinData = fallbackPin;
                     }
                 }
+
+                // If pin found, format and set it
+                if (pinData && !cancelled) {
+                    setPin({
+                        ...pinData,
+                        latitude: Number(pinData.latitude),
+                        longitude: Number(pinData.longitude),
+                        Images: normalizeImages(pinData.Images),
+                        addedBy: pinData.addedBy
+                            ? {
+                                username: pinData.addedBy.Username || pinData.addedBy.full_name,
+                                avatarUrl: pinData.addedBy.avatar_url,
+                                userId: pinData.addedBy.user_id,
+                            }
+                            : null,
+                    });
+                } else {
+                    console.warn("No pin found for slug:", pinSlug);
+                }
+
+            } catch (err) {
+                console.error("Error loading pin:", err);
             }
 
-            if (!cancelled && fullRaw) {
-                setPin({
-                    ...fullRaw,
-                    latitude: Number(fullRaw.latitude),
-                    longitude: Number(fullRaw.longitude),
-                    Images: normalizeImages(fullRaw.Images),
-                    addedBy: fullRaw.addedBy
-                        ? {
-                            username: fullRaw.addedBy.full_name,
-                            avatarUrl: fullRaw.addedBy.avatar_url,
-                            userId: fullRaw.addedBy.user_id,
-                        }
-                        : null,
-                });
-            }
-            setLoading(false);
-        })();
-        return () => {
-            cancelled = true;
+            if (!cancelled) setLoading(false);
         };
-    }, [pinSlug, pinFromState]);
+
+        loadPin();
+
+        return () => { cancelled = true; };
+    }, [pinSlug]);
 
     // Reset toggles on pin change
     useEffect(() => {
@@ -349,6 +363,7 @@ export default function PinPage() {
                             "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
                         border: "1px solid rgba(255,255,255,0.6)",
                         boxShadow:
+
                             "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
                         borderRadius: "12px",
                     }}
@@ -470,46 +485,46 @@ export default function PinPage() {
                         />
                     </Grid>
                     <Grid item xs={12} md={4} container direction="column" spacing={2}>
-      <Grid item>
-        <PinMapCard pin={pin} />
-      </Grid>
-      <Grid item>
-        <MDBox
-          p={2}
-          sx={{
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            background:
-              "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-            border: "1px solid rgba(255,255,255,0.6)",
-            boxShadow:
-              "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-            borderRadius: "12px",
-          }}
-        >
-          <MDTypography variant="h6" mb={1}>
-            Details
-          </MDTypography>
-          {pin.Category && (
-            <MDTypography variant="body2" mb={0.5}>
-              Category: {pin.Category}
-            </MDTypography>
-          )}
-          {pin.Ranking && (
-            <MDTypography variant="body2" mb={0.5}>
-              Ranking: {pin.Ranking}
-            </MDTypography>
-          )}
-          {pin["Average Costs"] && (
-            <MDTypography variant="body2" mb={0.5}>
-              Average Cost: {pin["Average Costs"]}
-            </MDTypography>
-          )}
-        </MDBox>
-      </Grid>
-    </Grid>
-  </Grid>
-</MDBox>
+                        <Grid item>
+                            <PinMapCard pin={pin} />
+                        </Grid> 
+                        <Grid item>
+                            <MDBox
+                                p={2}
+                                sx={{
+                                    backdropFilter: "blur(20px)",
+                                    WebkitBackdropFilter: "blur(20px)",
+                                    background:
+                                        "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+                                    border: "1px solid rgba(255,255,255,0.6)",
+                                    boxShadow:
+                                        "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+                                    borderRadius: "12px",
+                                }}
+                            >
+                                <MDTypography variant="h6" mb={1}>
+                                    Details
+                                </MDTypography>
+                                {pin.Category && (
+                                    <MDTypography variant="body2" mb={0.5}>
+                                        Category: {pin.Category}
+                                    </MDTypography>
+                                )}
+                                {pin.Ranking && (
+                                    <MDTypography variant="body2" mb={0.5}>
+                                        Ranking: {pin.Ranking}
+                                    </MDTypography>
+                                )}
+                                {pin["Average Costs"] && (
+                                    <MDTypography variant="body2" mb={0.5}>
+                                        Average Cost: {pin["Average Costs"]}
+                                    </MDTypography>
+                                )}
+                            </MDBox>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </MDBox>
 
             {/* "Add to list" Dialog */}
             <Dialog open={listDialogOpen} onClose={handleDialogClose}

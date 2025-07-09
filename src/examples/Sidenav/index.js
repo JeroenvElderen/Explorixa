@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useLocation, NavLink } from "react-router-dom";
+import { useLocation, NavLink, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 
 // MUI components
@@ -17,7 +17,6 @@ import MDButton from "../../components/MDButton";
 import SidenavCollapse from "../../examples/Sidenav/SidenavCollapse";
 import SidenavRoot from "../../examples/Sidenav/SidenavRoot";
 import sidenavLogoLabel from "../../examples/Sidenav/styles/sidenav";
-import FlyoutMenu from "../../examples/flyout";
 
 // Context & Auth
 import {
@@ -30,145 +29,108 @@ import {
 import { useAuth } from "../../AuthContext";
 import { supabase } from "../../SupabaseClient";
 
-function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
+function buildKeyLevels(routes, level = 0, map = {}) {
+  routes.forEach((r) => {
+    map[r.key] = level;
+    if (Array.isArray(r.children)) {
+      buildKeyLevels(r.children, level + 1, map);
+    }
+  });
+  return map;
+}
+
+export default function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
   const [controller, dispatch] = useMaterialUIController();
   const { miniSidenav, transparentSidenav, whiteSidenav, darkMode } = controller;
   const location = useLocation();
-
+  const navigate = useNavigate();
   const { user } = useAuth();
   const isAuthenticated = Boolean(user);
 
-  const hoverTimeoutRef = useRef(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("lg"));
-
   const sidenavRef = useRef(null);
-  // Track flyout hovered menu key and open collapsible menus
-  const [hoveredMenuKey, setHoveredMenuKey] = useState(null);
+
+  const keyLevels = useMemo(() => buildKeyLevels(routes), [routes]);
   const [openMenus, setOpenMenus] = useState({});
 
-  // Map of refs for flyout menus by their keys
-  const flyoutRefs = useRef({});
-
-  // Determine text color based on theme & sidenav styles
   let textColor = "white";
   if (transparentSidenav || (whiteSidenav && !darkMode)) textColor = "dark";
   else if (whiteSidenav && darkMode) textColor = "inherit";
 
-  // Responsive sidenav handling
   useEffect(() => {
     const handleResize = () => {
-      const isMobile = window.innerWidth < 1200;
-      setMiniSidenav(dispatch, isMobile);
-      setTransparentSidenav(dispatch, !isMobile && transparentSidenav);
-      setWhiteSidenav(dispatch, !isMobile && whiteSidenav);
+      const mobile = window.innerWidth < 1200;
+      setMiniSidenav(dispatch, mobile);
+      setTransparentSidenav(dispatch, !mobile && transparentSidenav);
+      setWhiteSidenav(dispatch, !mobile && whiteSidenav);
     };
-
     window.addEventListener("resize", handleResize);
     handleResize();
-
     return () => window.removeEventListener("resize", handleResize);
   }, [dispatch, transparentSidenav, whiteSidenav]);
 
-  // Filter routes depending on authentication status
-  const filteredRoutes = useMemo(() => {
-    return routes.filter((route) => {
-      // Hide sign-in/sign-up when authenticated
-      if ((route.key === "sign-in" || route.key === "sign-up") && isAuthenticated) return false;
+  const filteredRoutes = useMemo(
+    () =>
+      routes.filter((route) => {
+        if ((route.key === "sign-in" || route.key === "sign-up") && isAuthenticated) return false;
+        if (!isAuthenticated && ["billing", "rtl", "notifications", "tables", "profile"].includes(route.key))
+          return false;
+        return true;
+      }),
+    [routes, isAuthenticated]
+  );
 
-      // Hide certain routes when not authenticated
-      if (
-        !isAuthenticated &&
-        ["billing", "rtl", "notifications", "tables", "profile"].includes(route.key)
-      ) return false;
-
-      return true;
-    });
-  }, [routes, isAuthenticated]);
-
-  // Toggle open state for collapsible menus (non-flyout)
   const toggleMenu = (key) => {
-    setOpenMenus((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+    const level = keyLevels[key];
+    setOpenMenus((prev) => {
+      const next = { ...prev };
+      Object.keys(prev).forEach((k) => {
+        if (k !== key && keyLevels[k] === level) next[k] = false;
+      });
+      next[key] = !prev[key];
+      return next;
+    });
   };
 
-  // Logout handler
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/sign-in";
   };
 
-  // Flyout menu mouse handlers (with debounce for smooth UX)
-  const onMouseEnterMenu = (key) => {
-    if (hoverTimeoutRef.current) {
-      clearTimeout(hoverTimeoutRef.current);
-      hoverTimeoutRef.current = null;
-    }
-    setHoveredMenuKey(key);
-  };
-
-  const onMouseLeaveMenu = () => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredMenuKey(null);
-      hoverTimeoutRef.current = null;
-    }, 200);
-  };
-
-  // Recursive function to render collapsible routes with flyout support
-  const renderCollapse = (route, level = 0) => {
-    const { 
-      name, 
-      icon, 
-      noCollapse, 
-      key, 
-      href, 
-      route: routePath, 
-      children, 
-      flyout,
-      sx= {}
-    } = route;
-
+  const renderCollapse = (route, level = 0, parentKey = null) => {
+    const { name, icon, noCollapse, key, href, route: routePath, children, sx = {} } = route;
     const hasChildren = Array.isArray(children) && children.length > 0;
-    const isFlyout = flyout === true;
-
-    // Ensure a ref exists for this flyout key
-    if (isFlyout && !flyoutRefs.current[key]) {
-      flyoutRefs.current[key] = React.createRef();
-    }
-
-    console.log(children)
-
-
-
+    const isOpen = !!openMenus[key];
+    const isParentOpen = parentKey && openMenus[parentKey];
+    const childBackground = isParentOpen ? "rgba(241,143,1,0.8)" : undefined;
 
     return (
-      <div
-        key={key}
-        ref={isFlyout ? flyoutRefs.current[key] : null} // Attach ref for flyout menus
-        style={{ position: "relative", paddingLeft: level * 8 }}
-        onMouseEnter={() => isFlyout && onMouseEnterMenu(key)}
-        onMouseLeave={() => isFlyout && onMouseLeaveMenu()}
-      >
+      <div key={key} style={{ position: "relative", paddingLeft: level > 1 ? 0 : 0 }}>
         {href ? (
           <Link href={href} target="_blank" rel="noreferrer" sx={{ textDecoration: "none" }}>
-            <SidenavCollapse 
-            name={name} 
-            icon={icon} 
-            active={location.pathname === routePath}
-            noCollapse={noCollapse} 
-            sx={{
-              ...sx
-            }}
+            <SidenavCollapse
+              name={name}
+              icon={icon}
+              active={isOpen}
+              noCollapse={noCollapse}
+              sx={{
+                ...sx,
+                backgroundColor: level >= 2 ? childBackground : undefined,
+                color: isOpen ? "#F18F01" : undefined,
+                "& .MuiSvgIcon-root": isOpen ? { color: "#F18F01" } : undefined,
+              }}
             />
           </Link>
         ) : (
           <NavLink
             to={routePath || "#"}
             onClick={(e) => {
-              if (hasChildren && !routePath) {
-                // Only prevent click if there's no route
+              if (isMobile && hasChildren && routePath) {
+                e.preventDefault();
+                if (!isOpen) toggleMenu(key);
+                else navigate(routePath);
+              } else if (hasChildren && !routePath) {
                 e.preventDefault();
                 toggleMenu(key);
               }
@@ -178,106 +140,70 @@ function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
             <SidenavCollapse
               name={name}
               icon={icon}
-              active={location.pathname === routePath}
+              active={isOpen}
               noCollapse={noCollapse}
               sx={{
-              ...sx
-            }}
+                ...sx,
+                backgroundColor: level >= 2 ? childBackground : undefined,
+                color: isOpen ? "#F18F01" : undefined,
+                "& .MuiSvgIcon-root": isOpen ? { color: "#F18F01" } : undefined,
+              }}
             />
           </NavLink>
         )}
 
-
-        {/* Normal collapsible children */}
-        {hasChildren && !isFlyout && openMenus[key] && (
-          <MDBox
-            sx={{
-              ...(level >= 2
-                ? {
-                  maxHeight: 200,
-                  overflowY: "auto",
-                  paddingRight: 1,
-                  marginLeft: 2,
-                }
-                : {
-                  paddingLeft: 2,
-                }),
-            }}
-          >
+        {hasChildren && isOpen && (
+          <MDBox sx={{ paddingLeft: 0 }}>
             <List disablePadding>
-              {children.map((child) => renderCollapse(child, level + 1))}
+              {children.map((child) => renderCollapse(child, level + 1, key))}
             </List>
           </MDBox>
-        )}
-        {/* Flyout children */}
-        {isFlyout && children && hoveredMenuKey === key && (
-          <FlyoutMenu
-            parentKey={key}
-            childrenRoutes={children}
-            hoveredMenuKey={hoveredMenuKey}
-            onCloseFlyout={() => setHoveredMenuKey(null)}
-            onHoverMenu={onMouseEnterMenu}
-            onMouseLeave={onMouseLeaveMenu}
-            anchorRect={flyoutRefs.current[key]?.current?.getBoundingClientRect()}
-            isMobile={isMobile}
-            sidenavRef={sidenavRef}
-            level={level}
-          />
         )}
       </div>
     );
   };
 
-  // Render all routes based on their type
-  const renderRoutes = useMemo(() => {
-    return filteredRoutes.map(({ type, key, title }) => {
-      if (type === "collapse") {
-        const route = filteredRoutes.find((r) => r.key === key);
-        return renderCollapse(route);
-      }
-      if (type === "title") {
-        return (
-          <MDTypography
-            key={key}
-            color={textColor}
-            display="block"
-            variant="caption"
-            fontWeight="bold"
-            textTransform="uppercase"
-            pl={3}
-            mt={2}
-            mb={1}
-            ml={1}
-          >
-            {title}
-          </MDTypography>
-        );
-      }
-      if (type === "divider") {
-        return (
-          <Divider
-            key={key}
-            light={
-              (!darkMode && !whiteSidenav && !transparentSidenav) ||
-              (darkMode && !transparentSidenav && whiteSidenav)
-            }
-          />
-        );
-      }
-      return null;
-    });
-  }, [
-    filteredRoutes,
-    location.pathname,
-    textColor,
-    darkMode,
-    whiteSidenav,
-    transparentSidenav,
-    openMenus,
-    hoveredMenuKey,
-  ]);
+  const renderRoutes = useMemo(
+    () =>
+      filteredRoutes.map(({ type, key, title }) => {
+        if (type === "collapse") {
+          const route = filteredRoutes.find((r) => r.key === key);
+          return renderCollapse(route);
+        }
+        if (type === "title") {
+          return (
+            <MDTypography
+              key={key}
+              color={textColor}
+              display="block"
+              variant="caption"
+              fontWeight="bold"
+              textTransform="uppercase"
+              pl={3}
+              mt={2}
+              mb={1}
+              ml={1}
+            >
+              {title}
+            </MDTypography>
+          );
+        }
+        if (type === "divider") {
+          return (
+            <Divider
+              key={key}
+              light={
+                (!darkMode && !whiteSidenav && !transparentSidenav) ||
+                (darkMode && !transparentSidenav && whiteSidenav)
+              }
+            />
+          );
+        }
+        return null;
+      }),
+    [filteredRoutes, openMenus, darkMode, whiteSidenav, transparentSidenav, textColor]
+  );
 
-  // Close sidenav on small screens
   const closeSidenav = () => setMiniSidenav(dispatch, true);
 
   return (
@@ -287,33 +213,16 @@ function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
       ownerState={{ transparentSidenav, whiteSidenav, miniSidenav, darkMode }}
       sx={{
         zIndex: 1201,
-        // only restyle the inner paper element
         "& .MuiDrawer-paper": {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          background:
-            "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
+          background: "linear-gradient(145deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%)",
           border: "1px solid rgba(243, 143, 1, 0.6)",
           boxShadow:
             "inset 4px 4px 10px rgba(0,0,0,0.4), inset -4px -4px 10px rgba(255,255,255,0.1), 0 6px 15px rgba(0,0,0,0.3)",
           borderRadius: "12px",
-
-          "&::-webkit-scrollbar": { width: 0, height: 0 },
-          "&::-webkit-scrollbar-track": { background: "transparent" },
-          "&::-webkit-scrollbar-thumb": { background: "transparent" },
-
-          scrollbarWidth: "none",
-          scrollbarColor: "transparent transparent",
-          "-ms-overflow-style": "none",
-          // always apply overflow
           overflow: "auto",
-
-          // on mobile, make it full-height so it can scroll
-          ...(isMobile && {
-            zIndex: 1000,
-            height: "78vh",
-            top: 0,
-          })
+          ...(isMobile && { zIndex: 1000, height: "78vh", top: 0 }),
         },
       }}
     >
@@ -353,8 +262,7 @@ function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
       {isAuthenticated && (
         <MDBox px={2} pb={2}>
           <MDButton variant="outlined" color="error" fullWidth onClick={handleLogout}>
-            <Icon sx={{ mr: 1 }}>logout</Icon>
-            Logout
+            <Icon sx={{ mr: 1 }}>logout</Icon> Logout
           </MDButton>
         </MDBox>
       )}
@@ -363,18 +271,8 @@ function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
 }
 
 Sidenav.propTypes = {
-  color: PropTypes.oneOf([
-    "primary",
-    "secondary",
-    "info",
-    "success",
-    "warning",
-    "error",
-    "dark",
-  ]),
+  color: PropTypes.oneOf(["primary", "secondary", "info", "success", "warning", "error", "dark"]),
   brand: PropTypes.string,
   brandName: PropTypes.string.isRequired,
   routes: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
-
-export default Sidenav;

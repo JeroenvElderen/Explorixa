@@ -149,11 +149,11 @@ export default function PinMapCard({ pin }) {
             border: "1px solid rgba(255,255,255,0.6)", 
             boxShadow:
                 "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-            borderRadius: "0px 0px 12px 12px", 
+            borderRadius: "12px", 
             maxWidth: "100%"
         }}>
-            <Box sx={{ width: "100%", height: 140 }}>
-                <Box ref={mapContainerRef} sx={{ width: "100%", height: "100%" }} />
+            <Box sx={{ width: "100%", height: 140}}>
+                <Box ref={mapContainerRef} sx={{ width: "100%", height: "100%", borderTopLeftRadius: "12px", borderTopRightRadius: "12px" }} />
             </Box>
             <CardContent sx={{ pb: 2 }}>
                 {/* Name + address */}

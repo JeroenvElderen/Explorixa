@@ -24,11 +24,11 @@ import MDBox from "../../../../components/MDBox";
 import MDTypography from "../../../../components/MDTypography";
 
 function PlatformSettings() {
-  const [followsMe, setFollowsMe] = useState(true);
+  const [followsMe, setFollowsMe] = useState(false);
   const [answersPost, setAnswersPost] = useState(false);
-  const [mentionsMe, setMentionsMe] = useState(true);
+  const [mentionsMe, setMentionsMe] = useState(false);
   const [newLaunches, setNewLaunches] = useState(false);
-  const [productUpdate, setProductUpdate] = useState(true);
+  const [productUpdate, setProductUpdate] = useState(false);
   const [newsletter, setNewsletter] = useState(false);
 
   return (
