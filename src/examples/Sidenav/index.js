@@ -83,6 +83,11 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
 
   const toggleMenu = (key) => {
     const level = keyLevels[key];
+
+     if (level === 1 && sidenavRef.current) {
+    sidenavRef.current.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  
     setOpenMenus((prev) => {
       const next = { ...prev };
       Object.keys(prev).forEach((k) => {
@@ -103,7 +108,7 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
     const hasChildren = Array.isArray(children) && children.length > 0;
     const isOpen = !!openMenus[key];
     const isParentOpen = parentKey && openMenus[parentKey];
-    const childBackground = isParentOpen ? "rgba(241,143,1,0.8)" : undefined;
+    const childBackground = isParentOpen ? "rgba(241,143,1,0.2)" : undefined;
 
     return (
       <div key={key} style={{ position: "relative", paddingLeft: level > 1 ? 0 : 0 }}>
@@ -116,9 +121,9 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
               noCollapse={noCollapse}
               sx={{
                 ...sx,
-                backgroundColor: level >= 2 ? childBackground : undefined,
-                color: isOpen ? "#F18F01" : undefined,
-                "& .MuiSvgIcon-root": isOpen ? { color: "#F18F01" } : undefined,
+                backgroundColor: level >= 2 ? childBackground : "undefined",
+                color: "white",
+                
               }}
             />
           </Link>
@@ -145,7 +150,7 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
               sx={{
                 ...sx,
                 backgroundColor: level >= 2 ? childBackground : undefined,
-                color: isOpen ? "#F18F01" : undefined,
+                color: "#fff",
                 "& .MuiSvgIcon-root": isOpen ? { color: "#F18F01" } : undefined,
               }}
             />
