@@ -40,6 +40,21 @@ const COUNTRY_OPTIONS = [
   { code: "af", name: "Afghanistan" },
 ];
 
+// ── fetchContinent via Rest Countries ────────────────────────────────
+async function fetchContinent(countryName) {
+  // fullText=true gives the best chance to match exact name
+  const url = `https://restcountries.com/v3.1/name/${encodeURIComponent(countryName)}?fullText=true`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.warn("Rest Countries lookup failed for", countryName, res.status);
+    return null;
+  }
+  const [record] = await res.json();
+  // `region` is the continent (e.g. "Europe", "Asia")
+  return record?.region || null;
+}
+
+
 export default function PlaceConfigurator({
   countryCode: initialCountryCode,
   userId,
@@ -91,7 +106,7 @@ export default function PlaceConfigurator({
     Information: "",
     Category: "",
     Ranking: "",
-    
+
     "Average Costs": "",
     MainImage: "",
     Images: [],
@@ -200,6 +215,24 @@ export default function PlaceConfigurator({
         .upsert([cityPayload], { onConflict: ["Name", "Country"] });
       if (cityError) throw cityError;
 
+
+      // --- fetch continent dynamically and upsert countries ---
+      let continent = null;
+      try {
+        continent = await fetchContinent(selectedPlace.country);
+      } catch (err) {
+        console.warn("Could not fetch continent:", err);
+      }
+
+      const countryPayload = {
+        name: selectedPlace.country,
+        continent,
+      };
+      const { error: countryError } = await supabase
+        .from("countries")
+        .upsert([countryPayload], { onConflict: ["name"] });
+      if (countryError) throw countryError;
+
       const { error } = await supabase.from("pins").insert([payload]);
       if (error) throw error;
       onPlaceSelected?.(payload);
@@ -230,7 +263,7 @@ export default function PlaceConfigurator({
           selectedPlace.iso && selectedPlace.iso.toUpperCase() === "PEAK"
             ? ""
             : selectedPlace.city || "",
-        
+
 
 
       }));
@@ -518,7 +551,7 @@ export default function PlaceConfigurator({
               }}
               sx={outlinedInputSx}
             />
-            
+
             <FormControl fullWidth variant="outlined" sx={{ mb: { xs: 1.5, sm: 2 } }}>
               <InputLabel
                 sx={{

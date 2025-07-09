@@ -53,7 +53,7 @@ function PinCard({
     }
   }, [truncateDescription]);
 
-  const handleTransitionEnd = () => { 
+  const handleTransitionEnd = () => {
     if (!truncateDescription) {
       setMaxHeight("none");
     }
@@ -141,28 +141,28 @@ function PinCard({
                 lineHeight={1}
                 sx={{ mt: 0.15, mr: 0.5 }}
               >
-                <Icon>schedule</Icon>
+
               </MDTypography>
               <MDTypography variant="button" color="text" fontWeight="light">
                 {date}
               </MDTypography>
-            </MDBox>
-          </MDBox>
-        </MDBox>
 
+            </MDBox>
+
+          </MDBox>
+
+        </MDBox>
         {/* Icons row (absolute, bottom right) */}
         <MDBox
           sx={{
-            position: 'absolute',
-            bottom: 14,
-            right: 12,
+
             display: 'flex',
-            gap: 1.2,
+            gap: 0.8,
             alignItems: 'center',
             background: "rgba(255,255,255,0.08)",
-            borderRadius: "20px",
+            borderRadius: "12px",
             px: 1,
-            py: 0.2,
+            py: 0.1,
           }}
         >
           {/* Been There: Green Flag */}
@@ -205,24 +205,25 @@ function PinCard({
 
           {/* Saved: Heart */}
           <IconButton
-  onClick={(e) => {
-    e.stopPropagation();
-    if (onSave) onSave(e);
-  }}
-  size="small"
-  sx={{
-    color: 'error.main',
-    backgroundColor: isSaved ? "rgba(241,143,1,0.12)" : "transparent",
-    '&:hover': { backgroundColor: 'rgba(241,143,1,0.22)' },
-  }}
->
-  {isSaved
-    ? <FavoriteIcon fontSize="small" />
-    : <FavoriteBorderIcon fontSize="small" />
-  }
-</IconButton>
-<MDTypography variant="button" sx={{ minWidth: 12 }}>{savedCount ?? 0}</MDTypography>
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onSave) onSave(e);
+            }}
+            size="small"
+            sx={{
+              color: 'error.main',
+              backgroundColor: isSaved ? "rgba(241,143,1,0.12)" : "transparent",
+              '&:hover': { backgroundColor: 'rgba(241,143,1,0.22)' },
+            }}
+          >
+            {isSaved
+              ? <FavoriteIcon fontSize="small" />
+              : <FavoriteBorderIcon fontSize="small" />
+            }
+          </IconButton>
+          <MDTypography variant="button" sx={{ minWidth: 12 }}>{savedCount ?? 0}</MDTypography>
         </MDBox>
+
       </Card>
       {link && (
         <Link
@@ -292,15 +293,15 @@ PinCard.defaultProps = {
   height: "12.5rem",
   link: null,
   linkLabel: null,
-  onLinkClick: () => {},
+  onLinkClick: () => { },
   isSaved: false,
-  onSave: () => {},
+  onSave: () => { },
   // New defaults:
   isBeenThere: false,
-  onBeenThere: () => {},
+  onBeenThere: () => { },
   beenThereCount: 0,
   isWantToGo: false,
-  onWantToGo: () => {},
+  onWantToGo: () => { },
   wantToGoCount: 0,
 };
 

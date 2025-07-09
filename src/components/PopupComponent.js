@@ -7,6 +7,8 @@ import { Typography, Box, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { useSavedPins } from '../components/SavedPinsContext';
 import { supabase } from '../SupabaseClient';
+import ListDialog from './AddToList/AddToListDialog';
+import zIndex from '@mui/material/styles/zIndex';
 
 // Util: Sluggify
 const sluggify = str => str?.toString().trim().replace(/\s+/g, '_');
@@ -35,6 +37,10 @@ export default function PopupComponent({ data, onClose }) {
   const [wantToGoCount, setWantToGoCount] = useState(0);
   const [isSavedLocal, setIsSavedLocal] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
+
+  // Dialog toggles
+  const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [dialogPin, setDialogPin] = useState(null);
 
   // Fetch pins…
   useEffect(() => {
@@ -126,13 +132,17 @@ export default function PopupComponent({ data, onClose }) {
   const handleSave = async e => {
     e.stopPropagation();
     if (!allowSave) return alert("This pin can’t be saved.");
-    const nxt = !isSavedLocal;
-    const cnt = nxt ? savedCount + 1 : Math.max(savedCount - 1, 0);
-    setIsSavedLocal(nxt); setSavedCount(cnt);
-    await supabase.from('pins').update({ saved_count: cnt }).eq('id', realPinId);
-    if (nxt) save({ ...currentPin, id: realPinId, saved_count: cnt });
-    else remove({ id: realPinId });
+    // open the "add to list" dialog
+    setDialogPin({ ...currentPin, id: realPinId, saved_count: savedCount });
+    setListDialogOpen(true);
   };
+
+  const handleOpenDialogFor = (pinObj) => (e) => {
+  e.stopPropagation();
+  setDialogPin({ ...pinObj, id: pinObj.id, saved_count: pinObj.saved_count });
+  setListDialogOpen(true);
+};
+
 
   // Mobile handlers generator…
   const mkToggle = (p, key, col, countKey) => async e => {
@@ -171,7 +181,7 @@ export default function PopupComponent({ data, onClose }) {
         height: isMobile ? '500px' : '100vh',
         background: 'transparent', display: 'flex',
         justifyContent: 'center',
-        alignItems: isMobile ? 'flex-start' : 'center', zIndex: 9999
+        alignItems: isMobile ? 'flex-start' : 'center', zIndex: 1300
       }}
     >
       <div
@@ -225,7 +235,7 @@ export default function PopupComponent({ data, onClose }) {
                       }}
                       isSaved={mobileToggles[p.id]?.isSaved ?? false}
                       savedCount={mobileToggles[p.id]?.savedCount ?? p.saved_count ?? 0}
-                      onSave={mkSave(p)}
+                      onSave={handleOpenDialogFor(p)}
                       isBeenThere={mobileToggles[p.id]?.isBeenThere ?? false}
                       beenThereCount={mobileToggles[p.id]?.beenThereCount ?? p.been_there ?? 0}
                       onBeenThere={mkToggle(p, 'isBeenThere', 'been_there', 'beenThereCount')}
@@ -234,6 +244,7 @@ export default function PopupComponent({ data, onClose }) {
                       onWantToGo={mkToggle(p, 'isWantToGo', 'want_to_go', 'wantToGoCount')}
                     />
                   </Box>
+                  
                 );
               })}
             </Box>
@@ -261,7 +272,7 @@ export default function PopupComponent({ data, onClose }) {
                 }}
                 isSaved={isSavedLocal}
                 savedCount={savedCount}
-                onSave={handleSave}
+                onSave={handleOpenDialogFor(currentPin)}
                 isBeenThere={isBeenThere}
                 onBeenThere={handleToggleBeenThere}
                 beenThereCount={beenThereCount}
@@ -271,6 +282,32 @@ export default function PopupComponent({ data, onClose }) {
               />
             </Box>
           )}
+          <ListDialog
+            sx={{ zIndex: 9000 }}
+            open={listDialogOpen}
+            onClose={() => {
+              setListDialogOpen(false);
+              setDialogPin(null);
+            }}
+            pin={dialogPin}
+            onSaved={() => {
+  // desktop update
+  setIsSavedLocal(true);
+  setSavedCount(c => c + 1);
+  save(dialogPin);
+
+  // mobile update
+  setMobileToggles(m => ({
+    ...m,
+    [dialogPin.id]: {
+      ...(m[dialogPin.id] || {}),
+      isSaved: true,
+      savedCount: (m[dialogPin.id]?.savedCount ?? dialogPin.saved_count) + 1,
+    }
+  }));
+}}
+
+          />
         </ThemeProvider>
       </div>
     </div>

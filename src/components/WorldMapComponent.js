@@ -224,7 +224,7 @@ export default function WorldMapComponent({
         "horizon-blend": 0.2,
         "space-color": "rgb(0,0,0)",
         "star-intensity": 0.5,
-      });
+      }); 
 
       // fetch existing pins
       const { data: pins } = await supabase.from("pins").select("*, countryName");
