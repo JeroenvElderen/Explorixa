@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../../SupabaseClient";
 import { Grid } from "@mui/material";
-
+import StarFieldOverall from "components/StarFieldOverall";
 // continent icons
 import {
   FaGlobeAfrica,
@@ -60,7 +60,7 @@ function PinCardWithTimeAgo({ pin, idx }) {
       title={pin.Name || "Untitled"}
       imageurl={pin["Main Image"]}
       imagealt={pin.Name}
-      height="150px"
+      height="100px"
       truncateDescription={false}
     />
   );
@@ -176,6 +176,7 @@ export default function ContinentPage() {
 
   return (
     <DashboardLayout>
+      <StarFieldOverall />
       <SimpleResponsiveNavbar/>
       <MDBox py={3}>
         {/* ─── Stats Row ───────────────────── */}
@@ -201,7 +202,7 @@ export default function ContinentPage() {
             <ComplexStatisticsCard
               color="info"
               icon="thermostat"
-              title="Temperature"
+              title="Average Weather"
               count={temperature != null ? `${temperature.toFixed(1)}°C` : "…"}
               percentage={{ amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`, label: "Weather" }}
             />
@@ -222,6 +223,16 @@ export default function ContinentPage() {
           </Grid>
         </Grid>
 
+        {/* ─── Projects & Orders ──────────── */}
+        <MDBox mt={4.5} mb={4.5}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={12}>
+            <divider />
+            <ProjectsContinent continent={displayName}/>
+          </Grid>
+        </Grid>
+        </MDBox>
+
         {/* ─── Recent Pins ─────────────────── */}
         <MDBox mt={4.5} mb={4.5}>
           <Grid container spacing={3}>
@@ -233,15 +244,7 @@ export default function ContinentPage() {
           </Grid>
         </MDBox>
 
-        {/* ─── Projects & Orders ──────────── */}
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={8}>
-            <ProjectsContinent continent={displayName}/>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <OrdersOverview cities={continentCountries} countryName={displayName}/>
-          </Grid>
-        </Grid>
+        
       </MDBox>
       <Footer/>
     </DashboardLayout>

@@ -141,7 +141,6 @@ function PinCard({
                 lineHeight={1}
                 sx={{ mt: 0.15, mr: 0.5 }}
               >
-
               </MDTypography>
               <MDTypography variant="button" color="text" fontWeight="light">
                 {date}
@@ -155,7 +154,6 @@ function PinCard({
         {/* Icons row (absolute, bottom right) */}
         <MDBox
           sx={{
-
             display: 'flex',
             gap: 0.8,
             alignItems: 'center',
