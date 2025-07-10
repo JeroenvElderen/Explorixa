@@ -1,3 +1,7 @@
+// where it is used //
+// CountryPage.js //
+
+
 import React from "react";
 import PropTypes from "prop-types";
 import { styled } from "@mui/material/styles";
@@ -13,6 +17,7 @@ import StarIcon from "@mui/icons-material/Star";
 import StarBorderIcon from "@mui/icons-material/StarBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+
 
 const GlassCard = styled(Card)(({ theme }) => ({
   position: "relative",

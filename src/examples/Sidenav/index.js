@@ -128,20 +128,25 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
             />
           </Link>
         ) : (
-          <NavLink
-            to={routePath || "#"}
-            onClick={(e) => {
-              if (isMobile && hasChildren && routePath) {
-                e.preventDefault();
-                if (!isOpen) toggleMenu(key);
-                else navigate(routePath);
-              } else if (hasChildren && !routePath) {
-                e.preventDefault();
+        <NavLink
+          to={routePath || "#"}
+          onClick={(e) => {
+            if (hasChildren) {
+              e.preventDefault();
+              if (!isOpen) {
+                // 1st click: open submenu
                 toggleMenu(key);
+              } else if (routePath) {
+                // 2nd click (already open): navigate to parent route
+                navigate(routePath);
               }
-            }}
-            style={{ textDecoration: "none" }}
-          >
+            } else if (routePath) {
+              // no children: just navigate
+              navigate(routePath);
+            }
+          }}
+          style={{ textDecoration: "none" }}
+        >
             <SidenavCollapse
               name={name}
               icon={icon}

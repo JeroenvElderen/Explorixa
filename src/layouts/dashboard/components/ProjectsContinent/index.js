@@ -8,13 +8,14 @@ import Collapse from "@mui/material/Collapse";
 import { useTheme } from "@mui/material/styles";
 import { useMaterialUIController } from "context";
 import { getCountriesByContinent } from "utils/continentHelpers";
-
+import Divider from "@mui/material/Divider";
 // Material Dashboard 2 React components
 import MDBox from "components/MDBox";
 import MDTypography from "components/MDTypography";
 
 // Supabase client
 import { supabase } from "SupabaseClient";
+
 
 export default function ProjectsContinent({ continent }) {
   const [expanded, setExpanded] = useState(false);
@@ -43,7 +44,7 @@ export default function ProjectsContinent({ continent }) {
       }}
     >
       {/* header */}
-      <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
+      <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3} onClick={toggle} sx={{cursor: 'pointer' }}>
         <MDBox>
           <MDBox display="flex" alignItems="center" lineHeight={0}>
             <Icon sx={{ color: theme.palette.info.main, mt: -0.5 }}>public</Icon>
@@ -52,19 +53,19 @@ export default function ProjectsContinent({ continent }) {
             </MDTypography>
           </MDBox>
         </MDBox>
-        <Icon onClick={toggle} sx={{ cursor: "pointer" }}>
+        <Icon>
           {expanded ? "expand_less" : "expand_more"}
         </Icon>
       </MDBox>
 
       {/* collapsible country list */}
       <Collapse in={expanded} timeout="auto" unmountOnExit>
+      <Divider />
         <MDBox px={2} pb={2}
         sx={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
             gap: 1,
-            width: "100vw",
         }}>
           {countries.length > 0 ? (
             countries.map((name) => (
@@ -78,17 +79,20 @@ export default function ProjectsContinent({ continent }) {
                   )
                 }
                 sx={{
-                  p: 1.5,
                   mb: 1,
-                  borderRadius: 1,
+                  width: '20vw',
+                  height: '3vh',
+                  borderRadius: '12px',
+                  alignItems: 'center',
                   
                   "&:hover": {
-                    background: "rgba(241,143,1,0.1)",
+                    background: "rgba(241,143,1,0.5)",
                     cursor: "pointer",
                   },
                 }}
               >
-                <MDTypography variant="body2">{name}</MDTypography>
+                
+                <MDTypography variant="body2" sx={{textAlign: 'center'}}>{name}</MDTypography>
               </MDBox>
             ))
           ) : (

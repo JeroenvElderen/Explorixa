@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
-import { useParams } from "react-router-dom";
 import { supabase } from "../../SupabaseClient";
 import { Button, FormControl, Select, MenuItem } from "@mui/material";
+import { useParams, useNavigate } from "react-router-dom";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -81,6 +81,7 @@ function PinCardWithTimeAgo({
 
 export default function CountryPage() {
     const { countrySlug } = useParams();
+    const navigate = useNavigate();
     const countryName = useMemo(
         () =>
             decodeURIComponent(countrySlug)
@@ -139,6 +140,7 @@ export default function CountryPage() {
     const [selectedCity, setSelectedCity] = useState("All");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [countryCode, setCountryCode] = useState("");
+    const [continent, setContinent] = useState("");
 
     const [temperature, setTemperature] = useState(null);
     const [weatherCondition, setWeatherCondition] = useState("");
@@ -186,6 +188,7 @@ export default function CountryPage() {
                 const info = Array.isArray(data) && data[0];
                 if (!info) throw new Error("No country data");
                 setPopulation(info.population);
+                setContinent(info.region);
                 setCountryCode(info.cca2.toLowerCase());
                 // …
             })
@@ -548,72 +551,72 @@ export default function CountryPage() {
 
                         {/* 2. Expanded / Collapsible Grid */}
                         <MDBox
-  mt={4.5}
-  sx={{
-    display: "flex",
-    overflowX: "auto",
-    scrollSnapType: "x mandatory",
-    gap: 2,
-    px: 2,
-    py: 2,
-    cursor: "grab",
-    WebkitOverflowScrolling: "touch",
-    "&::-webkit-scrollbar": { display: "none" },
-  }}
-  onMouseDown={(e) => {
-    const container = e.currentTarget;
-    let startX = e.pageX - container.offsetLeft;
-    let scrollLeft = container.scrollLeft;
+                            mt={4.5}
+                            sx={{
+                                display: "flex",
+                                overflowX: "auto",
+                                scrollSnapType: "x mandatory",
+                                gap: 2,
+                                px: 2,
+                                py: 2,
+                                cursor: "grab",
+                                WebkitOverflowScrolling: "touch",
+                                "&::-webkit-scrollbar": { display: "none" },
+                            }}
+                            onMouseDown={(e) => {
+                                const container = e.currentTarget;
+                                let startX = e.pageX - container.offsetLeft;
+                                let scrollLeft = container.scrollLeft;
 
-    const onMouseMove = (e) => {
-      const x = e.pageX - container.offsetLeft;
-      const walk = x - startX;
-      container.scrollLeft = scrollLeft - walk;
-    };
+                                const onMouseMove = (e) => {
+                                    const x = e.pageX - container.offsetLeft;
+                                    const walk = x - startX;
+                                    container.scrollLeft = scrollLeft - walk;
+                                };
 
-    const onMouseUp = () => {
-      container.removeEventListener("mousemove", onMouseMove);
-      container.removeEventListener("mouseup", onMouseUp);
-      container.removeEventListener("mouseleave", onMouseUp);
-    };
+                                const onMouseUp = () => {
+                                    container.removeEventListener("mousemove", onMouseMove);
+                                    container.removeEventListener("mouseup", onMouseUp);
+                                    container.removeEventListener("mouseleave", onMouseUp);
+                                };
 
-    container.addEventListener("mousemove", onMouseMove);
-    container.addEventListener("mouseup", onMouseUp);
-    container.addEventListener("mouseleave", onMouseUp);
-  }}
->
-  {allPins.map((pin) => (
-    <Box
-      key={pin.id}
-      sx={{
-        flex: "0 0 100%",
-        scrollSnapAlign: "start",
-        minWidth: "100%",
-        maxWidth: "100%",
-      }}
-      onClick={() => setExpandedPinId(pin.id)}
-    >
-      <AllPinCard
-        title={pin.Name}
-        description={pin.Information}
-        category={pin.Category}
-        imageurl={pin["Main Image"]}
-        imagealt={pin.Name}
-        date={timeAgo(pin.created_at)}
-        // Customize or connect logic as needed
-        isSaved={false}
-        savedCount={pin.savedCount}
-        onSave={() => {}}
-        isBeenThere={false}
-        beenThereCount={pin.beenThereCount}
-        onBeenThere={() => {}}
-        isWantToGo={false}
-        wantToGoCount={pin.wantToGoCount}
-        onWantToGo={() => {}}
-      />
-    </Box>
-  ))}
-</MDBox>
+                                container.addEventListener("mousemove", onMouseMove);
+                                container.addEventListener("mouseup", onMouseUp);
+                                container.addEventListener("mouseleave", onMouseUp);
+                            }}
+                        >
+                            {allPins.map((pin) => (
+                                <Box
+                                    key={pin.id}
+                                    sx={{
+                                        flex: "0 0 100%",
+                                        scrollSnapAlign: "start",
+                                        minWidth: "100%",
+                                        maxWidth: "100%",
+                                    }}
+                                    onClick={() => setExpandedPinId(pin.id)}
+                                >
+                                    <AllPinCard
+                                        title={pin.Name}
+                                        description={pin.Information}
+                                        category={pin.Category}
+                                        imageurl={pin["Main Image"]}
+                                        imagealt={pin.Name}
+                                        date={timeAgo(pin.created_at)}
+                                        // Customize or connect logic as needed
+                                        isSaved={false}
+                                        savedCount={pin.savedCount}
+                                        onSave={() => { }}
+                                        isBeenThere={false}
+                                        beenThereCount={pin.beenThereCount}
+                                        onBeenThere={() => { }}
+                                        isWantToGo={false}
+                                        wantToGoCount={pin.wantToGoCount}
+                                        onWantToGo={() => { }}
+                                    />
+                                </Box>
+                            ))}
+                        </MDBox>
                     </>
 
 
@@ -661,6 +664,26 @@ export default function CountryPage() {
                     </>
                 )}
             </MDBox>
+            <MDBox px={3} py={1}>
+                <Button
+                    variant="outlined"
+                    sx={{
+                        borderColor: "rgba(243,143,1,0.6)",
+                        color: "white",
+                        "&:hover": { background: "rgba(243,143,1,0.1)" }
+                    }}
+                    onClick={() =>
+                        // match your continent-list route:
+                        navigate(
+                            `/Destinations/World_destinations/${encodeURIComponent(continent)}`
+                        )
+                    }
+                    disabled={!continent}
+                >
+                    ← Back to {continent || "continent"}
+                </Button>
+            </MDBox>
+
             <Footer />
         </DashboardLayout>
     );
