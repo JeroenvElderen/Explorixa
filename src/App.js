@@ -55,7 +55,6 @@ import { AuthProvider } from "./AuthContext";  // <-- make sure path is correct!
 // Images
 import brandWhite from "./assets/images/logo-ct.png";
 import brandDark from "./assets/images/logo-ct-dark.png";
-import TestPage from "components/TestPage";
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();

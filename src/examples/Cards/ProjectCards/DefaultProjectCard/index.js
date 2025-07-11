@@ -18,7 +18,7 @@ import { useSavedPins } from "../../../../components/SavedPinsContext";
 /**
  * Fetches the current user's pins plus all countries, then
  * displays each pin with a "View Pin" link to the dynamic
- * route /Destinations/World_destinations/:continent/:country/:pinSlug.
+ * route /Destinations/:continent/:country/:pinSlug.
  */
 
 // 1) Safe sluggify: coerce null/undefined to ""
@@ -161,7 +161,7 @@ export default function DefaultProjectCard({ height = "300px" }) {
         const counSlug = sluggify(countryName);
         const pinSlug  = sluggify(Name);
 
-        const to = `/Destinations/World_destinations/${contSlug}/${counSlug}/${pinSlug}`;
+        const to = `/Destinations/${contSlug}/${counSlug}/${pinSlug}`;
 
         return (
           <Card

@@ -1,4 +1,6 @@
-// src/layouts/dashboard/pages/CityPage.js
+// What to do in this component //
+
+// 1.
 
 import { useParams } from "react-router-dom";
 import { useEffect, useState } from "react";

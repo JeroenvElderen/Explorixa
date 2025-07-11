@@ -94,20 +94,16 @@ export default function CountryPage() {
     useEffect(() => {
         if (!countryName || countryName === "Overview") return;
 
-        fetch(`https://restcountries.com/v3.1/name/${countryName}`)
-            .then((r) => r.json())
-            .then((data) => {
+        fetch(`https://restcountries.com/v3.1/name/${countryName}?fullText=true`)
+            .then(r => r.json())
+            .then(data => {
                 const info = Array.isArray(data) && data[0];
                 if (!info) throw new Error("No country data");
-
                 const continent = info.region;
-                const pop = info.population;
-                const cca2 = info.cca2.toLowerCase();
 
-                // Upsert country with continent
                 return supabase
                     .from("countries")
-                    .insert(
+                    .upsert(
                         {
                             name: countryName,
                             continent,
@@ -115,17 +111,16 @@ export default function CountryPage() {
                             moving_info: null,
                             animal_info: null,
                         },
-                        { onConflict: "name", ignoreDuplicates: true }
+                        { onConflict: "name" }
                     )
-                    .then(({ error }) => error && console.error("Error inserting country:", error))
-                    .then(() => ({ pop, cca2 }));
-            })
-            .then(({ pop, cca2 }) => {
-                setPopulation(pop);
-                setCountryCode(cca2);
+                    .then(({ error }) => {
+                        if (error) console.error("Error upserting country:", error);
+                    });
             })
             .catch(console.error);
     }, [countryName]);
+
+
 
     // ——— State ———
     const [pinCount, setPinCount] = useState(0);
@@ -153,6 +148,7 @@ export default function CountryPage() {
     const [showPinForm, setShowPinForm] = useState(false);
 
     const apiKey = "e1d18a84d3aa3e09beafffa4030f2b01";
+
 
     // ——— Fetch stats ———
     useEffect(() => {
@@ -182,7 +178,7 @@ export default function CountryPage() {
 
 
     useEffect(() => {
-        fetch(`https://restcountries.com/v3.1/name/${countryName}`)
+        fetch(`https://restcountries.com/v3.1/name/${countryName}?fullText=true`)
             .then((r) => r.json())
             .then((data) => {
                 const info = Array.isArray(data) && data[0];
@@ -207,8 +203,8 @@ export default function CountryPage() {
             );
 
         supabase
-            .from("Category")
-            .select("name")
+            .from("pins")
+            .select("Category")
             .then(({ data }) =>
                 data &&
                 setCategories(["All", ...new Set(data.map((c) => c.name))])
@@ -253,7 +249,7 @@ export default function CountryPage() {
 
     // ——— Population + Weather ———
     useEffect(() => {
-        fetch(`https://restcountries.com/v3.1/name/${countryName}`)
+        fetch(`https://restcountries.com/v3.1/name/${countryName}?fullText=true`)
             .then((r) => r.json())
             .then((data) => {
                 const info = Array.isArray(data) && data[0];
@@ -544,45 +540,23 @@ export default function CountryPage() {
                             >
                                 Back
                             </Button>
-
-
                         </MDBox>
-
 
                         {/* 2. Expanded / Collapsible Grid */}
                         <MDBox
                             mt={4.5}
                             sx={{
                                 display: "flex",
-                                overflowX: "auto",
-                                scrollSnapType: "x mandatory",
+                                flexDirection: "column",       // stack vertically
+                                maxHeight: 600,                // adjust as needed
+                                overflowY: "auto",             // vertical scroll
+                                scrollSnapType: "y mandatory", // snap on y–axis
                                 gap: 2,
                                 px: 2,
                                 py: 2,
-                                cursor: "grab",
                                 WebkitOverflowScrolling: "touch",
-                                "&::-webkit-scrollbar": { display: "none" },
-                            }}
-                            onMouseDown={(e) => {
-                                const container = e.currentTarget;
-                                let startX = e.pageX - container.offsetLeft;
-                                let scrollLeft = container.scrollLeft;
-
-                                const onMouseMove = (e) => {
-                                    const x = e.pageX - container.offsetLeft;
-                                    const walk = x - startX;
-                                    container.scrollLeft = scrollLeft - walk;
-                                };
-
-                                const onMouseUp = () => {
-                                    container.removeEventListener("mousemove", onMouseMove);
-                                    container.removeEventListener("mouseup", onMouseUp);
-                                    container.removeEventListener("mouseleave", onMouseUp);
-                                };
-
-                                container.addEventListener("mousemove", onMouseMove);
-                                container.addEventListener("mouseup", onMouseUp);
-                                container.addEventListener("mouseleave", onMouseUp);
+                                "&::-webkit-scrollbar": { width: 6 },
+                                "&::-webkit-scrollbar-thumb": { backgroundColor: "rgba(255,255,255,0.3)" },
                             }}
                         >
                             {allPins.map((pin) => (
@@ -675,7 +649,7 @@ export default function CountryPage() {
                     onClick={() =>
                         // match your continent-list route:
                         navigate(
-                            `/Destinations/World_destinations/${encodeURIComponent(continent)}`
+                            `/Destinations/${encodeURIComponent(continent)}`
                         )
                     }
                     disabled={!continent}

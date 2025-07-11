@@ -95,7 +95,6 @@ const addPendingUpdate = async ({ country, field, oldText, htmlContent }) => {
 
 export default function Projects({ country }) {
   const [expandedCard, setExpandedCard] = useState(null);
-  const [countryData, setCountryData] = useState(null);
   const [pendingUpdates, setPendingUpdates] = useState([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingField, setEditingField] = useState(null);
@@ -103,21 +102,33 @@ export default function Projects({ country }) {
   const theme = useTheme();
   const [controller] = useMaterialUIController();
   const { sidenavColor } = controller;
-
+ 
   const dropdownCards = [
     { title: "Country Info", key: "country_info" },
     { title: "Moving Info", key: "moving_info" },
     { title: "Animal Info", key: "animal_info" },
   ];
 
-  const fetchCountryInfo = async (countryName) => {
-    const { data, error } = await supabase
-      .from("countries")
-      .select("name, country_info, moving_info, animal_info")
-      .eq("name", countryName)
-      .maybeSingle();
-    if (!error) setCountryData(data);
-  };
+  const [countryData, setCountryData] = useState(null);
+const [loading, setLoading] = useState(true);
+
+const fetchCountryInfo = async (countryName) => {
+  setLoading(true);
+  const { data, error } = await supabase
+    .from("countries")
+    .select("name, country_info, moving_info, animal_info")
+    .eq("name", countryName)
+    .maybeSingle();
+
+  if (error) {
+    console.error(error);
+    // you might choose to setCountryData({ …empty defaults… })
+  } else if (data) {
+    setCountryData(data);
+  }
+  setLoading(false);
+};
+
 
   const fetchPendingUpdates = async (countryName) => {
     const { data, error } = await supabase
@@ -202,11 +213,14 @@ export default function Projects({ country }) {
       >
         <MDBox display="flex" justifyContent="space-between" alignItems="center" p={3}>
           <MDBox>
-            <MDTypography variant="h6">{countryData?.name || "Loading..."}</MDTypography>
+            {loading ? (
+            <MDTypography variant="h6"> Loading...</MDTypography>
+  ) : (
             <MDBox display="flex" alignItems="center" lineHeight={0}>
               <Icon sx={{ color: theme.palette.info.main, mt: -0.5 }}>public</Icon>
               <MDTypography variant="button">&nbsp;<strong>Details for this country</strong></MDTypography>
             </MDBox>
+  )}
           </MDBox>
         </MDBox>
         <MDBox px={2} pb={2}>

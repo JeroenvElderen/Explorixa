@@ -261,7 +261,7 @@ export default function PinMapCard({ pin }) {
                             }}
                             onClick={() =>
                                 navigate(
-                                    `/Destinations/World_destinations/${continentSlug}/${countrySlug}`
+                                    `/Destinations/${continentSlug}/${countrySlug}`
                                 )
                             }
                         >

@@ -24,7 +24,7 @@ export default function RecentPins() {
       : pin.description,
     action: {
       type: "internal",
-      route: `/Destinations/World_destinations/${pin.title.replace(/\s+/g, "_")}`,
+      route: `/Destinations/${pin.title.replace(/\s+/g, "_")}`,
       label: "Read More",
       color: "info",
     },

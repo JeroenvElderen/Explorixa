@@ -1,3 +1,10 @@
+// What to do in this page //
+
+// 1. at map background for the header //
+// 2. Add a place of the day section //
+// 3. Explore our pins //
+// 4. Join the community //
+
 import React, { useState, useEffect } from "react";
 
 // Supabase client
@@ -16,6 +23,7 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "examples/Footer";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
+import StarFieldOverall from "components/StarFieldOverall";
 
 function Home() {
   const [cityCount, setCityCount] = useState(null);
@@ -89,9 +97,17 @@ function Home() {
   const displayProfileCount = loadingProfiles ? "..." : profileCount.toLocaleString();
 
   return (
+    <>
+    {/* Background component */}
+    <StarFieldOverall />
+
+    {/* Dashboard */}
     <DashboardLayout>
+
+      {/* Bottom navbar component */}
       <SimpleResponsiveNavbar />
 
+      {/* container header */}
       <MDBox py={6} textAlign="center" bgColor="black" borderRadius="lg" mb={6}>
         <MDTypography variant="h2" fontWeight="bold" mb={2}>
           Welcome to Explorixa
@@ -104,8 +120,11 @@ function Home() {
         </MDButton>
       </MDBox>
 
+    {/* Container with cards */}
       <MDBox mb={3}>
         <Grid container spacing={3}>
+
+          {/* Card for Destionations */}
           <Grid item xs={12} md={4}>
             <ComplexStatisticsCard
               color="primary"
@@ -115,6 +134,8 @@ function Home() {
               percentage={{ label: "around the world" }}
             />
           </Grid>
+
+          {/* Card for pins shared */}
           <Grid item xs={12} md={4}>
             <ComplexStatisticsCard
               color="success"
@@ -124,6 +145,8 @@ function Home() {
               percentage={{ label: "by our community" }}
             />
           </Grid>
+
+          {/* Card for Travelers */}
           <Grid item xs={12} md={4}>
             <ComplexStatisticsCard
               color="warning"
@@ -135,9 +158,9 @@ function Home() {
           </Grid>
         </Grid>
       </MDBox>
-
       <Footer />
     </DashboardLayout>
+    </>
   );
 }
 

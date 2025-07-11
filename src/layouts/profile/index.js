@@ -178,7 +178,7 @@ export default function Overview() {
       action: {
         type: "internal",
         // adjust continent/country parts as needed
-        route: `/Destinations/World_destinations/UnknownContinent/UnknownCountry/${slugify(name)}`,
+        route: `/Destinations/UnknownContinent/UnknownCountry/${slugify(name)}`,
         label: "Read More",
         color: "info",
       },
