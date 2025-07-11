@@ -139,10 +139,12 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
               } else if (routePath) {
                 // 2nd click (already open): navigate to parent route
                 navigate(routePath);
+                closeSidenav();
               }
             } else if (routePath) {
               // no children: just navigate
               navigate(routePath);
+              closeSidenav();
             }
           }}
           style={{ textDecoration: "none" }}

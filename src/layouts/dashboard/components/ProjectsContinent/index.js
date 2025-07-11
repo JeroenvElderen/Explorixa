@@ -73,7 +73,7 @@ export default function ProjectsContinent({ continent }) {
                 key={name}
                 onClick={() =>
                   navigate(
-                    `/Destinations/World_destinations/${encodeURIComponent(
+                    `/Destinations/${encodeURIComponent(
                       continent
                     )}/${encodeURIComponent(name)}`
                   )

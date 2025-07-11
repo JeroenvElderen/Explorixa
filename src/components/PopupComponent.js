@@ -82,7 +82,7 @@ export default function PopupComponent({ data, onClose }) {
   const contSlug = sluggify(rawCont);
   const counSlug = sluggify(rawCoun);
   const pinSlug = sluggify(data?.title);
-  const pinPath = `/Destinations/World_destinations/${contSlug}/${counSlug}/${pinSlug}`;
+  const pinPath = `/Destinations/${contSlug}/${counSlug}/${pinSlug}`;
   const formattedDate = data?.date ? new Date(data.date).toISOString().slice(0, 10) : '';
 
   // Carousel pins
@@ -204,7 +204,7 @@ export default function PopupComponent({ data, onClose }) {
             }}>
               {carouselPins.map(p => {
                 const safeTitle = p.title;
-                const route = `/Destinations/World_destinations/${contSlug}/${counSlug}/${sluggify(p.title)}`;
+                const route = `/Destinations/${contSlug}/${counSlug}/${sluggify(p.title)}`;
                 const pinDate = p.date ? new Date(p.date).toISOString().slice(0, 10) : '';
                 return (
                   <Box key={p.id}
