@@ -1,4 +1,12 @@
-// src/pages/Overview.jsx
+// What to do in this component
+// 1. make a section to show the lists of this user
+// 2. Instead of Message
+//    - Show map with user pins
+//    - Make an extra menu to select between, listed, saved and been pins
+// 3. Make a section as timeline, so user can see when he has posted (something like facebook)
+// 4. Make a button to show all images the user has uploaded
+// 5. Clean up code
+
 import React, { useState, useEffect, useRef } from "react";
 import Grid from "@mui/material/Grid";
 import Divider from "@mui/material/Divider";

@@ -99,19 +99,19 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
       open={open}
       onClose={onClose}
       PaperProps={{
-                    sx: {
-                        backdropFilter: "blur(20px)",
-                        WebkitBackdropFilter: "blur(20px)",
-                        background:
-                            "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-                        border: "1px solid rgba(255,255,255,0.6)",
-                        boxShadow:
-                            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-                        borderRadius: "12px",
-                        p: 2,                // inner padding
-                        minWidth: 300,       // grow to taste
-                    }
-                }}
+        sx: {
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          background:
+            "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+          border: "1px solid rgba(255,255,255,0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+          borderRadius: "12px",
+          p: 2,                // inner padding
+          minWidth: 300,       // grow to taste
+        }
+      }}
     >
       <DialogTitle>Add to a list</DialogTitle>
 

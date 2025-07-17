@@ -1,7 +1,17 @@
+// What to do in this component //
+// 1. Make a popup so that people now you can click the see all pins card //
+// 2. Move the back to europe button to the top //
+// 3. Add a second button to go to next country //
+// 4. Add a third button to go back to previous country //
+// 5. Add a map of the country with pins //
+// 6. Make it when clicking pin go to PinPage //
+// 7. Clean up code //
+
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "../../SupabaseClient";
 import { Button, FormControl, Select, MenuItem } from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
+import Hidden from "@mui/material/Hidden";
 
 // @mui material components
 import Grid from "@mui/material/Grid";
@@ -20,7 +30,8 @@ import PinCard from "examples/Charts/PinCard";
 import PinDetailCard from "components/PinDetailCard";
 import Projects from "layouts/dashboard/components/Projects";
 import OrdersOverview from "layouts/dashboard/components/OrdersOverview";
-
+import { useSavedPins } from "components/SavedPinsContext";
+import ListDialog from "components/AddToList/AddToListDialog";
 // ——— Helpers ———
 function truncate(text, maxLength) {
     if (!text) return "";
@@ -54,6 +65,15 @@ function PinCardWithTimeAgo({
     onClick,
     onMouseEnter,
     onMouseLeave,
+    isSaved,
+    onSave,
+    isBeenThere,
+    onBeenThere,
+    isWantToGo,
+    onWantToGo,
+    beenThereCount,
+    wantToGoCount,
+    savedCount,
 }) {
     const [timeSincePost, setTimeSincePost] = useState(() => timeAgo(pin.created_at));
 
@@ -75,12 +95,21 @@ function PinCardWithTimeAgo({
             imagealt={pin.Name}
             height={isExpanded ? "800px" : "150px"}
             truncateDescription={truncateDescription}
+            isSaved={isSaved}
+            onSave={onSave}
+            isBeenThere={isBeenThere}
+            onBeenThere={onBeenThere}
+            isWantToGo={isWantToGo}
+            onWantToGo={onWantToGo}
+            beenThereCount={beenThereCount}
+            wantToGoCount={wantToGoCount}
+            savedCount={savedCount}
         />
     );
 }
 
 export default function CountryPage() {
-    const { countrySlug } = useParams();
+    const { countrySlug, continent } = useParams();
     const navigate = useNavigate();
     const countryName = useMemo(
         () =>
@@ -89,6 +118,21 @@ export default function CountryPage() {
                 .replace(/\b\w/g, (l) => l.toUpperCase()),
         [countrySlug]
     );
+
+    const handlePinClick = (pin) => {
+        const pinSlug = encodeURIComponent(pin.Name?.replace(/\s/g, "_") || pin.id);
+        const continentParam = continent; // <-- Only this is needed
+        navigate(`/Destinations/${encodeURIComponent(continentParam)}/${encodeURIComponent(countrySlug)}/${pinSlug}`, {
+            state: { pin },
+        });
+    };
+
+
+    const {
+        pins, save, remove,
+        beenTherePins, saveBeenThere, removeBeenThere,
+        wantToGoPins, saveWantToGo, removeWantToGo
+    } = useSavedPins();
 
     // Ensure country exists in DB
     useEffect(() => {
@@ -99,14 +143,14 @@ export default function CountryPage() {
             .then(data => {
                 const info = Array.isArray(data) && data[0];
                 if (!info) throw new Error("No country data");
-                const continent = info.region;
+                const region = info.region;
 
                 return supabase
                     .from("countries")
                     .upsert(
                         {
                             name: countryName,
-                            continent,
+                            continent: region,
                             country_info: null,
                             moving_info: null,
                             animal_info: null,
@@ -135,7 +179,7 @@ export default function CountryPage() {
     const [selectedCity, setSelectedCity] = useState("All");
     const [selectedCategory, setSelectedCategory] = useState("All");
     const [countryCode, setCountryCode] = useState("");
-    const [continent, setContinent] = useState("");
+    const [continentName, setContinentName] = useState("");
 
     const [temperature, setTemperature] = useState(null);
     const [weatherCondition, setWeatherCondition] = useState("");
@@ -147,8 +191,76 @@ export default function CountryPage() {
     const [hoveredRecentPinId, setHoveredRecentPinId] = useState(null);
     const [showPinForm, setShowPinForm] = useState(false);
 
+    const [listDialogOpen, setListDialogOpen] = useState(false);
+    const [activePin, setActivePin] = useState(null);
+
     const apiKey = "e1d18a84d3aa3e09beafffa4030f2b01";
 
+    const [user, setUser] = useState(null);
+    useEffect(() => {
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setUser(session?.user ?? null);
+        });
+        const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
+            setUser(session?.user ?? null);
+        });
+        return () => listener.subscription.unsubscribe();
+    }, []);
+
+    const handleHeartClick = (pin) => {
+        setActivePin(pin);
+        setListDialogOpen(true);
+    };
+
+    const handleBeenThere = async (pin) => {
+        if (!user) return;
+        const isNow = !beenTherePins.find(p => p.id === pin.id);
+        let count = pin.been_there || 0;
+        let newCount = count;
+
+        if (isNow) {
+            saveBeenThere(pin);
+            newCount = count + 1;
+        } else {
+            removeBeenThere(pin);
+            newCount = Math.max(count - 1, 0);
+        }
+
+        // Only update pins table
+        await supabase.from('pins').update({ been_there: newCount }).eq('id', pin.id);
+
+        setAllPins(pins => pins.map(p =>
+            p.id === pin.id ? { ...p, want_to_go: newCount } : p
+        ));
+        setRecentPins(pins => pins.map(p =>
+            p.id === pin.id ? { ...p, want_to_go: newCount } : p
+        ));
+    };
+
+    const handleWantToGo = async (pin) => {
+        if (!user) return;
+        const isNow = !wantToGoPins.find(p => p.id === pin.id);
+        let count = pin.want_to_go || 0;
+        let newCount = count;
+
+        if (isNow) {
+            saveWantToGo(pin);
+            newCount = count + 1;
+        } else {
+            removeWantToGo(pin);
+            newCount = Math.max(count - 1, 0);
+        }
+
+        // Only update pins table
+        await supabase.from('pins').update({ want_to_go: newCount }).eq('id', pin.id);
+
+        setAllPins(pins => pins.map(p =>
+            p.id === pin.id ? { ...p, want_to_go: newCount } : p
+        ));
+        setRecentPins(pins => pins.map(p =>
+            p.id === pin.id ? { ...p, want_to_go: newCount } : p
+        ));
+    };
 
     // ——— Fetch stats ———
     useEffect(() => {
@@ -184,7 +296,7 @@ export default function CountryPage() {
                 const info = Array.isArray(data) && data[0];
                 if (!info) throw new Error("No country data");
                 setPopulation(info.population);
-                setContinent(info.region);
+                setContinentName(info.region);
                 setCountryCode(info.cca2.toLowerCase());
                 // …
             })
@@ -312,85 +424,173 @@ export default function CountryPage() {
             <SimpleResponsiveNavbar />
             <MDBox py={3}>
                 {/* Top Stats */}
-                {!showPinForm && (
-                    <Grid container spacing={3}>
-                        <Grid item xs={12} md={6} lg={3}>
-                            <MDBox mb={1.5} sx={{ cursor: "pointer" }} onClick={openAllPins}>
-                                <ComplexStatisticsCard
-                                    color="dark"
-                                    icon="place"
-                                    title="See all pins"
-                                    count={pinCount}
-                                    percentage={{
-                                        color: "success",
-                                        amount: `Created ${lastPinCreatedTimeAgo}`,
-                                    }}
-                                />
-                            </MDBox>
-                        </Grid>
-                        <Grid item xs={12} md={6} lg={3}>
-                            <MDBox mb={1.5}>
-                                <ComplexStatisticsCard
-                                    icon="house"
-                                    title="Current cities"
-                                    count={cityCount}
-                                    {...(lastCity && {
-                                        percentage: {
+                {/* Top Stats (desktop/tablet: always visible) */}
+                <Hidden smDown>
+                    {!showPinForm && (
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5} sx={{ cursor: "pointer" }} onClick={openAllPins}>
+                                    <ComplexStatisticsCard
+                                        color="dark"
+                                        icon="place"
+                                        title="See all pins"
+                                        count={pinCount}
+                                        percentage={{
                                             color: "success",
-                                            amount: `Last: ${lastCity.Name}`,
-                                        },
-                                    })}
-                                />
-                            </MDBox>
+                                            amount: `Created ${lastPinCreatedTimeAgo}`,
+                                        }}
+                                    />
+                                </MDBox>
+                            </Grid>
+
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        icon="house"
+                                        title="Current cities"
+                                        count={cityCount}
+                                        {...(lastCity && {
+                                            percentage: {
+                                                color: "success",
+                                                amount: `Last: ${lastCity.Name}`,
+                                            },
+                                        })}
+                                    />
+                                </MDBox>
+                            </Grid>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        color="info"
+                                        icon="thermostat"
+                                        title="Temperature"
+                                        count={
+                                            temperature != null ? `${temperature.toFixed(1)}°C` : "…"
+                                        }
+                                        percentage={{
+                                            color:
+                                                weatherCondition === "Clear"
+                                                    ? "success"
+                                                    : weatherCondition === "Rain"
+                                                        ? "error"
+                                                        : "warning",
+                                            amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`,
+                                            label: "Weather",
+                                        }}
+                                    />
+                                </MDBox>
+                            </Grid>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        color="primary"
+                                        icon={
+                                            countryCode ? (
+                                                <img
+                                                    src={`https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`}
+                                                    alt={`${countryName} flag`}
+                                                    style={{
+                                                        width: 26,
+                                                        height: 26,
+                                                        objectFit: "cover",
+                                                        borderRadius: 4,
+                                                    }}
+                                                />
+                                            ) : null
+                                        }
+                                        title="Population"
+                                        count={population?.toLocaleString() || "…"}
+                                        percentage={{ color: "success", amount: "Updated" }}
+                                    />
+                                </MDBox>
+                            </Grid>
                         </Grid>
-                        <Grid item xs={12} md={6} lg={3}>
-                            <MDBox mb={1.5}>
-                                <ComplexStatisticsCard
-                                    color="info"
-                                    icon="thermostat"
-                                    title="Temperature"
-                                    count={
-                                        temperature != null ? `${temperature.toFixed(1)}°C` : "…"
-                                    }
-                                    percentage={{
-                                        color:
-                                            weatherCondition === "Clear"
-                                                ? "success"
-                                                : weatherCondition === "Rain"
-                                                    ? "error"
-                                                    : "warning",
-                                        amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`,
-                                        label: "Weather",
-                                    }}
-                                />
-                            </MDBox>
+                    )}
+                </Hidden>
+
+                {/* Top Stats (mobile: hide if showAllPins) */}
+                <Hidden smUp>
+                    {!showPinForm && !showAllPins && (
+                        <Grid container spacing={3}>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5} sx={{ cursor: "pointer" }} onClick={openAllPins}>
+                                    <ComplexStatisticsCard
+                                        color="dark"
+                                        icon="place"
+                                        title="See all pins"
+                                        count={pinCount}
+                                        percentage={{
+                                            color: "success",
+                                            amount: `Created ${lastPinCreatedTimeAgo}`,
+                                        }}
+                                    />
+                                </MDBox>
+                            </Grid>
+
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        icon="house"
+                                        title="Current cities"
+                                        count={cityCount}
+                                        {...(lastCity && {
+                                            percentage: {
+                                                color: "success",
+                                                amount: `Last: ${lastCity.Name}`,
+                                            },
+                                        })}
+                                    />
+                                </MDBox>
+                            </Grid>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        color="info"
+                                        icon="thermostat"
+                                        title="Temperature"
+                                        count={
+                                            temperature != null ? `${temperature.toFixed(1)}°C` : "…"
+                                        }
+                                        percentage={{
+                                            color:
+                                                weatherCondition === "Clear"
+                                                    ? "success"
+                                                    : weatherCondition === "Rain"
+                                                        ? "error"
+                                                        : "warning",
+                                            amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`,
+                                            label: "Weather",
+                                        }}
+                                    />
+                                </MDBox>
+                            </Grid>
+                            <Grid item xs={12} md={6} lg={3}>
+                                <MDBox mb={1.5}>
+                                    <ComplexStatisticsCard
+                                        color="primary"
+                                        icon={
+                                            countryCode ? (
+                                                <img
+                                                    src={`https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`}
+                                                    alt={`${countryName} flag`}
+                                                    style={{
+                                                        width: 26,
+                                                        height: 26,
+                                                        objectFit: "cover",
+                                                        borderRadius: 4,
+                                                    }}
+                                                />
+                                            ) : null
+                                        }
+                                        title="Population"
+                                        count={population?.toLocaleString() || "…"}
+                                        percentage={{ color: "success", amount: "Updated" }}
+                                    />
+                                </MDBox>
+                            </Grid>
                         </Grid>
-                        <Grid item xs={12} md={6} lg={3}>
-                            <MDBox mb={1.5}>
-                                <ComplexStatisticsCard
-                                    color="primary"
-                                    icon={
-                                        countryCode ? (
-                                            <img
-                                                src={`https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`}
-                                                alt={`${countryName} flag`}
-                                                style={{
-                                                    width: 26,
-                                                    height: 26,
-                                                    objectFit: "cover",
-                                                    borderRadius: 4,
-                                                }}
-                                            />
-                                        ) : null
-                                    }
-                                    title="Population"
-                                    count={population?.toLocaleString() || "…"}
-                                    percentage={{ color: "success", amount: "Updated" }}
-                                />
-                            </MDBox>
-                        </Grid>
-                    </Grid>
-                )}
+                    )}
+                </Hidden>
 
                 {/* FULL PINS VIEW */}
                 {showAllPins ? (
@@ -568,7 +768,7 @@ export default function CountryPage() {
                                         minWidth: "100%",
                                         maxWidth: "100%",
                                     }}
-                                    onClick={() => setExpandedPinId(pin.id)}
+                                    onClick={() => handlePinClick(pin)}
                                 >
                                     <AllPinCard
                                         title={pin.Name}
@@ -577,16 +777,15 @@ export default function CountryPage() {
                                         imageurl={pin["Main Image"]}
                                         imagealt={pin.Name}
                                         date={timeAgo(pin.created_at)}
-                                        // Customize or connect logic as needed
-                                        isSaved={false}
-                                        savedCount={pin.savedCount}
-                                        onSave={() => { }}
-                                        isBeenThere={false}
-                                        beenThereCount={pin.beenThereCount}
-                                        onBeenThere={() => { }}
-                                        isWantToGo={false}
-                                        wantToGoCount={pin.wantToGoCount}
-                                        onWantToGo={() => { }}
+                                        isSaved={!!pins.find(p => p.id === pin.id)}
+                                        savedCount={pin.saved_count}
+                                        onSave={() => handleHeartClick(pin)}
+                                        isBeenThere={!!beenTherePins.find(p => p.id === pin.id)}
+                                        beenThereCount={pin.been_there}
+                                        onBeenThere={() => handleBeenThere(pin)}
+                                        isWantToGo={!!wantToGoPins.find(p => p.id === pin.id)}
+                                        wantToGoCount={pin.want_to_go}
+                                        onWantToGo={() => handleWantToGo(pin)}
                                     />
                                 </Box>
                             ))}
@@ -603,11 +802,7 @@ export default function CountryPage() {
                                         <MDBox
                                             mb={3}
                                             sx={{ cursor: "pointer" }}
-                                            onClick={() =>
-                                                setExpandedPinId(prev => (prev === pin.id ? null : pin.id))
-                                            }
-                                            onMouseEnter={() => setHoveredRecentPinId(pin.id)}
-                                            onMouseLeave={() => setHoveredRecentPinId(null)}
+                                            onClick={() => handlePinClick(pin)}
                                         >
                                             {expandedPinId === pin.id ? (
                                                 <PinDetailCard pin={pin} />
@@ -617,6 +812,15 @@ export default function CountryPage() {
                                                     idx={idx}
                                                     truncateDescription={hoveredRecentPinId !== pin.id}
                                                     isExpanded={false}
+                                                    isSaved={!!pins.find(p => p.id === pin.id)}
+                                                    onSave={() => handleHeartClick(pin)}
+                                                    isBeenThere={!!beenTherePins.find(p => p.id === pin.id)}
+                                                    onBeenThere={() => handleBeenThere(pin)}
+                                                    isWantToGo={!!wantToGoPins.find(p => p.id === pin.id)}
+                                                    onWantToGo={() => handleWantToGo(pin)}
+                                                    beenThereCount={pin.been_there}
+                                                    wantToGoCount={pin.want_to_go}
+                                                    savedCount={pin.saved_count}
                                                 />
                                             )}
                                         </MDBox>
@@ -648,15 +852,29 @@ export default function CountryPage() {
                     }}
                     onClick={() =>
                         // match your continent-list route:
-                        navigate(
-                            `/Destinations/${encodeURIComponent(continent)}`
-                        )
+                        navigate(`/Destinations/${encodeURIComponent(continent)}`)
                     }
                     disabled={!continent}
                 >
                     ← Back to {continent || "continent"}
                 </Button>
             </MDBox>
+            <ListDialog
+                open={listDialogOpen}
+                onClose={() => setListDialogOpen(false)}
+                pin={activePin}
+                onSaved={() => {
+                    save(activePin);
+                    setAllPins(pins =>
+                        pins.map(p =>
+                            p.id === activePin.id
+                                ? { ...p, saved_count: (p.saved_count || 0) + 1 }
+                                : p
+                        )
+                    );
+                    setListDialogOpen(false);
+                }}
+            />
 
             <Footer />
         </DashboardLayout>

@@ -1,6 +1,12 @@
+// What to do in this component //
+// 1. Add map with continent pins //
+// 2. Make each pin link to the PinPage //
+// 3. Instead of average weather do a country count //
+// 4. Make a filter for the pins based on country //
+// 5. Clean up code //
+
 import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { createClient } from '@supabase/supabase-js';
 import { supabase } from "SupabaseClient";
 import { Grid } from "@mui/material";
 import StarFieldOverall from "components/StarFieldOverall";
@@ -13,10 +19,7 @@ import {
   FaGlobe,
 } from "react-icons/fa";
 
-// Material Dashboard 2 React components
 import MDBox from "components/MDBox";
-
-// Layout & other Dashboard bits
 import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "examples/Footer";

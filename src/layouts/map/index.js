@@ -128,12 +128,18 @@ export default function Map() {
   }, [flyToPlace]);
 
   return (
-    <DashboardLayout>
-      <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0 }}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
+    <DashboardLayout
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+      }}>
+      <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0, flexGrow: 1, position: "relative" }}>
+        <Grid container sx={{ height: "100%" }}>
+          <Grid item xs={12} sx={{ height: "100%" }}>
             <Suspense fallback={<div style={{ textAlign:"center", padding:40 }}>Loading map…</div>}>
               <WorldMapComponent
+                style={{ height: "100%" }}
                 accessToken={MAPBOX_ACCESS_TOKEN}
                 selectingPoint={selectingPoint}
                 onMapClick={handleMapClick}

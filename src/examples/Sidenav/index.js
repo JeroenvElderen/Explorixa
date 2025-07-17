@@ -260,7 +260,7 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
             </MDTypography>
           </MDBox>
         </MDBox>
-      </MDBox>
+      </MDBox> 
 
       <Divider
         light={

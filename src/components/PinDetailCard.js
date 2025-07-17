@@ -1,5 +1,8 @@
 import React from "react";
 import { Box, Typography, Card, CardMedia, CardContent } from "@mui/material";
+import ReactMarkdown from "react-markdown";
+import remarkGfm    from "remark-gfm";
+import remarkBreaks from "remark-breaks";
 
 function PinDetailCard({ pin, onClose }) {
   return (
@@ -36,10 +39,13 @@ function PinDetailCard({ pin, onClose }) {
           {new Date(pin.created_at).toLocaleDateString()} • {pin.countryName}
         </Typography>
 
-        <div
-          style={{ whiteSpace: "pre-wrap", color: "white" }}
-          dangerouslySetInnerHTML={{ __html: pin.Information }}
-        />
+        <Box sx={{ color: "white !important", fontSize: "16px" }}>
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm, remarkBreaks]}
+            >
+              {pin.Information || "" }
+            </ReactMarkdown>
+        </Box>
 
       </CardContent>
     </Card>

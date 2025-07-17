@@ -14,7 +14,7 @@ import Home from "layouts/home";
 import HomeIcon from "@mui/icons-material/Home";
 import CountryPage from "components/countries/CountryPage";
 import ContinentPage from "components/continent/ContinentPage";
-import PinPage from "components/PinPage";
+import PinPage from "components/pinpage";
 // @mui icons
 import Icon from "@mui/material/Icon";
 
@@ -387,7 +387,7 @@ const routes = [
     component: PinPage,
   },
   {
-    
+    type: "collapse",
     name: "Profile",
     key: "profile",
     icon: <Icon fontSize="small">person</Icon>,
@@ -395,7 +395,7 @@ const routes = [
     component: Profile,
   },
   /*{
-    
+    type: "collapse",
     name: "Tables",
     key: "tables",
     icon: <Icon fontSize="small">table_view</Icon>,
@@ -403,7 +403,7 @@ const routes = [
     component: Tables,
   },
   {
-    
+    type: "collapse",
     name: "Billing",
     key: "billing",
     icon: <Icon fontSize="small">receipt_long</Icon>,
@@ -411,7 +411,7 @@ const routes = [
     component: Billing,
   },
   {
-    
+    type: "collapse",
     name: "RTL",
     key: "rtl",
     icon: <Icon fontSize="small">format_textdirection_r_to_l</Icon>,
@@ -419,7 +419,7 @@ const routes = [
     component: RTL,
   },
   {
-    
+    type: "collapse",
     name: "Notifications",
     key: "notifications",
     icon: <Icon fontSize="small">notifications</Icon>,
@@ -427,7 +427,7 @@ const routes = [
     component: Notifications,
   }, */
   {
-    
+    type: "collapse",
     name: "Sign In",
     key: "sign-in",
     icon: <Icon fontSize="small">login</Icon>,
@@ -435,7 +435,7 @@ const routes = [
     component: SignIn,
   },
   {
-    
+    type: "collapse",
     name: "Sign Up",
     key: "sign-up",
     icon: <Icon fontSize="small">assignment</Icon>,

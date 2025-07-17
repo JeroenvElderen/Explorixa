@@ -76,3 +76,13 @@ export function getCountriesByContinent(continentName) {
     .replace(/\b\w/g, (l) => l.toUpperCase());
   return continentCountries[key] || [];
 }
+
+export function getContinentByCountry(countryName) {
+  if (typeof countryName !== "string") return "";
+  for (const [continent, countries] of Object.entries(continentCountries)) {
+    if (countries.includes(countryName)) {
+      return continent;
+    }
+  }
+  return "";
+}

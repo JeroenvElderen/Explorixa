@@ -1,3 +1,6 @@
+/* App.css */
+
+/* —— your existing global rules —— */
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -9,6 +12,7 @@ html, body, #root {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
+
 }
 
 #root {
@@ -22,6 +26,7 @@ html, body, #root {
   display: flex;
   flex-direction: column;
 }
+
 .navbar-wrapper {
   position: relative;
   width: 90%;
@@ -38,7 +43,7 @@ html, body, #root {
   display: block;
 }
 
-/* Map container fills all available space */
+/* Map container */
 #map {
   flex: 1 1 auto;
   pointer-events: auto !important;
@@ -46,71 +51,42 @@ html, body, #root {
   min-height: 0; /* prevents flex overflow */
   height: 100%;
 }
-
-/* === Quill Toolbar Icons (Clean + Robust) === */
-
-/* Quill picker label default */
-.ql-toolbar .ql-picker-label {
-  color: white !important;
+/* make the caret (blinking insert bar) white */
+.white-simplemde .CodeMirror-cursor {
+  border-left: 1px solid white !important;
 }
 
-/* Quill picker label hover */
-.ql-toolbar .ql-picker-label:hover {
-  color: #F18F01 !important;
+/* —— SimpleMDE / CodeMirror overrides —— */
+.white-simplemde .CodeMirror,
+.white-simplemde .CodeMirror-scroll,
+.white-simplemde .CodeMirror-sizer,
+.white-simplemde .CodeMirror-lines {
+  /* keep the inside transparent & white text */
+  background-color: transparent !important;
+  color: white           !important;
+  /* remove any built‑in borders */
+  border: none           !important;
 }
 
-/* Quill picker items inside dropdown */
-.ql-toolbar .ql-picker-options {
-  background-color: #222;
-  border: 1px solid #F18F01;
+.white-simplemde .editor-toolbar {
+  /* strip the toolbar’s bottom border */
+  border-bottom: none    !important;
 }
 
-.ql-toolbar .ql-picker-item {
-  color: white !important;
+.white-simplemde .CodeMirror-gutters {
+  /* no line‑number gutter border */
+  background-color: transparent !important;
+  border-right: none               !important;
 }
 
-.ql-toolbar .ql-picker-item:hover {
-  color: #F18F01 !important;
+.white-simplemde .editor-preview,
+.white-simplemde .editor-preview-side {
+  /* transparent preview pane */
+  background-color: transparent !important;
+  color: white                    !important;
 }
 
-/* Fix dropdown arrow */
-.ql-toolbar .ql-picker-label::after {
-  border-top: 6px solid white;
-}
-
-.ql-toolbar .ql-picker-label:hover::after {
-  border-top: 6px solid #F18F01 !important;
-}
-
-
-/* Default state: white for all icon elements */
-.ql-toolbar button svg * {
-  stroke: white !important;
-  
-}
-
-/* Hover state */
-.ql-toolbar button:hover svg *,
-.ql-toolbar .ql-picker-label:hover svg *,
-.ql-toolbar .ql-picker-item:hover svg * {
-  stroke: #F18F01 !important;
-  
-}
-
-/* Active formatting buttons (e.g., bold/italic selected) */
-.ql-toolbar .ql-active svg * {
-  stroke: #F18F01 !important;
-  
-}
-
-/* Picker dropdown arrow */
-.ql-toolbar .ql-picker-label::after {
-  border-top: 6px solid white;
-}
-.ql-toolbar .ql-picker-label:hover::after {
-  border-top: 6px solid #F18F01 !important;
-}
-
+/* hide mapbox logo */
 .mapboxgl-ctrl-logo {
   display: none !important;
 }
