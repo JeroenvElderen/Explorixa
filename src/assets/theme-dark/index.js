@@ -143,7 +143,38 @@ export default createTheme({
     MuiFormLabel: { ...formLabel },
     MuiCheckbox: { ...checkbox },
     MuiRadio: { ...radio },
-    MuiAutocomplete: { ...autocomplete },
+    MuiAutocomplete: {
+      ...autocomplete,             
+      styleOverrides: {
+        paper: {
+          backdropFilter: "blur(20px)",
+          top: 15, right: 15, bottom: 15,
+          background: "linear-gradient(145deg, rgba(241,143,1,0.1) 0%, rgba(241,143,1,0) 100%)",
+          border: "1px solid rgba(243,143,1,0.6)",
+          boxShadow:
+            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+          borderRadius: "6px 6px 12px 12px",
+          overflow: "hidden",
+        },
+        listbox: {
+          backgroundColor: "transparent",
+          "& .MuiAutocomplete-option": {
+            color: "#fff",
+          },
+        },
+        option: {
+          "&:hover": {
+            backgroundColor: "#F18F01CC !important",
+          },
+          "&[data-focus='true']": {
+            background: "#F18F01CC !important",
+          },
+          "&[aria-selected='true']": {
+            background: "#F18F01 !important",
+          },
+        },
+      },
+    },
     MuiPopover: { ...popover },
     MuiButtonBase: { ...buttonBase },
     MuiIcon: { ...icon },

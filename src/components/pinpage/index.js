@@ -21,7 +21,7 @@ import MDTypography from "../../components/MDTypography";
 import { PinImageCarousel } from "../../components/pinpage/PinImageCarousel";
 import { PinHeader } from "../../components/pinpage/PinHeader";
 import { PinStats } from "../../components/pinpage/PinStats";
-import { PinDetailsCard } from "../../components/pinpage/PinDetailsCard";
+import PinDetailsCard from "./PinDetailsCard";
 import { PinInfoEditor } from "../../components/pinpage/PinInfoEditor";
 import PinMapCard from "../../components/PinMapCard";
 import ListDialog from "components/AddToList/AddToListDialog";
