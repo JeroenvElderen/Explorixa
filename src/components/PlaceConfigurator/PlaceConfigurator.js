@@ -12,7 +12,6 @@ import Select from '@mui/material/Select';
 import InputLabel from '@mui/material/InputLabel';
 import FormControl from '@mui/material/FormControl';
 import InputAdornment from '@mui/material/InputAdornment';
-import Menu from '@mui/material/Menu';
 import { useTheme } from '@mui/material/styles';
 import { useMaterialUIController, setOpenConfigurator } from 'context';
 
@@ -37,16 +36,15 @@ export default function PlaceConfigurator(props) {
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator } = controller;
   const theme = useTheme();
-  
+
   const {
     searchCountry,
     setSearchCountry,
-    selectedPlace,
+    
     setSelectedPlace,
     form,
     setForm,
-    mainImageInputRef,
-    multiImageInputRef,
+   
     mainImageFile,
     multiImageFiles,
     currencyAnchor,

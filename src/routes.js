@@ -15,6 +15,7 @@ import HomeIcon from "@mui/icons-material/Home";
 import CountryPage from "components/countries/CountryPage";
 import ContinentPage from "components/continent/ContinentPage";
 import PinPage from "components/pinpage";
+import ProfilePage from "components/ProfilePage";
 // @mui icons
 import Icon from "@mui/material/Icon";
 
@@ -385,6 +386,13 @@ const routes = [
     name: "PinPage",
     route: "/Destinations/:continent/:countrySlug/:pinSlug",
     component: PinPage,
+  },
+  {
+    type: "route",
+    key: "user-profile",
+    name: "User Profile",
+    route: "/profile/:userId",
+    component: ProfilePage,
   },
   {
     type: "collapse",

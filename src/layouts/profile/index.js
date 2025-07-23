@@ -48,7 +48,7 @@ export default function Overview() {
   const isEditing = activeTab === 2;
 
   const navigate = useNavigate();
-  
+
   const [formValues, setFormValues] = useState({
     Username: "",
     full_name: "",
@@ -82,7 +82,10 @@ export default function Overview() {
 
   // Fetch current user's profile
   async function fetchProfile() {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
     if (userError || !user) return setProfile(null);
 
     const { data } = await supabase
@@ -100,7 +103,9 @@ export default function Overview() {
   // Subscribe to auth changes and clean up correctly
   useEffect(() => {
     fetchProfile();
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_, session) => {
       if (session?.user) fetchProfile();
       else setProfile(null);
     });
@@ -148,7 +153,9 @@ export default function Overview() {
 
   // Remove saved‐pin: delete join, decrement count, update context
   const handleRemove = async (pin) => {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
 
     // 1) delete junction row
@@ -175,9 +182,7 @@ export default function Overview() {
     const description =
       rawDesc.length > 100 ? `${rawDesc.slice(0, 100)}…` : rawDesc;
     const mainImage =
-      p["Main Image"] ||
-      (Array.isArray(p.Images) && p.Images[0]) ||
-      "";
+      p["Main Image"] || (Array.isArray(p.Images) && p.Images[0]) || "";
 
     return {
       image: mainImage,
@@ -194,52 +199,51 @@ export default function Overview() {
     };
   });
 
-    // 1) fire the file‐picker
+  // 1) fire the file‐picker
   const triggerBgUpload = () => bgInputRef.current?.click();
 
   // 2) when they choose a file, upload it to Supabase
   // 2) when they choose a file, upload it to Supabase
-const handleBgUpload = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file || !profile) return;
+  const handleBgUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !profile) return;
 
-  // Derive extension and storage path
-  const ext = file.name.split(".").pop();
-  const path = `${profile.user_id}/background.${ext}`;
+    // Derive extension and storage path
+    const ext = file.name.split(".").pop();
+    const path = `${profile.user_id}/background.${ext}`;
 
-  // Upload (upsert = overwrite)
-  const { error: uploadError } = await supabase
-    .storage
-    .from("pins-images")
-    .upload(path, file, { upsert: true });
-  if (uploadError) {
-    console.error(uploadError);
-    return;
-  }
+    // Upload (upsert = overwrite)
+    const { error: uploadError } = await supabase.storage
+      .from("pins-images")
+      .upload(path, file, { upsert: true });
+    if (uploadError) {
+      console.error(uploadError);
+      return;
+    }
 
-  // Get the public URL
-  const { data: { publicUrl } } = supabase
-    .storage
-    .from("pins-images")
-    .getPublicUrl(path);
+    // Get the public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("pins-images").getPublicUrl(path);
 
-  // Append a cache-buster so the browser always fetches the new image
-  const bustedUrl = `${publicUrl}?t=${Date.now()}`;
+    // Append a cache-buster so the browser always fetches the new image
+    const bustedUrl = `${publicUrl}?t=${Date.now()}`;
 
-  // Update form state with the new URL
-  setFormValues((prev) => ({
-    ...prev,
-    background_url: bustedUrl,
-  }));
+    // Update form state with the new URL
+    setFormValues((prev) => ({
+      ...prev,
+      background_url: bustedUrl,
+    }));
 
-  // Reset the file input so picking the same file again fires onChange
-  e.target.value = "";
-};
-
+    // Reset the file input so picking the same file again fires onChange
+    e.target.value = "";
+  };
 
   return (
     <>
-      <StarField backgroundUrl={formValues.background_url || profile.background_url} />
+      <StarField
+        backgroundUrl={formValues.background_url || profile.background_url}
+      />
 
       <DashboardLayout>
         <SimpleResponsiveNavbar />
@@ -284,7 +288,7 @@ const handleBgUpload = async (e) => {
               )}
 
               <Grid item xs={12} md={6} xl={4} sx={{ display: "flex" }}>
-                <Divider orientation="vertical" sx={{ ml: -1 }} />
+                
 
                 <MDBox
                   sx={{
@@ -303,63 +307,74 @@ const handleBgUpload = async (e) => {
                   <MDTypography variant="h6" mb={2}>
                     Profile Information
                   </MDTypography>
-                  {["Username", "full_name", "mobile", "email", "location" ].map((field) => (
-                    <MDBox key={field} mb={1}>
+                  {["Username", "full_name", "mobile", "email", "location"].map(
+                    (field) => (
+                      <MDBox key={field} mb={1}>
+                        <MDTypography
+                          variant="caption"
+                          color="white"
+                          sx={{ fontSize: "12px" }}
+                        >
+                          {field.replace(/_/g, " ").toUpperCase()}
+                        </MDTypography>
+                        {isEditing ? (
+                          <TextField
+                            fullWidth
+                            size="small"
+                            value={formValues[field]}
+                            onChange={handleChange(field)}
+                            inputProps={{ style: { fontSize: "14px" } }}
+                          />
+                        ) : (
+                          <MDTypography sx={{ fontSize: "16px" }}>
+                            {profile[field] || "—"}
+                          </MDTypography>
+                        )}
+                      </MDBox>
+                    )
+                  )}
+                  {/* ––– new background‐upload UI ––– */}
+                  {isEditing && (
+                    <MDBox mb={1}>
                       <MDTypography
                         variant="caption"
                         color="white"
                         sx={{ fontSize: "12px" }}
                       >
-                        {field.replace(/_/g, " ").toUpperCase()}
+                        BACKGROUND IMAGE
                       </MDTypography>
-                      {isEditing ? (
-                        <TextField
-                          fullWidth
-                          size="small"
-                          value={formValues[field]}
-                          onChange={handleChange(field)}
-                          inputProps={{ style: { fontSize: "14px" } }}
-                        />
-                      ) : (
-                        <MDTypography sx={{ fontSize: "16px" }}>
-                          {profile[field] || "—"}
-                        </MDTypography>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        ref={bgInputRef}
+                        style={{ display: "none" }}
+                        onChange={handleBgUpload}
+                      />
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={triggerBgUpload}
+                        sx={{ mt: 1 }}
+                      >
+                        Upload…
+                      </Button>
+                      {formValues.background_url && (
+                        <MDBox mt={1}>
+                          <img
+                            src={formValues.background_url}
+                            alt="bg preview"
+                            style={{
+                              width: "100%",
+                              borderRadius: 4,
+                              maxHeight: 100,
+                              objectFit: "cover",
+                            }}
+                          />
+                        </MDBox>
                       )}
                     </MDBox>
-                  ))}
-                    {/* ––– new background‐upload UI ––– */}
-  {isEditing && (
-    <MDBox mb={1}>
-      <MDTypography variant="caption" color="white" sx={{ fontSize: "12px" }}>
-        BACKGROUND IMAGE
-      </MDTypography>
-      <input
-        type="file"
-        accept="image/*"
-        ref={bgInputRef}
-        style={{ display: "none" }}
-        onChange={handleBgUpload}
-      />
-      <Button variant="outlined" size="small" onClick={triggerBgUpload} sx={{ mt: 1 }}>
-        Upload…
-      </Button>
-      {formValues.background_url && (
-        <MDBox mt={1}>
-          <img
-            src={formValues.background_url}
-            alt="bg preview"
-            style={{
-              width: "100%",
-              borderRadius: 4,
-              maxHeight: 100,
-              objectFit: "cover",
-            }}
-          />
-        </MDBox>
-      )}
-    </MDBox>
-  )}
-                  
+                  )}
+
                   {isEditing && (
                     <MDBox textAlign="right">
                       <Button

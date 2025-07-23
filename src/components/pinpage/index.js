@@ -25,6 +25,8 @@ import PinDetailsCard from "./PinDetailsCard";
 import { PinInfoEditor } from "../../components/pinpage/PinInfoEditor";
 import PinMapCard from "../../components/PinMapCard";
 import ListDialog from "components/AddToList/AddToListDialog";
+import { Link as RouterLink} from "react-router-dom";
+import { Link as MuiLink } from "@mui/material";
 
 import { supabase } from "SupabaseClient";
 import { useSavedPins } from "../../components/SavedPinsContext";
@@ -33,8 +35,10 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import StarField from "components/StarField";
+import FollowButton from "./FollowButton";
 
 export default function PinPage() {
+  const [currentUserId, setCurrentUserId] = useState(null);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -53,6 +57,12 @@ export default function PinPage() {
 
   const isSaved = pins.some((p) => p.id === pin?.id);
 
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUserId(user?.id || null);
+    });
+  }, []);
+
   // fetch pin by slug…
   useEffect(() => {
     let canceled = false;
@@ -62,12 +72,16 @@ export default function PinPage() {
         const name = pinSlug.replace(/_/g, " ");
         let { data: pData } = await supabase
           .from("pins")
-          .select(`*, addedBy:profiles!pins_user_id_fkey(Username, full_name, avatar_url, user_id)`)
+          .select(
+            `*, addedBy:profiles!pins_user_id_fkey(Username, full_name, avatar_url, user_id)`
+          )
           .eq("Name", name)
           .maybeSingle();
 
         if (!pData) {
-          const { data: allPins } = await supabase.from("pins").select("id, Name");
+          const { data: allPins } = await supabase
+            .from("pins")
+            .select("id, Name");
           const map = {};
           allPins.forEach((p) => {
             map[p.Name.toLowerCase().split(" ").join("_")] = p.id;
@@ -76,7 +90,9 @@ export default function PinPage() {
           if (id) {
             const { data: fData } = await supabase
               .from("pins")
-              .select(`*, addedBy:profiles!pins_user_id_fkey(Username, full_name, avatar_url, user_id)`)
+              .select(
+                `*, addedBy:profiles!pins_user_id_fkey(Username, full_name, avatar_url, user_id)`
+              )
               .eq("id", id)
               .maybeSingle();
             pData = fData;
@@ -91,9 +107,10 @@ export default function PinPage() {
             Images: normalizeImages(pData.Images),
             addedBy: pData.addedBy
               ? {
-                username: pData.addedBy.Username || pData.addedBy.full_name,
-                avatarUrl: pData.addedBy.avatar_url,
-              }
+                  userId: pData.addedBy.user_id,
+                  username: pData.addedBy.Username || pData.addedBy.full_name,
+                  avatarUrl: pData.addedBy.avatar_url,
+                }
               : null,
           });
         }
@@ -111,18 +128,22 @@ export default function PinPage() {
   // toggle handlers
   const toggleBeenThere = async () => {
     const next = !isBeenThere;
-    const count = next ? (pin.been_there || 0) + 1 : Math.max((pin.been_there || 1) - 1, 0);
+    const count = next
+      ? (pin.been_there || 0) + 1
+      : Math.max((pin.been_there || 1) - 1, 0);
     setIsBeenThere(next);
     setPin((p) => ({ ...p, been_there: count }));
-    await supabase.from('pins').update({ been_there: count }).eq('id', pin.id);
+    await supabase.from("pins").update({ been_there: count }).eq("id", pin.id);
   };
 
   const toggleWantToGo = async () => {
     const next = !isWantToGo;
-    const count = next ? (pin.want_to_go || 0) + 1 : Math.max((pin.want_to_go || 1) - 1, 0);
+    const count = next
+      ? (pin.want_to_go || 0) + 1
+      : Math.max((pin.want_to_go || 1) - 1, 0);
     setIsWantToGo(next);
     setPin((p) => ({ ...p, want_to_go: count }));
-    await supabase.from('pins').update({ want_to_go: count }).eq('id', pin.id);
+    await supabase.from("pins").update({ want_to_go: count }).eq("id", pin.id);
   };
 
   const handleSaveClick = () => {
@@ -133,15 +154,24 @@ export default function PinPage() {
       // already saved → unsave immediately
       remove(pin);
       // decrement saved count locally
-      setPin((p) => ({ ...p, saved_count: Math.max((p.saved_count || 1) - 1, 0) }));
+      setPin((p) => ({
+        ...p,
+        saved_count: Math.max((p.saved_count || 1) - 1, 0),
+      }));
       // update in the db
-      supabase.from("pins").update({ saved_count: pin.saved_count - 1 }).eq("id", pin.id);
+      supabase
+        .from("pins")
+        .update({ saved_count: pin.saved_count - 1 })
+        .eq("id", pin.id);
     }
   };
 
   // update info text
   const updatePinInfo = async (newInfo) => {
-    await supabase.from('pins').update({ Information: newInfo }).eq('id', pin.id);
+    await supabase
+      .from("pins")
+      .update({ Information: newInfo })
+      .eq("id", pin.id);
     setPin((p) => ({ ...p, Information: newInfo }));
   };
 
@@ -266,14 +296,39 @@ export default function PinPage() {
                       sx={{
                         width: 58,
                         height: 58,
-                        "& img": { objectFit: "cover", width: "100%", height: "100%" },
+                        "& img": {
+                          objectFit: "cover",
+                          width: "100%",
+                          height: "100%",
+                        },
                       }}
                     />
                   </Grid>
                   <Grid item>
-                    <MDTypography variant="body2">
-                      Added by <strong>{pin.addedBy?.username}</strong>
+                    <MDTypography variant="body2" component="div">
+                      Added by{" "}
+                      {pin.addedBy?.userId && pin.addedBy.userId !== currentUserId ? (
+                        // if it’s _not_ you, link to their profile
+                        <MuiLink 
+                          component={RouterLink}
+                          to={`/profile/${pin.addedBy.userId}`}
+                          underline="none"
+                          sx={{
+                            color: "white",
+                            "&:hover, &:focus, &:visited, &:active": {
+                              color: "white",
+                              textDecoration: "none",
+                            },
+                          }}
+                          >
+                          <strong>{pin.addedBy.username}</strong>
+                        </MuiLink>
+                      ) : (
+                        // otherwise just render the text
+                        <strong style={{ color: "white" }}>{pin.addedBy?.username}</strong>
+                      )}
                     </MDTypography>
+                    <FollowButton authorId={pin.addedBy?.userId} />
                   </Grid>
                 </Grid>
               </Grid>
@@ -333,12 +388,10 @@ export default function PinPage() {
                 borderRadius: "12px",
                 p: 3,
                 mb: 3,
-                "& p": { color: "white !important", mb: 1, fontSize: "18px" }
-
+                "& p": { color: "white !important", mb: 1, fontSize: "18px" },
               }}
             >
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm, remarkBreaks]}>
+              <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                 {pin.Information || ""}
               </ReactMarkdown>
             </MDBox>
