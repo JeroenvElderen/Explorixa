@@ -2,12 +2,15 @@
 import React, { useEffect, useState } from 'react'
 import Button from '@mui/material/Button'
 import { supabase } from 'SupabaseClient'
+import { useNavigate } from 'react-router-dom'
 
 export default function FollowButton({ authorId }) {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [isFollowing,   setIsFollowing]   = useState(false)
   const [loadingUser,   setLoadingUser]   = useState(true)
   const [loadingStatus, setLoadingStatus] = useState(false)
+
+  const navigate = useNavigate() // <— add this
 
   // 1) grab the current user's ID
   useEffect(() => {
@@ -41,7 +44,12 @@ export default function FollowButton({ authorId }) {
 
   // 3) toggle follow/unfollow
   const toggleFollow = async () => {
-    if (!currentUserId) return alert('Please log in to follow users.')
+    if (!currentUserId) {
+      // Redirect to login if not authenticated
+      navigate('/authentication/sign-in')  // <-- change this path to match your routing
+      return
+    }
+
     if (loadingStatus) return
 
     // optimistic update
@@ -71,7 +79,7 @@ export default function FollowButton({ authorId }) {
       variant={isFollowing ? 'outlined' : 'contained'}
       onClick={toggleFollow}
       disabled={loadingStatus}
-      sx={{ ml: 1 }}            // a little left‑margin so it doesn’t jam up
+      sx={{ ml: 1 }}
     >
       {loadingStatus ? '…' : isFollowing ? 'Unfollow' : 'Follow'}
     </Button>
