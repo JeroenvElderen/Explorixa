@@ -1,4 +1,3 @@
-// src/components/ProfilePage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "SupabaseClient";
@@ -17,12 +16,15 @@ import "yet-another-react-lightbox/styles.css";
 import Thumbnails from "yet-another-react-lightbox/plugins/thumbnails";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 import ListDialog from "components/AddToList/AddToListDialog";
-import ProfileNavTabs from "./ProfileNavTabs";
 import PhotoGalleryGrid from "./PhotoGalleryGrid";
+import InfoEditorDialog from "components/PlaceConfigurator/InfoEditorDialog";
+import CreatePostSection from "./CreatePostSection";
+import Box from "@mui/material/Box";
 
 export default function ProfilePage() {
-  const { userId } = useParams();
+  const { userId: paramUserId } = useParams();
   const navigate = useNavigate();
+  const [userId, setUserId] = useState(paramUserId || null);
   const [profile, setProfile] = useState(null);
   const [pins, setPins] = useState([]);
   const [followers, setFollowers] = useState([]);
@@ -34,6 +36,9 @@ export default function ProfilePage() {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [lightboxSlides, setLightboxSlides] = useState([]);
+  const [sessionUser, setSessionUser] = useState(null);
+  const isOwner = sessionUser?.id === userId;
+  const [editingProfile, setEditingProfile] = useState(false);
 
   const {
     pins: savedPins,
@@ -49,11 +54,57 @@ export default function ProfilePage() {
 
   const [selectedTab, setSelectedTab] = useState("posts");
 
-
   const navItems = [
     { key: "posts", label: "Posts" },
     { key: "photos", label: "Photos" },
-  ]
+  ];
+
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingPin, setEditingPin] = useState(null);
+  const [editingText, setEditingText] = useState("");
+
+  // Open dialog
+  const handleEditClick = (pin) => {
+    setEditingPin(pin);
+    setEditingText(pin.Information || "");
+    setEditorOpen(true);
+  };
+
+  // Save edited info
+  const handleEditorSave = async () => {
+    if (!editingPin) return;
+
+    const { error } = await supabase
+      .from("pins")
+      .update({ Information: editingText })
+      .eq("id", editingPin.id);
+
+    if (error) {
+      console.error("Error updating pin info:", error);
+    } else {
+      setPins((pins) =>
+        pins.map((p) =>
+          p.id === editingPin.id ? { ...p, Information: editingText } : p
+        )
+      );
+    }
+
+    setEditorOpen(false);
+    setEditingPin(null);
+  };
+
+  // Resolve logged-in user ID if not passed in URL
+  useEffect(() => {
+    if (!paramUserId) {
+      supabase.auth.getUser().then(({ data: { user }, error }) => {
+        if (error || !user) {
+          console.error("Not authenticated or error:", error);
+          return navigate("/authentication/sign-in");
+        }
+        setUserId(user.id);
+      });
+    }
+  }, [paramUserId, navigate]);
 
   // Fetch followers
   useEffect(() => {
@@ -72,10 +123,12 @@ export default function ProfilePage() {
 
   // Fetch profile
   useEffect(() => {
+    if (!userId) return;
+    setLoadingProfile(true);
     supabase
       .from("profiles")
       .select(
-        "user_id, Username, full_name, email, location, avatar_url, description, from_location"
+        "user_id, Username, full_name, email, location, avatar_url, description, from_location, background_url"
       )
       .eq("user_id", userId)
       .single()
@@ -86,8 +139,21 @@ export default function ProfilePage() {
       .finally(() => setLoadingProfile(false));
   }, [userId]);
 
-  // Fetch pins & latestPhotos
   useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user }, error }) => {
+      if (error || !user) {
+        console.warn("Failed to get logged-in user");
+        setSessionUser(null);
+      } else {
+        setSessionUser(user);
+      }
+    });
+  }, []);
+
+  // Fetch pins and photos
+  useEffect(() => {
+    if (!userId) return;
+    setLoadingPins(true);
     supabase
       .from("pins")
       .select(
@@ -171,60 +237,84 @@ export default function ProfilePage() {
     setDialogPin(null);
   };
 
+  if (!userId) {
+    return <div>Loading profile...</div>;
+  }
+
   return (
     <DashboardLayout>
       <SimpleResponsiveNavbar />
-      <StarField />
+      <StarField backgroundUrl={profile?.background_url} />
       <MDBox px={2} py={4} maxWidth="100vw" mx="auto">
-        <ProfileHeader 
-        profile={profile} 
-        loading={loadingProfile} 
-        items={navItems}
-        onSelect={setSelectedTab}
+        <ProfileHeader
+          profile={profile}
+          loading={loadingProfile}
+          items={navItems}
+          onSelect={setSelectedTab}
+          followerCount={followers.length}
+          isOwner={isOwner}
+          onEditClick={() => setEditingProfile((prev) => !prev)}
         />
         {selectedTab === "photos" ? (
-  <PhotoGalleryGrid
-    photos={latestPhotos}
-    openLightbox={(slides, idx) => {
-      setLightboxSlides(slides);
-      setLightboxIndex(idx);
-      setLightboxOpen(true);
-    }}
-  />
-) : (
-  <Grid container spacing={3}>
-    <ProfileSidebar
-      profile={profile}
-      followers={followers}
-      latestPhotos={latestPhotos}
-      navigate={navigate}
-      openLightbox={(slides, idx) => {
-        setLightboxSlides(slides);
-        setLightboxIndex(idx);
-        setLightboxOpen(true);
-      }}
-    />
-    <PinsSection
-      pins={pins}
-      profile={profile}
-      savedPins={savedPins}
-      beenTherePins={beenTherePins}
-      wantToGoPins={wantToGoPins}
-      saveBeenThere={toggleBeenThere}
-      removeBeenThere={toggleBeenThere}
-      saveWantToGo={toggleWantToGo}
-      removeWantToGo={toggleWantToGo}
-      loadingPins={loadingPins}
-      onSaveClick={handleSaveClick}
-      openLightbox={(slides, idx) => {
-        setLightboxSlides(slides);
-        setLightboxIndex(idx);
-        setLightboxOpen(true);
-      }}
-    />
-  </Grid>
-)}
-
+          <PhotoGalleryGrid
+            photos={latestPhotos}
+            openLightbox={(slides, idx) => {
+              setLightboxSlides(slides);
+              setLightboxIndex(idx);
+              setLightboxOpen(true);
+            }}
+          />
+        ) : (
+          <Grid container spacing={3}>
+            <ProfileSidebar
+              profile={profile}
+              followers={followers}
+              latestPhotos={latestPhotos}
+              navigate={navigate}
+              openLightbox={(slides, idx) => {
+                setLightboxSlides(slides);
+                setLightboxIndex(idx);
+                setLightboxOpen(true);
+              }}
+              isOwner={isOwner}
+              onProfileUpdate={(updated) => setProfile(updated)}
+              editing={editingProfile}
+              onEditClick={() => setEditingProfile((prev) => !prev)}
+            />
+            {/* Right main column */}
+            <Grid item xs={12} md={8}>
+              {isOwner && profile &&(
+                <Box mb={2}>
+                  <CreatePostSection
+                    profile={profile}
+                    accessToken={process.env.REACT_APP_MAPBOX_TOKEN}
+                    userId={userId}
+                  />
+                </Box>
+              )}
+              <PinsSection
+                pins={pins}
+                profile={profile}
+                savedPins={savedPins}
+                beenTherePins={beenTherePins}
+                wantToGoPins={wantToGoPins}
+                saveBeenThere={toggleBeenThere}
+                removeBeenThere={toggleBeenThere}
+                saveWantToGo={toggleWantToGo}
+                removeWantToGo={toggleWantToGo}
+                loadingPins={loadingPins}
+                onSaveClick={handleSaveClick}
+                openLightbox={(slides, idx) => {
+                  setLightboxSlides(slides);
+                  setLightboxIndex(idx);
+                  setLightboxOpen(true);
+                }}
+                onEditClick={handleEditClick}
+                isOwner={isOwner}
+              />
+            </Grid>
+          </Grid>
+        )}
       </MDBox>
       <Lightbox
         open={lightboxOpen}
@@ -239,6 +329,13 @@ export default function ProfilePage() {
         onSaved={handleDialogSaved}
         onClose={() => setListDialogOpen(false)}
       />
+      <InfoEditorDialog
+        open={editorOpen}
+        value={editingText}
+        onChange={setEditingText}
+        onClose={handleEditorSave}
+      />
+
       <Footer />
     </DashboardLayout>
   );

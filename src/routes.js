@@ -400,7 +400,7 @@ const routes = [
     key: "profile",
     icon: <Icon fontSize="small">person</Icon>,
     route: "/profile",
-    component: Profile,
+    component: ProfilePage,
   },
   /*{
     type: "collapse",

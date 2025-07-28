@@ -1,5 +1,5 @@
 // Updated 2. ProfileHeader.jsx with nav tabs attached to bottom edge of the card
-import React from 'react';
+import React from "react";
 import {
   Card,
   CardContent,
@@ -7,14 +7,19 @@ import {
   Avatar,
   CircularProgress,
   Link,
-} from '@mui/material';
-import MDBox from 'components/MDBox';
-import MDTypography from 'components/MDTypography';
-import FollowButton from 'components/pinpage/FollowButton';
+} from "@mui/material";
+import MDBox from "components/MDBox";
+import MDTypography from "components/MDTypography";
+import FollowButton from "components/pinpage/FollowButton";
+import CloseIcon from "@mui/icons-material/Close";
+import EditIcon from "@mui/icons-material/Edit";
+import SettingsIcon from "@mui/icons-material/Settings";
+import { useTheme, useMediaQuery, IconButton, Button } from "@mui/material";
+import { Settings } from "@mui/icons-material";
 
 const navStyles = {
-  display: 'flex',
-  alignItems: 'flex-start',
+  display: "flex",
+  alignItems: "flex-start",
   gap: 2,
   pt: 2,
   px: 3,
@@ -23,28 +28,40 @@ const navStyles = {
 };
 
 const linkStyles = (active) => ({
-  position: 'relative',
-  padding: '8px 0',
-  cursor: 'pointer',
-  color: active ? '#F18F01' : '#fff',
+  position: "relative",
+  padding: "8px 0",
+  cursor: "pointer",
+  color: active ? "#F18F01" : "#fff",
   fontWeight: active ? 600 : 400,
-  textDecoration: 'none',
-  '&:after': active
+  textDecoration: "none",
+  "&:after": active
     ? {
         content: "''",
-        position: 'absolute',
+        position: "absolute",
         bottom: -4,
         left: 0,
-        width: '100%',
+        width: "100%",
         height: 3,
-        backgroundColor: '#F18F01',
+        backgroundColor: "#F18F01",
         borderRadius: 2,
       }
     : {},
 });
 
-export default function ProfileHeader({ profile, loading, items = [], onSelect }) {
-  const [active, setActive] = React.useState(items[0]?.key || '');
+export default function ProfileHeader({
+  followerCount,
+  profile,
+  loading,
+  items = [],
+  onSelect,
+  onEditClick,
+  isOwner,
+  editing,
+}) {
+  const [active, setActive] = React.useState(items[0]?.key || "");
+
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   const handleClick = (key) => {
     setActive(key);
@@ -78,27 +95,75 @@ export default function ProfileHeader({ profile, loading, items = [], onSelect }
   return (
     <Card
       sx={{
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        background: 'linear-gradient(145deg, rgba(241, 143, 1, 0.3) 0%, rgba(241,143,1,0) 100%)',
-        border: '1px solid rgba(255,255,255,0.6)',
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        background:
+          "linear-gradient(145deg, rgba(241, 143, 1, 0.3) 0%, rgba(241,143,1,0) 100%)",
+        border: "1px solid rgba(255,255,255,0.6)",
         boxShadow:
-          'inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)',
-        borderRadius: '12px',
+          "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+        borderRadius: "12px",
         p: 0,
         mb: 3,
       }}
     >
       <CardContent sx={{ p: 3, pb: 0 }}>
         <Box display="flex" alignItems="center" gap={2}>
-          <Avatar src={profile.avatar_url} sx={{ width: 80, height: 80 }} />
+          <Box
+            sx={{
+              width: 80,
+              height: 80,
+              borderRadius: "50%",
+              overflow: "hidden",
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={profile.avatar_url}
+              alt={profile.full_name}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+              }}
+            />
+          </Box>
+
           <Box>
             <MDTypography variant="h5">
-              @{profile.Username || profile.full_name || 'Unknown User'}
+              @{profile.Username || profile.full_name || "Unknown User"}
+            </MDTypography>
+            <MDTypography variant="body2" color="white">
+              {followerCount} {followerCount === 1 ? "follower" : "followers"}
             </MDTypography>
           </Box>
           <FollowButton authorId={profile.user_id} />
         </Box>
+        {/* Edit Button (top-right) */}
+        {isOwner &&
+          (isMobile ? (
+            <IconButton
+              onClick={onEditClick}
+              sx={{ position: "absolute", top: 8, right: 8 }}
+            >
+              {editing ? <CloseIcon /> : <SettingsIcon />}
+            </IconButton>
+          ) : (
+            <Button
+              onClick={onEditClick}
+              variant="outlined"
+              size="small"
+              sx={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                textTransform: "none",
+              }}
+              startIcon={editing ? <CloseIcon /> : <EditIcon />}
+            >
+              {editing ? "Cancel Edit" : "Edit Profile"}
+            </Button>
+          ))}
       </CardContent>
 
       {items.length > 0 && (

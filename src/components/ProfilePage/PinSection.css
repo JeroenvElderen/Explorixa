@@ -1,0 +1,10 @@
+.react-markdown {
+  white-space: pre-wrap; /* preserve whitespace and line breaks */
+  line-height: 0.5;
+  color: white;
+}
+
+.react-markdown p {
+    margin-top: 1rem;
+  
+}
