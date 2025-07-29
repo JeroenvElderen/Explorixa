@@ -338,7 +338,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
       {/* Hidden Inputs */}
       <input type="hidden" name="iso" value={iso} />
       <input type="hidden" name="Currency" value={currency} />
-
+          {/* Location fields */}
       {/* Content */}
       <TextField
         fullWidth
