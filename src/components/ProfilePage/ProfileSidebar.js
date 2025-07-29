@@ -10,13 +10,13 @@ import { supabase } from "SupabaseClient";
 
 const cardStyles = {
   backdropFilter: "blur(20px)",
-  WebkitBackdropFilter: "blur(20px)",
-  background:
-    "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-  border: "1px solid rgba(255,255,255,0.6)",
-  boxShadow:
-    "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-  borderRadius: "12px",
+        WebkitBackdropFilter: "blur(20px)",
+        background:
+          "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+        border: "1px solid rgba(255,255,255,0.6)",
+        boxShadow:
+          "inset 4px 4px 10px rgba(241,143,1,0.), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+        borderRadius: "12px",
   p: 3,
 };
 
@@ -89,108 +89,10 @@ export default function ProfileSidebar({
   if (!profile) return null;
 
   return (
-    <Grid item xs={12} md={4} id="edit-section">
+  
       <Box display="flex" flexDirection="column" gap={3}>
         {/* Editable Profile Info */}
-        {isOwner && editing && (
-          <Card sx={cardStyles}>
-            <MDTypography variant="h6" mb={2} textAlign="center">
-              Edit Profile
-            </MDTypography>
-
-            {[
-              "Username",
-              "full_name",
-              "email",
-              "location",
-              "from_location",
-              "description",
-            ].map((field) => (
-              <MDBox key={field} mb={2}>
-                <MDTypography variant="caption" sx={{ fontSize: "12px" }}>
-                  {field.replace(/_/g, " ").toUpperCase()}
-                </MDTypography>
-                {field === "description" ? (
-                  <TextField
-                    fullWidth
-                    multiline
-                    rows={3}
-                    value={localProfile[field] || ""}
-                    onChange={(e) =>
-                      setLocalProfile((prev) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                      }))
-                    }
-                    sx={{ mt: 0.5 }}
-                    inputProps={{ style: { fontSize: "14px" } }}
-                  />
-                ) : (
-                  <TextField
-                    fullWidth
-                    size="small"
-                    value={localProfile[field] || ""}
-                    onChange={(e) =>
-                      setLocalProfile((prev) => ({
-                        ...prev,
-                        [field]: e.target.value,
-                      }))
-                    }
-                    sx={{ mt: 0.5 }}
-                    inputProps={{ style: { fontSize: "14px" } }}
-                  />
-                )}
-              </MDBox>
-            ))}
-
-            {/* Background Image Upload */}
-            <MDBox mb={2}>
-              <MDTypography variant="caption" sx={{ fontSize: "12px" }}>
-                BACKGROUND IMAGE
-              </MDTypography>
-              <input
-                type="file"
-                accept="image/*"
-                ref={bgInputRef}
-                style={{ display: "none" }}
-                onChange={handleBgUpload}
-              />
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => bgInputRef.current?.click()}
-                sx={{ mt: 1 }}
-              >
-                Upload…
-              </Button>
-              {localProfile.background_url && (
-                <MDBox mt={1}>
-                  <img
-                    src={localProfile.background_url}
-                    alt="bg preview"
-                    style={{
-                      width: "100%",
-                      borderRadius: 4,
-                      maxHeight: 100,
-                      objectFit: "cover",
-                    }}
-                  />
-                </MDBox>
-              )}
-            </MDBox>
-
-            <MDBox textAlign="right">
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleSave}
-                startIcon={<SaveIcon />}
-              >
-                Save
-              </Button>
-            </MDBox>
-          </Card>
-        )}
+        
 
         {/* Intro */}
         <Card sx={cardStyles}>
@@ -304,6 +206,6 @@ export default function ProfileSidebar({
           </Grid>
         </Card>
       </Box>
-    </Grid>
+    
   );
 }

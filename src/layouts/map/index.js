@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useState, useEffect } from "react";
+import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
 import Grid from "@mui/material/Grid";
 import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
@@ -9,32 +9,47 @@ import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
 import ProfilePopup from "layouts/ProfilePopup";
 
-const WorldMapComponent = lazy(() => import("../../components/WorldMapComponent"));
-const PlaceConfigurator   = lazy(() => import("../../components/PlaceConfigurator/PlaceConfigurator"));
- 
-const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
-const FALLBACK_USER_ID    = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
+const WorldMapComponent = lazy(() =>
+  import("../../components/WorldMapComponent")
+);
+const PlaceConfigurator = lazy(() =>
+  import("../../components/PlaceConfigurator/PlaceConfigurator")
+);
+
+const MAPBOX_ACCESS_TOKEN =
+  "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
+const FALLBACK_USER_ID = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator } = controller;
+  const worldMapRef = useRef(null);
 
-  const [profile, setProfile]             = useState(null);
+  const [profile, setProfile] = useState(null);
   const [showProfilePopup, setShowProfilePopup] = useState(false);
-  const [selectingPoint, setSelectingPoint]     = useState(false);
-  const [selectedPlace, setSelectedPlace]       = useState(null);
-  const [flyToPlace, setFlyToPlace]             = useState(false);
-  const [resetKey, setResetKey]                 = useState(0);
-  const [poiClickedCount, setPoiClickedCount]   = useState(0);
-  const [navValue, setNavValue]                 = useState(1);
+  const [selectingPoint, setSelectingPoint] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [flyToPlace, setFlyToPlace] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
+  const [poiClickedCount, setPoiClickedCount] = useState(0);
+  const [navValue, setNavValue] = useState(1);
 
-  const theme    = useTheme();
+  const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
+    const removePinById = (pinId) => {
+    if (worldMapRef.current && typeof worldMapRef.current.removePinFromMap === "function") {
+      worldMapRef.current.removePinFromMap(pinId);
+    }
+  };
 
   // Load user profile once
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
       if (!authError && user) {
         const { data, error } = await supabase
           .from("profiles")
@@ -54,7 +69,7 @@ export default function Map() {
 
   const handleHomeClick = () => {
     setOpenConfigurator(dispatch, false);
-    setResetKey(r => r + 1);
+    setResetKey((r) => r + 1);
     setNavValue(0);
   };
 
@@ -67,7 +82,7 @@ export default function Map() {
   const handlePlaceSelected = async (place) => {
     setSelectedPlace(place);
     setFlyToPlace(true);
-    setResetKey(r => r + 1);
+    setResetKey((r) => r + 1);
     setOpenConfigurator(dispatch, false);
     setNavValue(1);
   };
@@ -90,16 +105,17 @@ export default function Map() {
       const res = await fetch(url);
       const { features = [] } = await res.json();
       const feat = features[0] || {};
-      const ctx  = feat.context || [];
+      const ctx = feat.context || [];
 
-      const country = ctx.find(c => c.id.startsWith("country"))?.text || "";
-      const city    = ctx.find(c => c.id.startsWith("place"))?.text
-                    || ctx.find(c => c.id.startsWith("region"))?.text
-                    || "";
+      const country = ctx.find((c) => c.id.startsWith("country"))?.text || "";
+      const city =
+        ctx.find((c) => c.id.startsWith("place"))?.text ||
+        ctx.find((c) => c.id.startsWith("region"))?.text ||
+        "";
 
       handlePlacePick({
         ...place,
-        address:  feat.text     || place.name || "",
+        address: feat.text || place.name || "",
         landmark: place.landmark || "",
         country,
         city,
@@ -115,7 +131,7 @@ export default function Map() {
     setOpenConfigurator(dispatch, false);
     setSelectingPoint(false);
     setSelectedPlace(null);
-    setResetKey(r => r + 1);
+    setResetKey((r) => r + 1);
     setNavValue(1);
   };
 
@@ -127,25 +143,54 @@ export default function Map() {
     }
   }, [flyToPlace]);
 
+  useEffect(() => {
+  function onPinDeleted(event) {
+    const deletedPinId = event.detail;
+    if (
+      worldMapRef.current &&
+      typeof worldMapRef.current.removePinFromMap === "function"
+    ) {
+      worldMapRef.current.removePinFromMap(deletedPinId);
+    }
+  }
+
+  window.addEventListener("pinDeleted", onPinDeleted);
+
+  return () => {
+    window.removeEventListener("pinDeleted", onPinDeleted);
+  };
+}, []);
+
+
   return (
     <DashboardLayout
       sx={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
-      }}>
-      <MDBox sx={{ pt: 10, pb: isMobile ? 9 : 0, flexGrow: 1, position: "relative" }}>
+      }}
+    >
+      <MDBox
+        sx={{ pt: 10, pb: isMobile ? 9 : 0, flexGrow: 1, position: "relative" }}
+      >
         <Grid container sx={{ height: "100%" }}>
           <Grid item xs={12} sx={{ height: "100%" }}>
-            <Suspense fallback={<div style={{ textAlign:"center", padding:40 }}>Loading map…</div>}>
+            <Suspense
+              fallback={
+                <div style={{ textAlign: "center", padding: 40 }}>
+                  Loading map…
+                </div>
+              }
+            >
               <WorldMapComponent
+                ref={worldMapRef}
                 style={{ height: "100%" }}
                 accessToken={MAPBOX_ACCESS_TOKEN}
                 selectingPoint={selectingPoint}
                 onMapClick={handleMapClick}
                 onPoiClick={async (place) => {
                   await handleMapClick(place);
-                  setPoiClickedCount(c => c + 1);
+                  setPoiClickedCount((c) => c + 1);
                   setFlyToPlace(false);
                   setOpenConfigurator(dispatch, true);
                   setNavValue(2);

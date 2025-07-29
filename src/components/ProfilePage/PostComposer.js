@@ -14,23 +14,35 @@ import {
   DialogContent,
   DialogActions,
   IconButton,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import InputAdornment from "@mui/material/InputAdornment";
 import WallpaperIcon from "@mui/icons-material/Wallpaper";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PlaceSearch from "./PlaceSearch";
+import CurrencySelector from "components/PlaceConfigurator/CurrencySelector"; // <-- adjust path if needed
 import { supabase } from "SupabaseClient";
+import { upsertCityAndCountry } from "utils/dbHelpers";
+import {
+  COUNTRY_TO_CURRENCY,
+  COUNTRY_OPTIONS,
+} from "components/PlaceConfigurator/constants"; // <-- adjust path
+
+const categories = ["Category1", "Category2", "Category3"]; // Replace with your actual categories
 
 export default function PostComposer({ user, userId, accessToken, onClose }) {
-  // ---- form state ----
+  // States
   const [title, setTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [mainImage, setMainImage] = useState(null);
   const [galleryImages, setGalleryImages] = useState([]);
   const [saving, setSaving] = useState(false);
 
-  // place‐related state
   const [showPlaceSearch, setShowPlaceSearch] = useState(false);
   const [city, setCity] = useState("");
   const [countryName, setCountryName] = useState("");
@@ -39,31 +51,36 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
   const [iso, setIso] = useState("");
   const [address, setAddress] = useState("");
 
-  // error indicators
+  // Currency state & anchor for menu
+  const [currency, setCurrency] = useState("");
+  const [currencyAnchor, setCurrencyAnchor] = useState(null);
+
+  // New fields
+  const [ranking, setRanking] = useState("");
+  const [averageCosts, setAverageCosts] = useState("");
+  const [category, setCategory] = useState("");
+
+  // Error and UI states
   const [errorSnackOpen, setErrorSnackOpen] = useState(false);
   const [errorPopperOpen, setErrorPopperOpen] = useState(false);
-
-  // hint tooltip (on mount)
   const [hintOpen, setHintOpen] = useState(false);
-
-  // preview dialog
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewFiles, setPreviewFiles] = useState([]);
   const [previewTitle, setPreviewTitle] = useState("");
 
-  // refs to hidden file inputs
+  // Refs
   const mainRef = useRef();
   const galleryRef = useRef();
   const locationBtnRef = useRef(null);
 
-  // show hint tooltip once
+  // Show hint tooltip once
   useEffect(() => {
     setHintOpen(true);
     const t = setTimeout(() => setHintOpen(false), 5000);
     return () => clearTimeout(t);
   }, []);
 
-  // backdrop styles shared
+  // Backdrop styles
   const backdropStyles = {
     backdropFilter: "blur(20px)",
     WebkitBackdropFilter: "blur(20px)",
@@ -75,7 +92,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
     borderRadius: "12px",
   };
 
-  // helper to open preview dialog
+  // Preview dialog helpers
   const openPreview = (files, title) => {
     previewFiles.forEach(URL.revokeObjectURL);
     const urls = files.map((f) => URL.createObjectURL(f));
@@ -89,7 +106,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
     setPreviewFiles([]);
   };
 
-  // file handlers (no auto‑preview)
+  // File handlers
   const handleMainChange = (e) => {
     const f = e.target.files[0];
     if (f) setMainImage(f);
@@ -98,13 +115,30 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
     const arr = Array.from(e.target.files);
     if (arr.length) setGalleryImages((prev) => prev.concat(arr));
   };
-
-  // remove one gallery image by index
   const removeGalleryImage = (idx) => {
     setGalleryImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
-  // save handler
+  // Currency selector handlers
+  const handleCurrencyClick = (event) => {
+    setCurrencyAnchor(event.currentTarget);
+  };
+  const handleCurrencyClose = () => {
+    setCurrencyAnchor(null);
+  };
+  const handleCurrencySelect = (code) => {
+    setCurrency(code);
+    handleCurrencyClose();
+  };
+
+  // Auto-fill currency mapping example (extend as needed)
+  const currencyMap = {
+    USA: "USD",
+    Germany: "EUR",
+    // Add more country-to-currency mappings here
+  };
+
+  // Save post handler
   const handleSavePost = async () => {
     if (!latitude || !longitude) {
       setErrorSnackOpen(true);
@@ -122,7 +156,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
       let mainImageUrl = null;
       const galleryUrls = [];
 
-      // --- UPLOAD MAIN IMAGE ---
+      // Upload main image
       if (mainImage) {
         const fileName = `${Date.now()}-${mainImage.name}`;
         const { data, error } = await supabase.storage
@@ -137,7 +171,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
         mainImageUrl = pu.publicUrl;
       }
 
-      // --- UPLOAD GALLERY IMAGES ---
+      // Upload gallery images
       for (const file of galleryImages) {
         const fileName = `${Date.now()}-${file.name}`;
         const { data, error } = await supabase.storage
@@ -151,29 +185,34 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
         }
       }
 
-      // --- INSERT PIN RECORD ---
-      const { error: insertError } = await supabase
-        .from("pins")
-        .insert([
-          {
-            user_id: userId,
-            Name: title || "Untitled Post",
-            Information: postContent,
-            "Main Image": mainImageUrl,
-            Images: JSON.stringify(galleryUrls),
-            City: city || null,
-            countryName: countryName || null,
-            latitude: latitude ? parseFloat(latitude) : null,
-            longitude: longitude ? parseFloat(longitude) : null,
-            iso: iso || null,
-            address: address || null,
-          },
-        ]);
+      // Upsert city and country
+      await upsertCityAndCountry(city, countryName);
+
+      // Insert pin record
+      const { error: insertError } = await supabase.from("pins").insert([
+        {
+          user_id: userId,
+          Name: title || "Untitled Post",
+          Information: postContent,
+          "Main Image": mainImageUrl,
+          Images: JSON.stringify(galleryUrls),
+          City: city || null,
+          countryName: countryName || null,
+          latitude: latitude ? parseFloat(latitude) : null,
+          longitude: longitude ? parseFloat(longitude) : null,
+          iso: iso || null,
+          address: address || null,
+          Currency: currency || null,
+          Ranking: ranking ? parseInt(ranking, 10) : null,
+          "Average Costs": averageCosts ? parseFloat(averageCosts) : null,
+          Category: category || null,
+        },
+      ]);
       if (insertError) throw insertError;
 
       alert("Post saved successfully!");
 
-      // reset form
+      // Reset all fields
       setTitle("");
       setPostContent("");
       setMainImage(null);
@@ -185,6 +224,10 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
       setLongitude("");
       setIso("");
       setAddress("");
+      setCurrency("");
+      setRanking("");
+      setAverageCosts("");
+      setCategory("");
       onClose?.();
     } catch (err) {
       console.error(err);
@@ -196,7 +239,7 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
 
   return (
     <Box sx={{ ...backdropStyles, p: 3, position: "relative" }}>
-      {/* Close */}
+      {/* Close button */}
       <Button
         onClick={onClose}
         sx={{
@@ -214,7 +257,14 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
 
       {/* Avatar + Name */}
       <Stack direction="row" spacing={2} alignItems="center" mb={2}>
-        <Box sx={{ width: 40, height: 40, borderRadius: "50%", overflow: "hidden" }}>
+        <Box
+          sx={{
+            width: 40,
+            height: 40,
+            borderRadius: "50%",
+            overflow: "hidden",
+          }}
+        >
           <img
             src={user?.avatar}
             alt={user?.full_name || "avatar"}
@@ -237,19 +287,57 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
         sx={{
           mb: 2,
           bgcolor: "transparent",
-          "& .MuiOutlinedInput-notchedOutline": { borderColor: "#555" },
+          "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.5)" },
           "& .MuiInputLabel-root": { color: "rgba(255,255,255,0.7)" },
           "& .MuiOutlinedInput-input": { color: "#fff" },
         }}
       />
 
-      {/* Hidden fields */}
-      <input type="hidden" name="countryName" value={countryName} />
-      <input type="hidden" name="City" value={city} />
-      <input type="hidden" name="latitude" value={latitude} />
-      <input type="hidden" name="longitude" value={longitude} />
+      {/* Category Dropdown */}
+      <FormControl fullWidth sx={{ mb: 2 }}>
+        <InputLabel>Category</InputLabel>
+        <Select
+          value={category}
+          label="Category"
+          onChange={(e) => setCategory(e.target.value)}
+          sx={{
+            height: 48,
+            "& .MuiSelect-select": {
+              display: "flex",
+              alignItems: "center",
+              height: "100%",
+              padding: "0 14px",
+            },
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#rgba(255,255,255,0.5)",
+            },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#F18F01CC",
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#F18F01",
+            },
+          }}
+        >
+          {categories.map((cat) => (
+            <MenuItem key={cat} value={cat}>
+              {cat}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Currency dropdown popup */}
+      <CurrencySelector
+        anchorEl={currencyAnchor}
+        currency={currency}
+        onSelect={handleCurrencySelect}
+        onClose={handleCurrencyClose}
+      />
+
+      {/* Hidden Inputs */}
       <input type="hidden" name="iso" value={iso} />
-      <input type="hidden" name="address" value={address} />
+      <input type="hidden" name="Currency" value={currency} />
 
       {/* Content */}
       <TextField
@@ -264,15 +352,58 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
           sx: {
             bgcolor: "transparent",
             color: "#fff",
-            "& .MuiOutlinedInput-notchedOutline": { borderColor: "rgba(255,255,255,0.5)" },
-            "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "#F18F01" },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": { borderColor: "#F18F01" },
+            "& .MuiOutlinedInput-notchedOutline": {
+              borderColor: "rgba(255,255,255,0.5)",
+            },
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#F18F01",
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: "#F18F01",
+            },
           },
         }}
         sx={{
           mb: 2,
           "& .MuiInputBase-input": { fontSize: "14px", padding: "12px" },
         }}
+      />
+
+      {/* Ranking */}
+      <TextField
+        fullWidth
+        label="Ranking"
+        type="number"
+        value={ranking}
+        onChange={(e) => setRanking(e.target.value)}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Average Costs */}
+      <TextField
+        fullWidth
+        label="Average Costs"
+        type="number"
+        value={averageCosts}
+        onChange={(e) => setAverageCosts(e.target.value)}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Currency selector button */}
+      <Button
+        variant="outlined"
+        onClick={handleCurrencyClick}
+        sx={{ mb: 2, color: "#F18F01", borderColor: "#F18F01" }}
+      >
+        Currency: {currency || "Select"}
+      </Button>
+
+      {/* Currency selector popup */}
+      <CurrencySelector
+        anchorEl={currencyAnchor}
+        currency={currency}
+        onSelect={(code) => setCurrency(code)}
+        onClose={() => setCurrencyAnchor(null)}
       />
 
       {/* PlaceSearch */}
@@ -289,6 +420,12 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
             setLongitude(place.lng?.toString() || "");
             setIso(place.iso || "");
             setAddress(place.address || "");
+
+            console.log("Detected country:", place.country);
+            const detectedCurrency = COUNTRY_TO_CURRENCY[place.country] || "";
+            console.log("Detected currency:", detectedCurrency);
+            setCurrency(detectedCurrency);
+
             setShowPlaceSearch(false);
           }}
         />
@@ -302,7 +439,9 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
           variant="outlined"
           startIcon={<WallpaperIcon />}
           onClick={() =>
-            mainImage ? openPreview([mainImage], "Main Image") : mainRef.current.click()
+            mainImage
+              ? openPreview([mainImage], "Main Image")
+              : mainRef.current.click()
           }
           sx={{ flex: 1, color: "#F18F01", borderColor: "#F18F01" }}
         >
@@ -326,7 +465,9 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
           open={errorPopperOpen}
           placement="top-start"
           componentsProps={{
-            tooltip: { sx: { bgcolor: "warning.main", color: "warning.contrastText" } },
+            tooltip: {
+              sx: { bgcolor: "warning.main", color: "warning.contrastText" },
+            },
             arrow: { sx: { color: "warning.main" } },
           }}
         >
@@ -439,10 +580,14 @@ export default function PostComposer({ user, userId, accessToken, onClose }) {
         </DialogContent>
         <DialogActions>
           {previewTitle === "Main Image" && (
-            <Button onClick={() => mainRef.current.click()}>Change Image</Button>
+            <Button onClick={() => mainRef.current.click()}>
+              Change Image
+            </Button>
           )}
           {previewTitle === "Gallery Images" && (
-            <Button onClick={() => galleryRef.current.click()}>Add Images</Button>
+            <Button onClick={() => galleryRef.current.click()}>
+              Add Images
+            </Button>
           )}
           <Button onClick={closePreview}>Close</Button>
         </DialogActions>

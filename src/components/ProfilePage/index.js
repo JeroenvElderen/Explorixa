@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "SupabaseClient";
 import { Grid } from "@mui/material";
@@ -20,6 +20,7 @@ import PhotoGalleryGrid from "./PhotoGalleryGrid";
 import InfoEditorDialog from "components/PlaceConfigurator/InfoEditorDialog";
 import CreatePostSection from "./CreatePostSection";
 import Box from "@mui/material/Box";
+import EditProfileCard from "./EditProfileCard";
 
 export default function ProfilePage() {
   const { userId: paramUserId } = useParams();
@@ -52,6 +53,10 @@ export default function ProfilePage() {
     removeWantToGo,
   } = useSavedPins();
 
+  const openPhotosTab = () => {
+  setSelectedTab("photos");
+};
+
   const [selectedTab, setSelectedTab] = useState("posts");
 
   const navItems = [
@@ -62,6 +67,7 @@ export default function ProfilePage() {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingPin, setEditingPin] = useState(null);
   const [editingText, setEditingText] = useState("");
+  const bgRef = useRef(null);
 
   // Open dialog
   const handleEditClick = (pin) => {
@@ -242,20 +248,25 @@ export default function ProfilePage() {
   }
 
   return (
-    <DashboardLayout>
-      <SimpleResponsiveNavbar />
-      <StarField backgroundUrl={profile?.background_url} />
-      <MDBox px={2} py={4} maxWidth="100vw" mx="auto">
-        <ProfileHeader
-          profile={profile}
-          loading={loadingProfile}
-          items={navItems}
-          onSelect={setSelectedTab}
-          followerCount={followers.length}
-          isOwner={isOwner}
-          onEditClick={() => setEditingProfile((prev) => !prev)}
-        />
-        {selectedTab === "photos" ? (
+  <DashboardLayout>
+    <SimpleResponsiveNavbar />
+    <StarField backgroundUrl={profile?.background_url} bgRef={bgRef} />
+    <MDBox px={2} py={4} maxWidth="100vw" mx="auto">
+      {/* Profile header (full width) */}
+      <ProfileHeader
+        profile={profile}
+        loading={loadingProfile}
+        items={navItems}
+        onSelect={setSelectedTab}
+        followerCount={followers.length}
+        isOwner={isOwner}
+        onEditClick={() => setEditingProfile((prev) => !prev)}
+        editing={editingProfile}
+      />
+
+      {selectedTab === "photos" ? (
+        // Show ONLY the PhotoGalleryGrid full width, hide sidebars and pins
+        <Box mt={2}>
           <PhotoGalleryGrid
             photos={latestPhotos}
             openLightbox={(slides, idx) => {
@@ -264,8 +275,12 @@ export default function ProfilePage() {
               setLightboxOpen(true);
             }}
           />
-        ) : (
-          <Grid container spacing={3}>
+        </Box>
+      ) : (
+        // Default layout with sidebars and pins
+        <Grid container spacing={2} sx={{ mt: 0 }}>
+          {/* Left sidebar */}
+          <Grid item xs={12} md={3}>
             <ProfileSidebar
               profile={profile}
               followers={followers}
@@ -276,67 +291,85 @@ export default function ProfilePage() {
                 setLightboxIndex(idx);
                 setLightboxOpen(true);
               }}
+              openPhotosTab={openPhotosTab}
               isOwner={isOwner}
               onProfileUpdate={(updated) => setProfile(updated)}
               editing={editingProfile}
               onEditClick={() => setEditingProfile((prev) => !prev)}
             />
-            {/* Right main column */}
-            <Grid item xs={12} md={8}>
-              {isOwner && profile &&(
-                <Box mb={2}>
-                  <CreatePostSection
-                    profile={profile}
-                    accessToken={process.env.REACT_APP_MAPBOX_TOKEN}
-                    userId={userId}
-                  />
-                </Box>
-              )}
-              <PinsSection
-                pins={pins}
-                profile={profile}
-                savedPins={savedPins}
-                beenTherePins={beenTherePins}
-                wantToGoPins={wantToGoPins}
-                saveBeenThere={toggleBeenThere}
-                removeBeenThere={toggleBeenThere}
-                saveWantToGo={toggleWantToGo}
-                removeWantToGo={toggleWantToGo}
-                loadingPins={loadingPins}
-                onSaveClick={handleSaveClick}
-                openLightbox={(slides, idx) => {
-                  setLightboxSlides(slides);
-                  setLightboxIndex(idx);
-                  setLightboxOpen(true);
-                }}
-                onEditClick={handleEditClick}
-                isOwner={isOwner}
-              />
-            </Grid>
           </Grid>
-        )}
-      </MDBox>
-      <Lightbox
-        open={lightboxOpen}
-        close={() => setLightboxOpen(false)}
-        slides={lightboxSlides}
-        index={lightboxIndex}
-        plugins={[Thumbnails, Zoom]}
-      />
-      <ListDialog
-        open={listDialogOpen}
-        pin={dialogPin}
-        onSaved={handleDialogSaved}
-        onClose={() => setListDialogOpen(false)}
-      />
-      <InfoEditorDialog
-        open={editorOpen}
-        value={editingText}
-        onChange={setEditingText}
-        onClose={handleEditorSave}
-      />
 
-      <Footer />
-    </DashboardLayout>
-  );
+          {/* Main section */}
+          <Grid item xs={12} md={6}>
+            {isOwner && profile && (
+              <Box mb={2}>
+                <CreatePostSection
+                  profile={profile}
+                  accessToken={process.env.REACT_APP_MAPBOX_TOKEN}
+                  userId={userId}
+                />
+              </Box>
+            )}
+            <PinsSection
+              pins={pins}
+              setPins={setPins}
+              profile={profile}
+              bgRef={bgRef}
+              savedPins={savedPins}
+              beenTherePins={beenTherePins}
+              wantToGoPins={wantToGoPins}
+              saveBeenThere={toggleBeenThere}
+              removeBeenThere={toggleBeenThere}
+              saveWantToGo={toggleWantToGo}
+              removeWantToGo={toggleWantToGo}
+              loadingPins={loadingPins}
+              onSaveClick={handleSaveClick}
+              openLightbox={(slides, idx) => {
+                setLightboxSlides(slides);
+                setLightboxIndex(idx);
+                setLightboxOpen(true);
+              }}
+              onEditClick={handleEditClick}
+              isOwner={isOwner}
+            />
+          </Grid>
+
+          {/* Right sidebar (Edit Profile, only visible if editing) */}
+          <Grid item xs={12} md={3}>
+            {isOwner && editingProfile ? (
+              <EditProfileCard
+                profile={profile}
+                onProfileUpdate={(updated) => setProfile(updated)}
+                onEditClick={() => setEditingProfile(false)}
+              />
+            ) : null}
+          </Grid>
+        </Grid>
+      )}
+    </MDBox>
+
+    <Lightbox
+      open={lightboxOpen}
+      close={() => setLightboxOpen(false)}
+      slides={lightboxSlides}
+      index={lightboxIndex}
+      plugins={[Zoom]}
+    />
+    <ListDialog
+      open={listDialogOpen}
+      pin={dialogPin}
+      onSaved={handleDialogSaved}
+      onClose={() => setListDialogOpen(false)}
+    />
+    <InfoEditorDialog
+      open={editorOpen}
+      value={editingText}
+      onChange={setEditingText}
+      onClose={handleEditorSave}
+    />
+
+    <Footer />
+  </DashboardLayout>
+);
+
 }

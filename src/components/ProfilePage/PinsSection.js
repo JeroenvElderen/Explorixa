@@ -4,11 +4,11 @@ import {
   Grid,
   Card,
   CircularProgress,
-  Avatar,
   Button,
   IconButton,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import DeleteIcon from "@mui/icons-material/Delete";
 import ReorderIcon from "@mui/icons-material/Reorder";
 import WindowIcon from "@mui/icons-material/Window";
 import MDBox from "components/MDBox";
@@ -17,6 +17,7 @@ import PinActions from "./PinActions";
 import ImageGridGallery from "./ImageGridGallery";
 import ReactMarkdown from "react-markdown";
 import "./PinSection.css";
+import { supabase } from "SupabaseClient";
 
 const headerStyles = {
   backdropFilter: "blur(20px)",
@@ -32,6 +33,7 @@ const headerStyles = {
 
 export default function PinsSection({
   pins,
+  setPins, // make sure setPins is passed from parent to update state after deletion
   profile,
   savedPins,
   beenTherePins,
@@ -58,6 +60,75 @@ export default function PinsSection({
   }, {});
 
   if (!profile) return null;
+
+  const handleDeleteClick = async (pin) => {
+  if (!window.confirm("Are you sure you want to delete this pin?")) return;
+
+  try {
+    // 1. Delete the pin row from database
+    const { error: deletePinError } = await supabase
+      .from("pins")
+      .delete()
+      .eq("id", pin.id);
+
+    if (deletePinError) {
+      alert("Failed to delete pin: " + deletePinError.message);
+      return;
+    }
+
+    // 2. Delete associated images from storage bucket "pins-images"
+    // Assuming Images is JSON array or comma-separated URLs
+    let imageUrls = [];
+    try {
+      const parsed = JSON.parse(pin.Images || "[]");
+      imageUrls = Array.isArray(parsed)
+        ? parsed.map((u) => u.trim())
+        : [];
+    } catch {
+      imageUrls = (pin.Images || "").split(",").map((u) => u.trim());
+    }
+
+    // Add the main image as well if present and different from Images
+    const mainImage = pin["Main Image"]?.trim();
+    if (mainImage && !imageUrls.includes(mainImage)) {
+      imageUrls.unshift(mainImage);
+    }
+
+    // Extract file paths from URLs by removing public URL prefix
+    // Example: https://xyz.supabase.co/storage/v1/object/public/pins-images/filename.jpg
+    // We want: pins-images/filename.jpg or just filename.jpg depending on your storage structure
+    // Assuming your storage path is just the filename part after "pins-images/"
+    const bucketFolder = "pins-images/";
+
+    for (const url of imageUrls) {
+      try {
+        // Extract path inside bucket
+        const pathIndex = url.indexOf(bucketFolder);
+        if (pathIndex === -1) continue; // skip if not found
+
+        const filePath = url.substring(pathIndex + bucketFolder.length);
+
+        // Delete file from storage bucket
+        const { error: deleteFileError } = await supabase.storage
+          .from("pins-images")
+          .remove([filePath]);
+
+        if (deleteFileError) {
+          console.warn("Failed to delete image from storage:", filePath, deleteFileError.message);
+        }
+      } catch (err) {
+        console.warn("Error deleting image file:", err);
+      }
+    }
+
+    // 3. Remove the pin from local state to update UI
+    setPins((prev) => prev.filter((p) => p.id !== pin.id));
+    window.dispatchEvent(new CustomEvent("pinDeleted", { detail: pin.id }));
+  } catch (err) {
+    alert("Error deleting pin: " + err.message);
+  }
+};
+
 
   return (
     <>
@@ -152,20 +223,39 @@ export default function PinsSection({
                   sx={{ ...headerStyles, p: 3, mb: 3, position: "relative" }}
                 >
                   {isOwner && (
-                    <IconButton
-                      size="small"
-                      onClick={() => onEditClick(pin)}
-                      sx={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        color: "#F18F01",
-                        backgroundColor: "rgba(0,0,0,0.3)",
-                        "&:hover": { backgroundColor: "rgba(0,0,0,0.5)" },
-                      }}
-                    >
-                      <EditIcon fontSize="small" />
-                    </IconButton>
+                    <>
+                      <IconButton
+                        size="small"
+                        onClick={() => onEditClick(pin)}
+                        sx={{
+                          position: "absolute",
+                          top: 8,
+                          right: 40,
+                          color: "#F18F01",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                          "&:hover": { backgroundColor: "rgba(0,0,0,0.5)" },
+                        }}
+                        aria-label="edit pin"
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteClick(pin)}
+                        sx={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          color: "#FF4D4F",
+                          backgroundColor: "rgba(0,0,0,0.3)",
+                          "&:hover": { backgroundColor: "rgba(0,0,0,0.5)" },
+                        }}
+                        aria-label="delete pin"
+                      >
+                        <DeleteIcon fontSize="small" />
+                      </IconButton>
+                    </>
                   )}
 
                   <Box display="flex" alignItems="center" gap={2} mb={1}>
@@ -179,7 +269,10 @@ export default function PinsSection({
                       }}
                     >
                       <img
-                        src={profile.avatar_url}
+                        src={
+                          profile.avatar_url ||
+                          "https://www.gravatar.com/avatar/?d=mp&s=150"
+                        }
                         alt={profile.full_name}
                         style={{
                           width: "100%",
@@ -208,6 +301,7 @@ export default function PinsSection({
                   <Box mb={2}>
                     <ImageGridGallery
                       imageUrls={imageUrls}
+                      height={300}
                       onImageClick={(i) =>
                         openLightbox(
                           imageUrls.map((src) => ({ src })),
@@ -273,13 +367,14 @@ export default function PinsSection({
                   return (
                     <Card sx={{ ...headerStyles, p: 3, position: "relative" }}>
                       {isOwner && (
+                        <>
                         <IconButton
                           size="small"
                           onClick={() => onEditClick(pin)}
                           sx={{
                             position: "absolute",
                             top: 8,
-                            right: 8,
+                            right: 40,
                             color: "#F18F01",
                             backgroundColor: "rgba(0,0,0,0.3)",
                             "&:hover": {
@@ -289,6 +384,24 @@ export default function PinsSection({
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
+                        <IconButton
+      size="small"
+      onClick={() => handleDeleteClick(pin)}
+      sx={{
+        position: "absolute",
+        top: 8,
+        right: 8,
+        color: "#FF4D4F",
+        backgroundColor: "rgba(0,0,0,0.3)",
+        "&:hover": {
+          backgroundColor: "rgba(0,0,0,0.5)",
+        },
+      }}
+      aria-label="delete pin"
+    >
+      <DeleteIcon fontSize="small" />
+    </IconButton>
+    </>
                       )}
 
                       <Box display="flex" alignItems="center" gap={2} mb={1}>
@@ -333,6 +446,7 @@ export default function PinsSection({
                       <Box mb={2}>
                         <ImageGridGallery
                           imageUrls={imageUrls}
+                          height={300}
                           onImageClick={(i) =>
                             openLightbox(
                               imageUrls.map((src) => ({ src })),
@@ -393,7 +507,6 @@ export default function PinsSection({
                               cursor: "pointer",
                               ...headerStyles,
                               p: 0.5,
-                              mb: 4,
                               display: "flex",
                               flexDirection: "column",
                               flex: 1,
@@ -410,6 +523,7 @@ export default function PinsSection({
                             >
                               <ImageGridGallery
                                 imageUrls={imageUrls}
+                                height={120}
                                 onImageClick={(i) =>
                                   openLightbox(
                                     imageUrls.map((src) => ({ src })),

@@ -1,5 +1,5 @@
 // src/components/WorldMapComponent.js
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { supabase } from "../SupabaseClient";
@@ -188,19 +188,37 @@ const countryColors = {
   default: "#888888",
 };
 
-
-export default function WorldMapComponent({
+const WorldMapComponent = forwardRef(function WorldMapComponent({
   accessToken,
   selectingPoint = false,
   onMapClick = () => { },
   onPoiClick = () => { },
   target,
   flyOnTarget = false,
-}) {
+}, ref) {
   const mapRef = useRef(null);
   const [popupData, setPopupData] = useState(null);
   mapboxgl.accessToken = accessToken;
   const geocoder = mbxGeocoding({ accessToken })
+
+   useImperativeHandle(ref, () => ({
+   removePinFromMap: (pinId) => {
+     if (!mapRef.current) return;
+     const map = mapRef.current;
+     const source = map.getSource("pins");
+     if (!source || !source._data) return;
+
+     // Filter out the pin with pinId
+     const newFeatures = source._data.features.filter(
+       feature => feature.properties.pinId !== pinId
+     );
+
+     source.setData({
+       ...source._data,
+       features: newFeatures,
+     });
+   },
+ }));
 
   // 1) Initial load: build map, fetch & draw existing pins
   useEffect(() => {
@@ -655,4 +673,6 @@ export default function WorldMapComponent({
       {popupData && <PopupComponent data={popupData} onClose={() => setPopupData(null)} />}
     </div>
   );
-}
+});
+
+export default WorldMapComponent;

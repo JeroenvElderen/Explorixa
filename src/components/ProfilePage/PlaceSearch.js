@@ -12,7 +12,7 @@ export default function PlaceSearch({
   suggestionsClass,
 }) {
   const [searchText, setSearchText] = useState("");
-
+ 
   // Clear the search input whenever the selected country changes
   useEffect(() => {
     setSearchText("");

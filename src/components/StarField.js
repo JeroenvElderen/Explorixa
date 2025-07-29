@@ -1,7 +1,7 @@
 // src/components/StarField.jsx
 import React, { useRef, useEffect } from "react";
 
-export default function StarField({ backgroundUrl }) {
+export default function StarField({ backgroundUrl, bgRef }) {
   const canvasRef = useRef();
 
   useEffect(() => {
@@ -49,6 +49,7 @@ export default function StarField({ backgroundUrl }) {
   // If a backgroundUrl is provided, render that instead of the canvas
   return backgroundUrl ? (
     <div
+    ref={bgRef}
       style={{
         position: "fixed",
         top: 0,

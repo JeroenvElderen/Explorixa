@@ -1,6 +1,6 @@
 .react-markdown {
   white-space: pre-wrap; /* preserve whitespace and line breaks */
-  line-height: 0.5;
+  line-height: 1.2;
   color: white;
 }
 

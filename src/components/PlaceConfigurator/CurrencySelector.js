@@ -27,7 +27,7 @@ export default function CurrencySelector({ anchorEl, currency, onSelect, onClose
       overflowY: 'auto',                // ← restores scrolling
       bgcolor: 'transparent',
     },
-  }}
+  }} 
 
   PaperProps={{
     elevation: 0,

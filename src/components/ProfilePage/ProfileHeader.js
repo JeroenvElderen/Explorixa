@@ -98,13 +98,12 @@ export default function ProfileHeader({
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         background:
-          "linear-gradient(145deg, rgba(241, 143, 1, 0.3) 0%, rgba(241,143,1,0) 100%)",
+          "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
         border: "1px solid rgba(255,255,255,0.6)",
         boxShadow:
-          "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+          "inset 4px 4px 10px rgba(241,143,1,0.), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
         borderRadius: "12px",
         p: 0,
-        mb: 3,
       }}
     >
       <CardContent sx={{ p: 3, pb: 0 }}>
@@ -119,7 +118,7 @@ export default function ProfileHeader({
             }}
           >
             <img
-              src={profile.avatar_url}
+              src={profile.avatar_url || "https://www.gravatar.com/avatar/?d=mp&s=150"} 
               alt={profile.full_name}
               style={{
                 width: "100%",
