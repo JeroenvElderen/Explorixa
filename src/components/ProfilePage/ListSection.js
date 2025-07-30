@@ -1,11 +1,13 @@
+// src/components/ListSectionWithPins.jsx
 import React from "react";
-import { Grid, Card, CardContent, Typography, CircularProgress, Box } from "@mui/material";
+import { Box, Grid, Typography } from "@mui/material";
+import PinsSection from "./PinsSection";
 
-export default function ListsSection({ lists, loading }) {
+export default function ListsSection({ lists, loading, ...pinProps }) {
   if (loading) {
     return (
       <Box textAlign="center" mt={4}>
-        <CircularProgress />
+        <Typography>Loading lists...</Typography>
       </Box>
     );
   }
@@ -19,18 +21,18 @@ export default function ListsSection({ lists, loading }) {
   }
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={4}>
       {lists.map((list) => (
-        <Grid item xs={12} sm={6} md={4} key={list.id}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6">{list.name}</Typography>
-              <Typography variant="body2" color="textSecondary" gutterBottom>
-                {list.item_count} items
-              </Typography>
-              <Typography variant="body2">{list.description}</Typography>
-            </CardContent>
-          </Card>
+        <Grid item xs={12} key={list.id}>
+          {/* List header */}
+          <Box mb={2}>
+            <Typography variant="h5" gutterBottom>
+              {list.name}
+            </Typography>
+          </Box>
+
+          {/* Render pins in this list using your existing PinsSection */}
+          <PinsSection pins={list.pins} {...pinProps} />
         </Grid>
       ))}
     </Grid>

@@ -126,14 +126,39 @@ useEffect(() => {
 useEffect(() => {
   if (!userId) return;
   setLoadingLists(true);
-  supabase
-    .from("lists")
-    .select("id, name, description, created_at, item_count")  // adjust fields as needed
-    .eq("owner_id", userId)
+   supabase
+   .from("lists")
+   .select(`
+     id,
+     name,
+     created_at,
+     list_pins (
+       pins (
+         id,
+         "Name",
+         "Main Image",
+         created_at,
+         been_there,
+         want_to_go,
+         saved_count,
+         "Information",
+         "Images"
+       )
+     )
+   `)
+   .eq("user_id", userId)
     .order("created_at", { ascending: false })
     .then(({ data, error }) => {
       if (error) console.error("Error loading lists:", error);
-      else setLists(data || []);
+      else 
+              setLists(
+        (data || []).map((lst) => ({
+          id: lst.id,
+          name: lst.name,
+          created_at: lst.created_at,
+          pins: (lst.list_pins || []).map((lp) => lp.pins),
+        }))
+      );
     })
     .finally(() => setLoadingLists(false));
 }, [userId]);
@@ -190,7 +215,7 @@ useEffect(() => {
     supabase
       .from("pins")
       .select(
-        'id, Name, "Main Image", created_at, been_there, want_to_go, saved_count, Information, Images'
+        '*'
       )
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
@@ -305,7 +330,26 @@ useEffect(() => {
           </Box>
         ) : selectedTab === "lists" && isOwner ? (
           <Box mt={2}>
-            <ListsSection lists={lists} loading={loadingLists} />
+            <ListsSection 
+                lists={lists}
+    loading={loadingLists}
+    setPins={setPins}
+    profile={profile}
+    savedPins={savedPins}
+    beenTherePins={beenTherePins}
+    wantToGoPins={wantToGoPins}
+    toggleBeenThere={toggleBeenThere}
+    toggleWantToGo={toggleWantToGo}
+    handleSaveClick={handleSaveClick}
+    loadingPins={false}
+    openLightbox={(slides, idx) => {
+      setLightboxSlides(slides);
+      setLightboxIndex(idx);
+      setLightboxOpen(true);
+    }}
+    onEditClick={handleEditClick}
+    isOwner={isOwner}
+  />
           </Box>
         ) : (
           // Default layout with sidebars and pins

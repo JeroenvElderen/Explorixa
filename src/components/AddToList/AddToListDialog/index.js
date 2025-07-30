@@ -22,7 +22,7 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
   const [selectedLists, setSelectedLists] = useState([]);
   const [newListName, setNewListName] = useState("");
 
-  // load auth session
+  // Load auth session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -33,7 +33,7 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // fetch user's lists when dialog opens
+  // Fetch user's lists whenever the dialog opens
   useEffect(() => {
     if (!open || !user) return;
     supabase
@@ -63,62 +63,81 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
   const handleSave = async () => {
     if (!user) return;
 
-    // create new list if requested
+    // 1) Possibly create a new list
     let newId = null;
     if (newListName.trim()) {
-      const { data } = await supabase
+      const { data: created, error: createError } = await supabase
         .from("lists")
         .insert({ user_id: user.id, name: newListName.trim() })
         .single();
-      newId = data?.id;
+      if (createError) {
+        console.error("Error creating list:", createError);
+      } else {
+        newId = created.id;
+      }
     }
 
+    // 2) Build the final list of list_ids to upsert into
     const allIds = [...selectedLists, ...(newId ? [newId] : [])];
 
+    // 3) If no list chosen, just toggle saved state on the pin itself
     if (allIds.length === 0) {
-      // no lists chosen → simple toggle
       isAlreadySaved ? remove(pin) : save(pin);
       onSaved?.();
       onClose();
       return;
     }
 
-    // upsert into each list
-    await Promise.all(
-      allIds.map((list_id) =>
-        supabase.from("list_pins").upsert({ list_id, pin_id: pin.id })
-      )
-    );
+    // 4) Insert one row per (list_id, pin_id) into list_pins
+    const rows = allIds.map((list_id) => ({ list_id, pin_id: pin.id }));
+    const { data: inserted, error: insertError } = await supabase
+      .from("list_pins")
+      .insert(rows)
+      .select();
+    if (insertError) {
+      console.error("Error inserting into list_pins:", insertError);
+    } else {
+      console.log("Inserted into list_pins:", inserted);
+    }
+
+    // 5) Re-fetch the user's lists so the parent sees the newly attached pin
+    const { data: refreshed, error: refreshError } = await supabase
+      .from("lists")
+      .select("id, name")
+      .eq("user_id", user.id);
+    if (refreshError) {
+      console.error("Error refreshing lists:", refreshError);
+    } else {
+      setLists(refreshed || []);
+    }
 
     onSaved?.();
     onClose();
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      PaperProps={{
-        sx: {
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          background:
-            "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-          border: "1px solid rgba(255,255,255,0.6)",
-          boxShadow:
-            "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-          borderRadius: "12px",
-          p: 2,                // inner padding
-          minWidth: 300,       // grow to taste
-        }
-      }}
-    >
+    <Dialog open={open} onClose={onClose} PaperProps={{
+      sx: {
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        background:
+          "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+        border: "1px solid rgba(255,255,255,0.6)",
+        boxShadow:
+          "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+        borderRadius: "12px",
+        p: 2,
+        minWidth: 300,
+      },
+    }}>
       <DialogTitle>Add to a list</DialogTitle>
 
       <DialogContent>
         <List>
           {lists.map((l) => (
-            <ListItem key={l.id} dense
+            <ListItem
+              key={l.id}
+              dense
               secondaryAction={
                 <IconButton size="small" onClick={() => deleteList(l.id)}>
                   <DeleteIcon fontSize="small" />
@@ -151,7 +170,7 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
         <Button onClick={onClose}>Cancel</Button>
         <Button
           variant="contained"
-          disabled={!user || (!selectedLists.length && !newListName.trim())}
+          disabled={!user}
           onClick={handleSave}
         >
           Save
