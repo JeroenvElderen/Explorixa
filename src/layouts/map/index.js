@@ -28,7 +28,7 @@ const PlaceConfigurator = lazy(() =>
   import("../../components/PlaceConfigurator/PlaceConfigurator")
 );
 
-const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
+const MAPBOX_ACCESS_TOKEN = process.env.REACT_APP_MAPBOX_TOKEN;
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();

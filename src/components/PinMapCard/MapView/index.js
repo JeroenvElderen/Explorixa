@@ -4,7 +4,7 @@ import Box from "@mui/material/Box";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-mapboxgl.accessToken = 'pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg';
+mapboxgl.accessToken = process.env.REACT_APP_MAPBOX_TOKEN;
 
 export default function MapView({ latitude, longitude }) {
   const ref = useRef(null);
@@ -15,7 +15,7 @@ export default function MapView({ latitude, longitude }) {
       container: ref.current,
       style: "mapbox://styles/jeroenvanelderen/cmc958dgm006s01shdiu103uz",
       center: [longitude, latitude],
-      zoom: 14,
+      zoom: 10,
       interactive: false,
       attributionControl: false,
     });
