@@ -1,4 +1,13 @@
-import React, { lazy, Suspense, useState, useEffect, useRef } from "react";
+// src/layouts/map/index.jsx
+import React, {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+} from "react";
 import Grid from "@mui/material/Grid";
 import MDBox from "../../components/MDBox";
 import { supabase } from "../../SupabaseClient";
@@ -7,26 +16,27 @@ import ResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar";
 import { useMaterialUIController, setOpenConfigurator } from "../../context";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import { useTheme } from "@mui/material/styles";
-import ProfilePopup from "layouts/ProfilePopup";
+import ProfilePopup from "../ProfilePopup";
 
 const WorldMapComponent = lazy(() =>
   import("../../components/WorldMapComponent/WorldMapComponent")
 );
+// wrap in memo
+const MemoWorldMap = React.memo(WorldMapComponent);
+
 const PlaceConfigurator = lazy(() =>
   import("../../components/PlaceConfigurator/PlaceConfigurator")
 );
 
-const MAPBOX_ACCESS_TOKEN =
-  "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
-const FALLBACK_USER_ID = "920ae8e3-79d1-4303-905b-e35cbf68e3d5";
+const MAPBOX_ACCESS_TOKEN = "pk.eyJ1IjoiamVyb2VudmFuZWxkZXJlbiIsImEiOiJjbWMwa2M0cWswMm9jMnFzNjI3Z2I4YnV4In0.qUqeNUDYMBf3E54ouOd2Jg";
 
 export default function Map() {
   const [controller, dispatch] = useMaterialUIController();
   const { openConfigurator } = controller;
   const worldMapRef = useRef(null);
 
+  // page state
   const [profile, setProfile] = useState(null);
-  const [showProfilePopup, setShowProfilePopup] = useState(false);
   const [selectingPoint, setSelectingPoint] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [flyToPlace, setFlyToPlace] = useState(false);
@@ -37,130 +47,91 @@ export default function Map() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-    const removePinById = (pinId) => {
-    if (worldMapRef.current && typeof worldMapRef.current.removePinFromMap === "function") {
-      worldMapRef.current.removePinFromMap(pinId);
-    }
-  };
-
-  // Load user profile once
+  // load user profile once
   useEffect(() => {
-    async function loadProfile() {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-      if (!authError && user) {
-        const { data, error } = await supabase
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!error && data.user) {
+        supabase
           .from("profiles")
           .select("*")
-          .eq("user_id", user.id)
-          .single();
-        if (!error) setProfile(data);
+          .eq("user_id", data.user.id)
+          .single()
+          .then(({ data: prof }) => setProfile(prof));
       }
-    }
-    loadProfile();
+    });
   }, []);
 
-  const handleProfilePopupClose = () => {
-    setShowProfilePopup(false);
-    setNavValue(0);
-  };
-
-  const handleHomeClick = () => {
-    setOpenConfigurator(dispatch, false);
-    setResetKey((r) => r + 1);
-    setNavValue(0);
-  };
-
-  const handleActivateMapClick = () => {
-    setSelectingPoint(true);
-    setOpenConfigurator(dispatch, true);
-    setNavValue(2);
-  };
-
-  const handlePlaceSelected = async (place) => {
-    setSelectedPlace(place);
-    setFlyToPlace(true);
-    setResetKey((r) => r + 1);
-    setOpenConfigurator(dispatch, false);
-    setNavValue(1);
-  };
-
-  const handlePlacePick = (place) => {
-    setSelectedPlace(place);
-    setSelectingPoint(false);
-  };
-
-  // Single async reverse‐geocode handler for both map & POI clicks
-  const handleMapClick = async (place) => {
+  // stable callbacks
+  const handleMapClick = useCallback(async place => {
     const { lng, lat } = place;
-    const url =
-      `https://api.mapbox.com/geocoding/v5/mapbox.places/` +
-      `${lng},${lat}.json` +
-      `?access_token=${MAPBOX_ACCESS_TOKEN}` +
-      `&types=address,place,region,country,poi&limit=1`;
+    const res = await fetch(
+      `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json` +
+        `?access_token=${MAPBOX_ACCESS_TOKEN}` +
+        `&types=address,place,region,country,poi&limit=1`
+    );
+    const { features = [] } = await res.json();
+    const feat = features[0] || {};
+    const ctx = feat.context || [];
+    const country =
+      ctx.find(c => c.id.startsWith("country"))?.text || "";
+    const city =
+      ctx.find(c => c.id.startsWith("place"))?.text ||
+      ctx.find(c => c.id.startsWith("region"))?.text ||
+      "";
 
-    try {
-      const res = await fetch(url);
-      const { features = [] } = await res.json();
-      const feat = features[0] || {};
-      const ctx = feat.context || [];
-
-      const country = ctx.find((c) => c.id.startsWith("country"))?.text || "";
-      const city =
-        ctx.find((c) => c.id.startsWith("place"))?.text ||
-        ctx.find((c) => c.id.startsWith("region"))?.text ||
-        "";
-
-      handlePlacePick({
-        ...place,
-        address: feat.text || place.name || "",
-        landmark: place.landmark || "",
-        country,
-        city,
-        lat,
-        lng,
-      });
-    } catch (err) {
-      console.error("Reverse geocode failed:", err);
-    }
-  };
-
-  const handleCancelConfigurator = () => {
-    setOpenConfigurator(dispatch, false);
+    setSelectedPlace({
+      ...place,
+      address: feat.text || place.name || "",
+      landmark: place.landmark || "",
+      country,
+      city,
+      lat,
+      lng,
+    });
     setSelectingPoint(false);
-    setSelectedPlace(null);
-    setResetKey((r) => r + 1);
-    setNavValue(1);
-  };
+  }, []);
 
-  // Clear flyToPlace after animation
+  const handlePoiClick = useCallback(
+    async place => {
+      await handleMapClick(place);
+      setPoiClickedCount(c => c + 1);
+      setOpenConfigurator(dispatch, true);
+      setNavValue(2);
+    },
+    [dispatch, handleMapClick]
+  );
+
+  // style memo
+  const mapStyle = useMemo(() => ({ height: "100%" }), []);
+
+  const mapProps = useMemo(
+    () => ({
+      accessToken: MAPBOX_ACCESS_TOKEN,
+      selectingPoint,
+      onMapClick: handleMapClick,
+      onPoiClick: handlePoiClick,
+      target: selectedPlace,
+      flyOnTarget: flyToPlace,
+      style: mapStyle,
+      ref: worldMapRef,
+    }),
+    [
+      selectingPoint,
+      handleMapClick,
+      handlePoiClick,
+      selectedPlace,
+      flyToPlace,
+      mapStyle,
+    ]
+  );
+
+  // clear flyToPlace after brief moment
   useEffect(() => {
     if (flyToPlace) {
-      const timer = setTimeout(() => setFlyToPlace(false), 1000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setFlyToPlace(false), 1000);
+      return () => clearTimeout(t);
     }
   }, [flyToPlace]);
-
-  useEffect(() => {
-  function onPinDeleted(event) {
-    const deletedPinId = event.detail;
-    if (
-      worldMapRef.current &&
-      typeof worldMapRef.current.removePinFromMap === "function"
-    ) {
-      worldMapRef.current.removePinFromMap(deletedPinId);
-    }
-  }
-
-  window.addEventListener("pinDeleted", onPinDeleted);
-
-  return () => {
-    window.removeEventListener("pinDeleted", onPinDeleted);
-  };
-}, []);
-
 
   return (
     <DashboardLayout
@@ -171,7 +142,12 @@ export default function Map() {
       }}
     >
       <MDBox
-        sx={{ pt: 10, pb: isMobile ? 9 : 0, flexGrow: 1, position: "relative" }}
+        sx={{
+          pt: 10,
+          pb: isMobile ? 9 : 0,
+          flexGrow: 1,
+          position: "relative",
+        }}
       >
         <Grid container sx={{ height: "100%" }}>
           <Grid item xs={12} sx={{ height: "100%" }}>
@@ -182,22 +158,7 @@ export default function Map() {
                 </div>
               }
             >
-              <WorldMapComponent
-                ref={worldMapRef}
-                style={{ height: "100%" }}
-                accessToken={MAPBOX_ACCESS_TOKEN}
-                selectingPoint={selectingPoint}
-                onMapClick={handleMapClick}
-                onPoiClick={async (place) => {
-                  await handleMapClick(place);
-                  setPoiClickedCount((c) => c + 1);
-                  setFlyToPlace(false);
-                  setOpenConfigurator(dispatch, true);
-                  setNavValue(2);
-                }}
-                target={selectedPlace}
-                flyOnTarget={flyToPlace}
-              />
+              <MemoWorldMap {...mapProps} />
             </Suspense>
           </Grid>
         </Grid>
@@ -206,25 +167,39 @@ export default function Map() {
       <ResponsiveNavbar
         navValue={navValue}
         onNavChange={setNavValue}
-        onHomeClick={handleHomeClick}
-        onConfiguratorClick={handleActivateMapClick}
+        onHomeClick={() => {
+          setResetKey(r => r + 1);
+          setNavValue(0);
+          setOpenConfigurator(dispatch, false);
+        }}
+        onConfiguratorClick={() => {
+          setSelectingPoint(true);
+          setOpenConfigurator(dispatch, true);
+          setNavValue(2);
+        }}
         poiClicked={poiClickedCount}
-        onProfileClick={() => setShowProfilePopup(true)}
-        onAnyNav={() => setShowProfilePopup(false)}
+        onProfileClick={() => setNavValue(3)}
+        onAnyNav={() => {}}
       />
 
       {openConfigurator && (
-        <Suspense fallback={<div>Loading Configurator…</div>}>
+        <Suspense fallback={<div>Loading configurator…</div>}>
           <PlaceConfigurator
             key={resetKey}
-            userId={profile?.user_id ?? FALLBACK_USER_ID}
-            countryCode={null}
+            userId={profile?.user_id}
             accessToken={MAPBOX_ACCESS_TOKEN}
             initialData={selectedPlace}
-            onPlacePick={handlePlacePick}
-            onPlaceSelected={handlePlaceSelected}
-            onActivateMapClick={handleActivateMapClick}
-            onCancel={handleCancelConfigurator}
+            onPlacePick={p => setSelectedPlace(p)}
+            onPlaceSelected={p => {
+              setSelectedPlace(p);
+              setFlyToPlace(true);
+              setOpenConfigurator(dispatch, false);
+              setNavValue(1);
+            }}
+            onCancel={() => {
+              setSelectingPoint(false);
+              setOpenConfigurator(dispatch, false);
+            }}
           />
         </Suspense>
       )}
