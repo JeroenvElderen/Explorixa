@@ -29,7 +29,7 @@ import ProjectsContinent from "layouts/dashboard/components/ProjectsContinent";
 
 // Proxy-based Supabase client to avoid CORS in Safari
 const supabaseUrl = window.location.origin + "/supabase";
-const supabaseKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseKey = process.env.REACT_APP_SUPABASE_KEWY;
 
 
 // ——— Helpers ———

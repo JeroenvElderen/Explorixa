@@ -1,11 +1,12 @@
 // src/components/StarField.jsx
 import React, { useRef, useEffect } from "react";
 
-export default function StarField({ backgroundUrl, bgRef }) {
+export default function StarField({ backgroundUrl, bgRef, animate = true }) {
   const canvasRef = useRef();
+  const animationRef = useRef();
 
   useEffect(() => {
-    if (backgroundUrl) return;   // skip star animation when we have a BG image
+    if (backgroundUrl || !animate) return;
 
     const canvas = canvasRef.current;
     const ctx    = canvas.getContext("2d");
@@ -13,7 +14,10 @@ export default function StarField({ backgroundUrl, bgRef }) {
     let h        = (canvas.height = window.innerHeight);
     const stars  = [];
 
-    for (let i = 0; i < 300; i++) {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const starCount = reduceMotion ? 150 : 300;
+
+    for (let i = 0; i < starCount; i++) {
       stars.push({
         x: Math.random() * w,
         y: Math.random() * h,
@@ -34,7 +38,7 @@ export default function StarField({ backgroundUrl, bgRef }) {
         ctx.fillStyle = "#fff";
         ctx.fill();
       });
-      requestAnimationFrame(draw);
+      animationRef.current = requestAnimationFrame(draw);
     }
     draw();
 
@@ -43,8 +47,11 @@ export default function StarField({ backgroundUrl, bgRef }) {
       h = canvas.height = window.innerHeight;
     };
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, [backgroundUrl]);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [backgroundUrl, animate]);
 
   // If a backgroundUrl is provided, render that instead of the canvas
   return backgroundUrl ? (

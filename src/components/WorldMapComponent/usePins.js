@@ -4,13 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import { supabase } from "../../SupabaseClient";
 import { countryNameToIso } from "./constants";
 
-export default function usePins(pollInterval = 5000) {
+export default function usePins() {
   const [features, setFeatures] = useState([]);
   const rendered = useRef(new Set());
 
   useEffect(() => {
-    let timer;
-
     async function fetchAndSet() {
       const { data: pins, error } = await supabase
         .from("pins")
@@ -44,9 +42,22 @@ export default function usePins(pollInterval = 5000) {
     }
 
     fetchAndSet();
-    timer = setInterval(fetchAndSet, pollInterval);
-    return () => clearInterval(timer);
-  }, [pollInterval]);
+    
+    const channel = supabase
+        .channel("pins-updates")
+        .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: "pins" },
+            () => {
+              fetchAndSet();
+            } 
+        )
+        .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
+    }, []);
 
   return features;
 }
