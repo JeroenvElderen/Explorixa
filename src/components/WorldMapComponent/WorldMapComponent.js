@@ -2,8 +2,8 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { supabase } from "../SupabaseClient";
-import PopupComponent from "./PopupComponent";
+import { supabase } from "../../SupabaseClient";
+import PopupComponent from "../PopupComponent";
 import "./WorldMapComponent.css";
 import mbxGeocoding from "@mapbox/mapbox-sdk/services/geocoding";
 

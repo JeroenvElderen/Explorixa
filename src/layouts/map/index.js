@@ -10,7 +10,7 @@ import { useTheme } from "@mui/material/styles";
 import ProfilePopup from "layouts/ProfilePopup";
 
 const WorldMapComponent = lazy(() =>
-  import("../../components/WorldMapComponent")
+  import("../../components/WorldMapComponent/WorldMapComponent")
 );
 const PlaceConfigurator = lazy(() =>
   import("../../components/PlaceConfigurator/PlaceConfigurator")
