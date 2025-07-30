@@ -96,3 +96,5 @@ export const countryColors = {
   ZM: "#198A00", ZW: "#006400", PEAK: "#7B6F4B",
   default: "#888888",
 };
+
+

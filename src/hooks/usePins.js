@@ -1,65 +1,48 @@
 // src/hooks/usePins.js
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "../SupabaseClient";
-import { countryNameToIso } from "../components/WorldMapComponent/constants";
+import { useEffect, useState, useRef } from 'react';
+import { supabase } from '../SupabaseClient';
+import { countryNameToIso } from '../components/WorldMapComponent/constants';
 
-export default function usePins() {
+export default function usePins(pollInterval = 5000) {
   const [features, setFeatures] = useState([]);
-  const seen = useRef(new Set());
+  const rendered = useRef(new Set());
 
-  // fetch current pins
-  const fetchPins = async () => {
-    const { data: pins, error } = await supabase
-      .from("pins")
-      .select("*, countryName")
-      .order("created_at", { ascending: true });
-    if (error || !pins) return;
-    const ids = new Set(pins.map(p => p.id));
-    // only update if there's something new
-    const isNew = Array.from(ids).some(id => !seen.current.has(id));
-    if (!isNew) return;
+  useEffect(() => {
+    async function fetchPins() {
+      const { data: pins, error } = await supabase
+        .from('pins')
+        .select('*, countryName')
+        .order('created_at', { ascending: true });
+      if (error) {
+        console.error('❌ supabase error fetching pins:', error);
+        return;
+      }
+      const ids = new Set(pins.map(p => p.id));
+      const isNew = [...ids].some(id => !rendered.current.has(id));
+      if (!isNew) return;
+      rendered.current = ids;
 
-    seen.current = ids;
-    setFeatures(
-      pins.map(pin => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [pin.longitude, pin.latitude],
-        },
+      const feats = pins.map(pin => ({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [pin.longitude, pin.latitude] },
         properties: {
           pinId: pin.id,
           title: pin.Name,
           description: pin.Information,
-          imageurl: pin["Main Image"],
+          imageurl: pin['Main Image'],
           date: pin.created_at,
-          iso: pin.iso || countryNameToIso[pin.countryName] || "default",
+          iso: pin.iso || countryNameToIso[pin.countryName] || 'default',
           countryName: pin.countryName,
         },
-      }))
-    );
-  };
+      }));
+      console.log('✅ fetched', feats.length, 'pins');
+      setFeatures(feats);
+    }
 
-  useEffect(() => {
-    // initial fetch
     fetchPins();
-
-    // subscribe to changes
-    const channel = supabase
-      .channel("public:pins")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "pins" },
-        () => {
-          fetchPins();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+    const timer = setInterval(fetchPins, pollInterval);
+    return () => clearInterval(timer);
+  }, [pollInterval]);
 
   return features;
 }
