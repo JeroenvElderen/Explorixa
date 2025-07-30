@@ -1,5 +1,3 @@
-// src/components/WorldMapComponent/WorldMapComponent.jsx
-
 import React, {
   forwardRef,
   useState,
@@ -16,17 +14,32 @@ import PopupComponent from "./PopupComponent";
 import { countryColors } from "./constants";
 import "./WorldMapComponent.css";
 
+// ── Memoization cache for marker canvases ────────────────────────────────────
+const markerImageCache = new Map();
+function getMarkerImageData(iso) {
+  if (markerImageCache.has(iso)) {
+    return markerImageCache.get(iso);
+  }
+  const hex = countryColors[iso] || countryColors.default;
+  const label = iso === "PEAK" ? "🏔️" : iso;
+  const canvas = createMarkerCanvas(hex, label);
+  const imgData = canvas.getContext("2d")
+    .getImageData(0, 0, canvas.width, canvas.height);
+  markerImageCache.set(iso, imgData);
+  return imgData;
+}
+
 const WorldMapComponent = forwardRef(({
   accessToken,
   selectingPoint = false,
   onMapClick = () => {},
   onPoiClick = () => {},
 }, ref) => {
-  const features = usePins();      // your hook for fetching pins
+  const features = usePins();      // hook to fetch & poll pins
   const [map, setMap] = useState(null);
   const [popupData, setPopupData] = useState(null);
 
-  // Expose removePinFromMap to parent
+  // Expose removePinFromMap
   useImperativeHandle(ref, () => ({
     removePinFromMap: pinId => {
       const src = map?.getSource("pins");
@@ -36,11 +49,11 @@ const WorldMapComponent = forwardRef(({
     },
   }), [map]);
 
-  // 1) On map load: create source, register cluster icon, AND add both layers
+  // 1) On map load: create source, cluster+unclustered layers & cluster icon
   const handleLoad = useCallback(m => {
     setMap(m);
 
-    // a) create the source (empty for now)
+    // a) GeoJSON source
     m.addSource("pins", {
       type: "geojson",
       data: { type: "FeatureCollection", features: [] },
@@ -48,16 +61,15 @@ const WorldMapComponent = forwardRef(({
       clusterRadius: 60,
     });
 
-    // b) register cluster icon
+    // b) cluster icon
     const clusterId = "cluster-icon";
     if (m.hasImage(clusterId)) m.removeImage(clusterId);
     const cCanvas = createClusterCanvas("#F18F01");
-    const clusterData = cCanvas
-      .getContext("2d")
+    const clusterData = cCanvas.getContext("2d")
       .getImageData(0, 0, cCanvas.width, cCanvas.height);
     m.addImage(clusterId, clusterData);
 
-    // c) add the cluster layers
+    // c) cluster layers
     m.addLayer({
       id: "clusters",
       type: "symbol",
@@ -68,8 +80,7 @@ const WorldMapComponent = forwardRef(({
         "icon-allow-overlap": true,
         "icon-anchor": "center",
         "icon-size": [
-          "step",
-          ["get", "point_count"],
+          "step", ["get", "point_count"],
           1.2,
           10, 1.5,
           30, 2,
@@ -93,7 +104,7 @@ const WorldMapComponent = forwardRef(({
       paint: { "text-color": "#fff" },
     });
 
-    // d) add the unclustered-point layer now (icons resolve later)
+    // d) unclustered layer (icons resolve later via `marker-<iso>`)
     m.addLayer({
       id: "unclustered-point",
       type: "symbol",
@@ -109,7 +120,7 @@ const WorldMapComponent = forwardRef(({
     console.log("[worldmap] map loaded: source+layers created");
   }, []);
 
-  // 2) Sync effect: whenever map OR features change, register new marker-<ISO> images and update data
+  // 2) Sync effect: register new marker images once + update data
   useEffect(() => {
     if (!map?.getSource) return;
     const src = map.getSource("pins");
@@ -117,27 +128,22 @@ const WorldMapComponent = forwardRef(({
 
     console.log("[worldmap] syncing", features.length, "features");
 
-    // register any new marker icons
+    // register any new marker-<ISO> image
     const existing = map.listImages();
     const isos = [...new Set(features.map(f => f.properties.iso))];
     isos.forEach(iso => {
       const imgId = `marker-${iso}`;
-      if (existing.includes(imgId)) return;
-      const hex = countryColors[iso] || countryColors.default;
-      const label = iso === "PEAK" ? "🏔️" : iso;
-      const canvas = createMarkerCanvas(hex, label);
-      const imgData = canvas
-        .getContext("2d")
-        .getImageData(0, 0, canvas.width, canvas.height);
-      map.addImage(imgId, imgData);
-      console.log(`[worldmap] registered icon ${imgId}`);
+      if (!existing.includes(imgId)) {
+        map.addImage(imgId, getMarkerImageData(iso));
+        console.log(`[worldmap] registered icon ${imgId}`);
+      }
     });
 
-    // finally, update the geojson data
+    // finally update source data
     src.setData({ type: "FeatureCollection", features });
   }, [map, features]);
 
-  // 3) click→select handler
+  // 3) click→selectPoint mode
   useEffect(() => {
     if (!map?.on) return;
     const cb = e => {
@@ -149,10 +155,9 @@ const WorldMapComponent = forwardRef(({
     return () => map.off("click", cb);
   }, [map, selectingPoint, onMapClick]);
 
-  // 4) click an unclustered marker to open PopupComponent
+  // 4) click an unclustered point → open PopupComponent
   useEffect(() => {
     if (!map?.on || !map.getLayer("unclustered-point")) return;
-
     const onMarkerClick = e => {
       const feat = e.features[0];
       const [lng, lat] = feat.geometry.coordinates;
@@ -167,14 +172,27 @@ const WorldMapComponent = forwardRef(({
         countryName: p.countryName,
       });
     };
-
     map.on("click", "unclustered-point", onMarkerClick);
     map.getCanvas().style.cursor = "pointer";
-
     return () => {
       map.off("click", "unclustered-point", onMarkerClick);
       map.getCanvas().style.cursor = "";
     };
+  }, [map]);
+
+  // 5) click a cluster → zoom in
+  useEffect(() => {
+    if (!map?.on || !map.getLayer("clusters")) return;
+    const onClusterClick = e => {
+      const clusterId = e.features[0].properties.cluster_id;
+      const src = map.getSource("pins");
+      if (!src.getClusterExpansionZoom) return;
+      src.getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (!err) map.easeTo({ center: e.lngLat, zoom });
+      });
+    };
+    map.on("click", "clusters", onClusterClick);
+    return () => map.off("click", "clusters", onClusterClick);
   }, [map]);
 
   return (
