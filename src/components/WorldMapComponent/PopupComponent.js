@@ -5,9 +5,9 @@ import { ThemeProvider, useTheme } from '@mui/material/styles';
 import themeDark from 'assets/theme-dark';
 import { Typography, Box, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
-import { useSavedPins } from '../components/SavedPinsContext';
-import { supabase } from '../SupabaseClient';
-import ListDialog from './AddToList/AddToListDialog';
+import { useSavedPins } from '../../components/SavedPinsContext';
+import { supabase } from '../../SupabaseClient';
+import ListDialog from '../AddToList/AddToListDialog';
 import zIndex from '@mui/material/styles/zIndex';
 
 // Util: Sluggify

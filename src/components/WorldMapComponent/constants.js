@@ -1,4 +1,5 @@
-const countryNameToIso = {
+// Map country name → ISO
+export const countryNameToIso = {
   Afghanistan: "AF", Albania: "AL", Algeria: "DZ", Andorra: "AD", Angola: "AO",
   Argentina: "AR", Armenia: "AM", Australia: "AU", Austria: "AT", Azerbaijan: "AZ",
   Bahamas: "BS", Bahrain: "BH", Bangladesh: "BD", Barbados: "BB", Belarus: "BY",
@@ -51,7 +52,7 @@ const countryNameToIso = {
 };
 
 // Map ISO → hex color
-const countryColors = {
+export const countryColors = {
   AF: "#CE1126", AL: "#CE1126", DZ: "#006233", AD: "#003893", AO: "#D21034",
   AR: "#74ACDF", AM: "#D90012", AU: "#00247D", AT: "#ED2939", AZ: "#00B3E3",
   BS: "#009CA6", BH: "#B10021", BD: "#006A4E", BB: "#00267F", BY: "#D22730",
