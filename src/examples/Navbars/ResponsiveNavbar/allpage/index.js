@@ -13,7 +13,7 @@ import MenuIcon from "@mui/icons-material/MenuOpen";
 import MenuOpenIcon from "@mui/icons-material/Menu";
 import { useNavigate } from "react-router-dom";
 import MapIcon from "@mui/icons-material/Map";
-
+import UserSearchBar from "components/Search/UserSearchBar";
 import {
   useMaterialUIController,
   setMiniSidenav,
