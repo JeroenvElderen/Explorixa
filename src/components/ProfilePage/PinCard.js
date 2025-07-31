@@ -4,7 +4,7 @@ import EditIcon from "@mui/icons-material/Edit";
 import MDTypography from "components/MDTypography";
 import ImageGridGallery from "./ImageGridGallery";
 import PinActions from "./PinActions";
-import InfoEditorDialog from "./InfoEditorDialog"; // Adjust path if needed
+import InfoEditorDialog from "./InfoEditorDialog";
 
 export default function PinCard({
   pin,
@@ -12,15 +12,13 @@ export default function PinCard({
   isSaved,
   isBeenThere,
   isWantToGo,
-  saveBeenThere,
-  removeBeenThere,
-  saveWantToGo,
-  removeWantToGo,
+  onBeenThere,
+  onWantToGo,
   onSaveClick,
   openLightbox,
   compact = false,
-  isListView = false, // Pass this from parent to determine view mode
-  onUpdateInfo, // Callback to handle saved info updates
+  isListView = false,
+  onUpdateInfo,
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [editedInfo, setEditedInfo] = useState(pin.Information || "");
@@ -28,12 +26,12 @@ export default function PinCard({
   let imageUrls = [];
   try {
     const parsed = JSON.parse(pin.Images || "[]");
-    imageUrls = Array.isArray(parsed) ? parsed.map((u) => u.trim()) : [];
+    imageUrls = Array.isArray(parsed) ? parsed.map(u => u.trim()) : [];
   } catch {
-    imageUrls = (pin.Images || "").split(",").map((u) => u.trim());
+    imageUrls = (pin.Images || "").split(",").map(u => u.trim());
   }
   const main = pin["Main Image"]?.trim();
-  if (main) imageUrls = [main, ...imageUrls.filter((u) => u !== main)];
+  if (main) imageUrls = [main, ...imageUrls.filter(u => u !== main)];
 
   const handleDialogSave = () => {
     onUpdateInfo?.(pin, editedInfo);
@@ -60,11 +58,7 @@ export default function PinCard({
         <Box display="flex" justifyContent="space-between" alignItems="center">
           <MDTypography variant="h6">{pin.Name}</MDTypography>
           {isListView && (
-            <IconButton
-              onClick={() => setEditOpen(true)}
-              size="small"
-              sx={{ color: "white" }}
-            >
+            <IconButton onClick={() => setEditOpen(true)} size="small" sx={{ color: "white" }}>
               <EditIcon fontSize="small" />
             </IconButton>
           )}
@@ -80,11 +74,8 @@ export default function PinCard({
       <Box mb={2}>
         <ImageGridGallery
           imageUrls={imageUrls}
-          onImageClick={(i) =>
-            openLightbox(
-              imageUrls.map((src) => ({ src })),
-              i
-            )
+          onImageClick={i =>
+            openLightbox(imageUrls.map(src => ({ src })), i)
           }
           sx={compact ? { width: "100%", height: 120 } : {}}
         />
@@ -97,20 +88,13 @@ export default function PinCard({
           onSave={() => onSaveClick(pin)}
           isBeenThere={isBeenThere}
           beenThereCount={pin.been_there || 0}
-          onBeenThere={() => {
-            const next = !isBeenThere;
-            next ? saveBeenThere(pin) : removeBeenThere(pin);
-          }}
+          onBeenThere={() => onBeenThere(pin)}
           isWantToGo={isWantToGo}
           wantToGoCount={pin.want_to_go || 0}
-          onWantToGo={() => {
-            const next = !isWantToGo;
-            next ? saveWantToGo(pin) : removeWantToGo(pin);
-          }}
+          onWantToGo={() => onWantToGo(pin)}
         />
       </Box>
 
-      {/* Markdown Editor Dialog */}
       <InfoEditorDialog
         open={editOpen}
         value={editedInfo}

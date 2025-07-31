@@ -5,14 +5,25 @@ import { normalizeImages, sluggify } from "../utils";
 import { useSavedPins } from "../components/SavedPinsContext";
 
 export function usePin(pinSlug) {
-  const { pins, save, remove } = useSavedPins();
+  const {
+    pins,
+    save,
+    remove,
+    beenTherePins,
+    saveBeenThere,
+    removeBeenThere,
+    wantToGoPins,
+    saveWantToGo,
+    removeWantToGo,
+  } = useSavedPins();
+
   const [pin, setPin] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isBeenThere, setIsBeenThere] = useState(false);
-  const [isWantToGo, setIsWantToGo] = useState(false);
 
-  // derive saved‑state from context
+  // derive reaction state from context
   const isSaved = !!pin && pins.some((p) => p.id === pin.id);
+  const isBeenThere = !!pin && beenTherePins.some((p) => p.id === pin.id);
+  const isWantToGo = !!pin && wantToGoPins.some((p) => p.id === pin.id);
 
   // 1. Load & format pin on slug change
   useEffect(() => {
@@ -78,8 +89,7 @@ export function usePin(pinSlug) {
             Images: normalizeImages(pinData.Images),
             addedBy: pinData.addedBy
               ? {
-                  username:
-                    pinData.addedBy.Username || pinData.addedBy.full_name,
+                  username: pinData.addedBy.Username || pinData.addedBy.full_name,
                   avatarUrl: pinData.addedBy.avatar_url,
                   userId: pinData.addedBy.user_id,
                 }
@@ -108,10 +118,10 @@ export function usePin(pinSlug) {
       ? (pin.been_there || 0) + 1
       : Math.max((pin.been_there || 1) - 1, 0);
 
-    setIsBeenThere(next);
     setPin((p) => ({ ...p, been_there: newCount }));
     await supabase.from("pins").update({ been_there: newCount }).eq("id", pin.id);
-  }, [pin, isBeenThere]);
+    next ? saveBeenThere(pin) : removeBeenThere(pin);
+  }, [pin, isBeenThere, saveBeenThere, removeBeenThere]);
 
   // 3. Toggle "Want to Go"
   const toggleWantToGo = useCallback(async () => {
@@ -121,13 +131,10 @@ export function usePin(pinSlug) {
       ? (pin.want_to_go || 0) + 1
       : Math.max((pin.want_to_go || 1) - 1, 0);
 
-    setIsWantToGo(next);
     setPin((p) => ({ ...p, want_to_go: newCount }));
-    await supabase
-      .from("pins")
-      .update({ want_to_go: newCount })
-      .eq("id", pin.id);
-  }, [pin, isWantToGo]);
+    await supabase.from("pins").update({ want_to_go: newCount }).eq("id", pin.id);
+    next ? saveWantToGo(pin) : removeWantToGo(pin);
+  }, [pin, isWantToGo, saveWantToGo, removeWantToGo]);
 
   // 4. Toggle "Saved"
   const toggleSave = useCallback(async () => {
@@ -144,12 +151,6 @@ export function usePin(pinSlug) {
 
     isSaved ? remove(pin) : save(pin);
   }, [pin, isSaved, save, remove]);
-
-  // 5. Reset toggles whenever we load a new pin
-  useEffect(() => {
-    setIsBeenThere(false);
-    setIsWantToGo(false);
-  }, [pin?.id]);
 
   return {
     pin,

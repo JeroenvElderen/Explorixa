@@ -1,4 +1,3 @@
-// src/components/PinPage.js
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import {
@@ -22,11 +21,9 @@ import { PinStats } from "../../components/pinpage/PinStats";
 import PinDetailsCard from "./PinDetailsCard";
 import { PinInfoEditor } from "../../components/pinpage/PinInfoEditor";
 import PinMapCard from "../../components/PinMapCard";
-import ListDialog from "../../components/AddToList/AddToListDialog";
 import { Link as RouterLink } from "react-router-dom";
 import { Link as MuiLink } from "@mui/material";
 import { supabase } from "../../SupabaseClient";
-import { useSavedPins } from "../../components/SavedPinsContext";
 import normalizeImages from "../../utils/normalizeImages";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -43,36 +40,10 @@ export default function PinPage() {
   const { state } = useLocation();
   const pinFromState = state?.pin || null;
 
-  const { pins, save, remove } = useSavedPins();
   const [pin, setPin] = useState(pinFromState);
   const [loading, setLoading] = useState(!pinFromState);
-  const [isBeenThere, setIsBeenThere] = useState(false);
-  const [isWantToGo, setIsWantToGo] = useState(false);
-
-  // New: local saved state
-  const [isSaved, setIsSaved] = useState(false);
 
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
-  const [listDialogOpen, setListDialogOpen] = useState(false);
-
-  // 1) Derive isSaved from context on change
-  useEffect(() => {
-    setIsSaved(pins.some((p) => p.id === pin?.id));
-  }, [pins, pin?.id]);
-
-  // 2) Re-fetch saved_count whenever pins change
-  useEffect(() => {
-    if (!pin?.id) return;
-    (async () => {
-      const { data, error } = await supabase
-        .from("pins")
-        .select("saved_count")
-        .eq("id", pin.id)
-        .single();
-      if (error) console.error("Failed to refresh saved_count:", error);
-      else if (data) setPin((p) => ({ ...p, saved_count: data.saved_count }));
-    })();
-  }, [pins, pin?.id]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -80,7 +51,6 @@ export default function PinPage() {
     });
   }, []);
 
-  // fetch pin by slug…
   useEffect(() => {
     let canceled = false;
     async function load() {
@@ -98,7 +68,7 @@ export default function PinPage() {
         if (!pData) {
           const { data: allPins } = await supabase.from("pins").select("id, Name");
           const map = {};
-          allPins.forEach((p) => {
+          allPins.forEach(p => {
             map[p.Name.toLowerCase().split(" ").join("_")] = p.id;
           });
           const id = map[pinSlug];
@@ -123,7 +93,8 @@ export default function PinPage() {
             addedBy: pData.addedBy
               ? {
                   userId: pData.addedBy.user_id,
-                  username: pData.addedBy.Username || pData.addedBy.full_name,
+                  username:
+                    pData.addedBy.Username || pData.addedBy.full_name,
                   avatarUrl: pData.addedBy.avatar_url,
                 }
               : null,
@@ -140,46 +111,10 @@ export default function PinPage() {
     };
   }, [pinSlug]);
 
-  // toggle handlers
-  const toggleBeenThere = async () => {
-    const next = !isBeenThere;
-    const count = next
-      ? (pin.been_there || 0) + 1
-      : Math.max((pin.been_there || 1) - 1, 0);
-    setIsBeenThere(next);
-    setPin((p) => ({ ...p, been_there: count }));
-    await supabase.from("pins").update({ been_there: count }).eq("id", pin.id);
-  };
-
-  const toggleWantToGo = async () => {
-    const next = !isWantToGo;
-    const count = next
-      ? (pin.want_to_go || 0) + 1
-      : Math.max((pin.want_to_go || 1) - 1, 0);
-    setIsWantToGo(next);
-    setPin((p) => ({ ...p, want_to_go: count }));
-    await supabase.from("pins").update({ want_to_go: count }).eq("id", pin.id);
-  };
-
-  // save / unsave handler
-  const handleSaveClick = async () => {
-    if (!isSaved) {
-      setListDialogOpen(true);
-    } else {
-      // unsave
-      remove(pin);
-      await supabase
-        .from("pins")
-        .update({ saved_count: Math.max((pin.saved_count || 1) - 1, 0) })
-        .eq("id", pin.id)
-        .catch(console.error);
-    }
-  };
-
-  // update info text
-  const updatePinInfo = async (newInfo) => {
+  const updatePinInfo = async newInfo => {
+    if (!pin) return;
     await supabase.from("pins").update({ Information: newInfo }).eq("id", pin.id);
-    setPin((p) => ({ ...p, Information: newInfo }));
+    setPin(p => ({ ...p, Information: newInfo }));
   };
 
   if (loading)
@@ -198,13 +133,12 @@ export default function PinPage() {
       <DashboardLayout>
         <SimpleResponsiveNavbar />
         <MDBox p={4} textAlign="center">
-          <MDTypography variant="h5">Pin not found.</MDTypography>
+          <MDTypography variant="h5">Pin not found</MDTypography>
         </MDBox>
         <Footer />
       </DashboardLayout>
     );
 
-  // build images array
   const images = [];
   if (pin["Main Image"]) images.push(pin["Main Image"]);
   if (Array.isArray(pin.Images)) images.push(...pin.Images);
@@ -214,7 +148,6 @@ export default function PinPage() {
       <SimpleResponsiveNavbar />
       <StarField />
 
-      {/* Mobile carousel */}
       {isMobile && (
         <Box
           sx={{
@@ -241,19 +174,18 @@ export default function PinPage() {
               beenThere={pin.been_there}
               wantToGo={pin.want_to_go}
               savedCount={pin.saved_count}
-              onToggleBeen={toggleBeenThere}
-              onToggleWant={toggleWantToGo}
-              onToggleSave={handleSaveClick}
-              isBeen={isBeenThere}
-              isWant={isWantToGo}
-              isSaved={isSaved}
+              onToggleBeen={() => {}}
+              onToggleWant={() => {}}
+              onToggleSave={() => {}}
+              isBeen={false}
+              isWant={false}
+              isSaved={false}
               iconOnly
             />
           </Box>
         </Box>
       )}
 
-      {/* Header Card */}
       <MDBox
         my={1}
         sx={{
@@ -315,8 +247,7 @@ export default function PinPage() {
                     <MDTypography variant="body2" component="div">
                       Added by{" "}
                       {pin.addedBy?.userId && pin.addedBy.userId !== currentUserId ? (
-                        // if it’s _not_ you, link to their profile
-                        <MuiLink 
+                        <MuiLink
                           component={RouterLink}
                           to={`/profile/${pin.addedBy.userId}`}
                           underline="none"
@@ -327,12 +258,13 @@ export default function PinPage() {
                               textDecoration: "none",
                             },
                           }}
-                          >
+                        >
                           <strong>{pin.addedBy.username}</strong>
                         </MuiLink>
                       ) : (
-                        // otherwise just render the text
-                        <strong style={{ color: "white" }}>{pin.addedBy?.username}</strong>
+                        <strong style={{ color: "white" }}>
+                          {pin.addedBy?.username}
+                        </strong>
                       )}
                     </MDTypography>
                     <FollowButton authorId={pin.addedBy?.userId} />
@@ -346,12 +278,12 @@ export default function PinPage() {
                     beenThere={pin.been_there}
                     wantToGo={pin.want_to_go}
                     savedCount={pin.saved_count}
-                    onToggleBeen={toggleBeenThere}
-                    onToggleWant={toggleWantToGo}
-                    onToggleSave={handleSaveClick}
-                    isBeen={isBeenThere}
-                    isWant={isWantToGo}
-                    isSaved={isSaved}
+                    onToggleBeen={() => {}}
+                    onToggleWant={() => {}}
+                    onToggleSave={() => {}}
+                    isBeen={false}
+                    isWant={false}
+                    isSaved={false}
                   />
                 </Grid>
               )}
@@ -360,10 +292,8 @@ export default function PinPage() {
         </Card>
       </MDBox>
 
-      {/* Desktop carousel */}
       {!isMobile && <PinImageCarousel images={images} />}
 
-      {/* 1) MOBILE ONLY: full‑width MapCard */}
       {isMobile && (
         <Box
           sx={{
@@ -378,10 +308,8 @@ export default function PinPage() {
         </Box>
       )}
 
-      {/* 2) DETAILS + (desktop‑only) MapCard */}
       <MDBox mt={isMobile ? 0 : 4} px={2}>
         <Grid container spacing={3}>
-          {/* 2a) Info editor */}
           <Grid item xs={12} md={8} order={{ xs: 2, md: 1 }}>
             <MDBox
               sx={{
@@ -410,7 +338,6 @@ export default function PinPage() {
             />
           </Grid>
 
-          {/* 2b) Desktop: Map + Details side‑by‑side */}
           {!isMobile && (
             <Grid
               item
@@ -430,7 +357,6 @@ export default function PinPage() {
             </Grid>
           )}
 
-          {/* 2c) Mobile: Details below */}
           {isMobile && (
             <Grid item xs={12} order={3}>
               <PinDetailsCard pin={pin} />
@@ -438,17 +364,6 @@ export default function PinPage() {
           )}
         </Grid>
       </MDBox>
-
-      <ListDialog
-        open={listDialogOpen}
-        onClose={() => setListDialogOpen(false)}
-        pin={pin}
-        onSaved={() => {
-          save(pin);
-          setPin((p) => ({ ...p, saved_count: (p.saved_count || 0) + 1 }));
-          setListDialogOpen(false);
-        }}
-      />
 
       <Footer />
     </DashboardLayout>

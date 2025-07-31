@@ -6,18 +6,10 @@ import { styled } from "@mui/material/styles";
 import Card from "@mui/material/Card";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-import IconButton from "@mui/material/IconButton";
 import Divider from "@mui/material/Divider";
-import FlagIcon from "@mui/icons-material/Flag";
-import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
-import StarIcon from "@mui/icons-material/Star";
-import StarBorderIcon from "@mui/icons-material/StarBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
-import { useSavedPins } from "../../../../components/SavedPinsContext";
 
 const GlassCard = styled(Card)(({ theme }) => ({
   position: "relative",
@@ -62,21 +54,10 @@ export default function AllPinCard({
   imagealt,
   date,
   imageHeight = 160,
-  isSaved,
-  savedCount,
-  onSave,
-  isBeenThere,
-  beenThereCount,
-  onBeenThere,
-  isWantToGo,
-  wantToGoCount,
-  onWantToGo,
+  children, // for action slot
 }) {
-  const { remove, removeBeenThere, removeWantToGo } = useSavedPins();
-
   return (
     <GlassCard>
-      {/* Left: text */}
       <Content>
         <Typography variant="h6" sx={{ mt: 0, mb: 0.4, fontWeight: 700 }}>
           {title}
@@ -84,21 +65,20 @@ export default function AllPinCard({
 
         <Divider sx={{ my: 0.4 }} />
 
-        {/* Markdown-rendered description */}
         <Box
           sx={{
             flex: 1,
             color: "white !important",
             fontSize: "12px",
             overflow: "hidden",
-            minHeight: "2.7em", // ensures two lines even with empty desc
+            minHeight: "2.7em",
             maxHeight: "2.7em",
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             textOverflow: "ellipsis",
             lineHeight: 1.35,
-            mb: 0.5
+            mb: 0.5,
           }}
         >
           <ReactMarkdown
@@ -129,102 +109,16 @@ export default function AllPinCard({
           </ReactMarkdown>
         </Box>
 
-
-        {/* Icon row */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            mt: 1,
-            position: "absolute",
-            bottom: 8,
-            left: 8,
-            bgcolor: "rgba(255,255,255,0.08)",
-            borderRadius: "20px",
-            px: 1,
-            py: 0.3,
-            zIndex: 1,
-          }}
+        <Typography
+          variant="caption"
+          sx={{ color: "white !important", position: "absolute", bottom: 8, left: 8 }}
         >
-          {/* Been There */}
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onBeenThere?.(e);
-            }}
-            size="small"
-            sx={{
-              color: "green",
-              backgroundColor: isBeenThere
-                ? "rgba(40,167,69,0.15)"
-                : "transparent",
-              "&:hover": { backgroundColor: "rgba(40,167,69,0.3)" },
-            }}
-          >
-            {isBeenThere ? (
-              <FlagIcon fontSize="small" />
-            ) : (
-              <OutlinedFlagIcon fontSize="small" />
-            )}
-          </IconButton>
-          <Typography variant="button" sx={{ color: "white !important" }}>
-            {beenThereCount}
-          </Typography>
+          {date}
+        </Typography>
 
-          {/* Want To Go */}
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onWantToGo?.(e);
-            }}
-            size="small"
-            sx={{
-              color: "gold",
-              backgroundColor: isWantToGo
-                ? "rgba(255,215,0,0.12)"
-                : "transparent",
-              "&:hover": { backgroundColor: "rgba(255,215,0,0.22)" },
-            }}
-          >
-            {isWantToGo ? (
-              <StarIcon fontSize="small" />
-            ) : (
-              <StarBorderIcon fontSize="small" />
-            )}
-          </IconButton>
-          <Typography variant="button" sx={{ color: "white !important" }}>
-            {wantToGoCount}
-          </Typography>
-
-          {/* Saved */}
-          <IconButton
-            onClick={(e) => {
-              e.stopPropagation();
-              onSave?.(e);
-            }}
-            size="small"
-            sx={{
-              color: "error.main",
-              backgroundColor: isSaved
-                ? "rgba(241,143,1,0.12)"
-                : "transparent",
-              "&:hover": { backgroundColor: "rgba(241,143,1,0.22)" },
-            }}
-          >
-            {isSaved ? (
-              <FavoriteIcon fontSize="small" />
-            ) : (
-              <FavoriteBorderIcon fontSize="small" />
-            )}
-          </IconButton>
-          <Typography variant="button" sx={{ color: "white !important" }}>
-            {savedCount}
-          </Typography>
-        </Box>
+        {children && <Box mt={1}>{children}</Box>}
       </Content>
 
-      {/* Right: image */}
       <ImageWrapper
         height={`${imageHeight}px`}
         sx={{
@@ -259,30 +153,16 @@ AllPinCard.propTypes = {
   description: PropTypes.string,
   imageurl: PropTypes.string,
   imagealt: PropTypes.string,
+  date: PropTypes.string,
   imageHeight: PropTypes.number,
-  isSaved: PropTypes.bool,
-  savedCount: PropTypes.number,
-  onSave: PropTypes.func,
-  isBeenThere: PropTypes.bool,
-  beenThereCount: PropTypes.number,
-  onBeenThere: PropTypes.func,
-  isWantToGo: PropTypes.bool,
-  wantToGoCount: PropTypes.number,
-  onWantToGo: PropTypes.func,
+  children: PropTypes.node,
 };
 
 AllPinCard.defaultProps = {
   description: "",
   imageurl: "",
   imagealt: "",
+  date: "",
   imageHeight: 160,
-  isSaved: false,
-  savedCount: 0,
-  onSave: () => { },
-  isBeenThere: false,
-  beenThereCount: 0,
-  onBeenThere: () => { },
-  isWantToGo: false,
-  wantToGoCount: 0,
-  onWantToGo: () => { },
+  children: null,
 };
