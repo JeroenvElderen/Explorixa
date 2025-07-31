@@ -7,6 +7,7 @@ import themeDark from 'assets/theme-dark';
 import { Typography, Box, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
+import PinInteractionPanel from 'components/PinInteractionPanel';
 
 // Util: Sluggify
 const sluggify = str => str?.toString().trim().replace(/\s+/g, '_');
@@ -181,6 +182,7 @@ export default function PopupComponent({ data, onClose }) {
                   navigate(pinPath, { state: { pin: currentPin } });
                 }}
               />
+              
             </Box>
           )}
         </ThemeProvider>

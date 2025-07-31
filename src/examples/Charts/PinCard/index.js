@@ -6,9 +6,12 @@ import Divider from "@mui/material/Divider";
 import MDBox from "../../../components/MDBox";
 import MDTypography from "../../../components/MDTypography";
 import DOMPurify from "dompurify";
+import PinInteractionPanel from "components/PinInteractionPanel";
+import Box from "@mui/material/Box";
 
 function PinCard({
   color = "info",
+  pin,
   title,
   description = "",
   date = "",
@@ -19,10 +22,21 @@ function PinCard({
   link,
   linkLabel,
   onLinkClick,
+  onUpdated = () => {},
 }) {
   const contentRef = useRef(null);
   const [maxHeight, setMaxHeight] = useState("4.5em");
   const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const resolvedTitle = pin?.Name || title || "Untitled";
+  const resolvedDescription = pin?.Information || description || "";
+  const resolvedDate = pin
+    ? pin.created_at
+      ? new Date(pin.created_at).toLocaleDateString()
+      : ""
+    : date;
+  const resolvedImage = pin ? pin["Main Image"] : imageurl;
+  const resolvedAlt = pin?.Name || imagealt;
 
   useEffect(() => {
     if (!contentRef.current) return;
@@ -67,7 +81,7 @@ function PinCard({
             mt={-5}
             height={height}
             sx={{
-              backgroundImage: `url(${imageurl})`,
+              backgroundImage: `url(${resolvedImage})`,
               backgroundColor: "transparent",
               backgroundBlendMode: "normal",
               backgroundSize: "cover",
@@ -75,9 +89,9 @@ function PinCard({
               backgroundRepeat: "no-repeat",
             }}
             component={"div"}
-            aria-label={imagealt || title}
+            aria-label={resolvedAlt || resolvedTitle}
           >
-            {!imageurl && (
+            {!resolvedImage && (
               <MDTypography
                 color="text"
                 variant="button"
@@ -91,7 +105,7 @@ function PinCard({
 
           <MDBox pt={3} pb={1} px={1}>
             <MDTypography variant="h6" textTransform="capitalize">
-              {title || "Untitled"}
+              {resolvedTitle}
             </MDTypography>
 
             <MDTypography
@@ -113,7 +127,7 @@ function PinCard({
             >
               <div
                 ref={contentRef}
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(description) }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resolvedDescription) }}
               />
             </MDTypography>
 
@@ -126,11 +140,22 @@ function PinCard({
                 sx={{ mt: 0.15, mr: 0.5 }}
               ></MDTypography>
               <MDTypography variant="button" color="text" fontWeight="light">
-                {date}
+                {resolvedDate}
               </MDTypography>
             </MDBox>
           </MDBox>
         </MDBox>
+
+        {pin && (
+          <Box mt={1} px={1}>
+            <PinInteractionPanel
+              pin={pin}
+              onUpdated={(updated) => {
+                onUpdated(updated);
+              }}
+            />
+          </Box>
+        )}
       </Card>
       {link && (
         <Link
@@ -152,7 +177,7 @@ function PinCard({
             letterSpacing: "0.15px",
           }}
         >
-          {linkLabel || `Go to ${title}`}
+          {linkLabel || `Go to ${resolvedTitle}`}
         </Link>
       )}
     </div>
@@ -169,6 +194,7 @@ PinCard.propTypes = {
     "error",
     "dark",
   ]),
+  pin: PropTypes.object,
   title: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
   description: PropTypes.oneOfType([PropTypes.string, PropTypes.node]),
   date: PropTypes.string,
@@ -179,6 +205,7 @@ PinCard.propTypes = {
   link: PropTypes.string,
   linkLabel: PropTypes.string,
   onLinkClick: PropTypes.func,
+  onUpdated: PropTypes.func,
 };
 
 PinCard.defaultProps = {
@@ -193,6 +220,7 @@ PinCard.defaultProps = {
   link: null,
   linkLabel: null,
   onLinkClick: () => {},
+  onUpdated: () => {},
 };
 
 export default PinCard;

@@ -20,11 +20,16 @@ import sidenavLogoLabel from "../../examples/Sidenav/styles/sidenav";
 import UserSearchBar from "components/Search/UserSearchBar";
 
 // Context & Auth
-import { useMaterialUIController } from "../../context";
+import {
+  useMaterialUIController,
+  setMiniSidenav,
+  setTransparentSidenav,
+  setWhiteSidenav,
+} from "../../context";
+
 import { useAuth } from "../../AuthContext";
 import { supabase } from "../../SupabaseClient";
 
-// Utility: build flat map of route depths
 function buildKeyLevels(routes, level = 0, map = {}) {
   routes.forEach((r) => {
     map[r.key] = level;
@@ -36,11 +41,8 @@ function buildKeyLevels(routes, level = 0, map = {}) {
 }
 
 export default function Sidenav({ color = "info", brand = "", brandName, routes, ...rest }) {
-  // Always fully expanded
-  const [controller] = useMaterialUIController();
-  const { transparentSidenav, whiteSidenav, darkMode } = controller;
-  const miniSidenav = false;
-
+  const [controller, dispatch] = useMaterialUIController();
+  const { miniSidenav, transparentSidenav, whiteSidenav, darkMode } = controller;
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -53,12 +55,22 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
   const keyLevels = useMemo(() => buildKeyLevels(routes), [routes]);
   const [openMenus, setOpenMenus] = useState({});
 
-  // Determine text color based on theme
   let textColor = "white";
   if (transparentSidenav || (whiteSidenav && !darkMode)) textColor = "dark";
   else if (whiteSidenav && darkMode) textColor = "inherit";
 
-  // Filter routes based on authentication
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 1200;
+      setMiniSidenav(dispatch, mobile);
+      setTransparentSidenav(dispatch, !mobile && transparentSidenav);
+      setWhiteSidenav(dispatch, !mobile && whiteSidenav);
+    };
+    window.addEventListener("resize", handleResize);
+    handleResize();
+    return () => window.removeEventListener("resize", handleResize);
+  }, [dispatch, transparentSidenav, whiteSidenav]);
+
   const filteredRoutes = useMemo(
     () =>
       routes.filter((route) => {
@@ -70,14 +82,13 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
     [routes, isAuthenticated]
   );
 
-  // Toggle submenu open/close
   const toggleMenu = (key) => {
     const level = keyLevels[key];
 
-    if (level === 1 && sidenavRef.current) {
-      sidenavRef.current.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
+     if (level === 1 && sidenavRef.current) {
+    sidenavRef.current.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  
     setOpenMenus((prev) => {
       const next = { ...prev };
       Object.keys(prev).forEach((k) => {
@@ -88,13 +99,11 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
     });
   };
 
-  // Sign out
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = "/sign-in";
   };
 
-  // Render each nav item (with optional children)
   const renderCollapse = (route, level = 0, parentKey = null) => {
     const { name, icon, noCollapse, key, href, route: routePath, children, sx = {} } = route;
     const hasChildren = Array.isArray(children) && children.length > 0;
@@ -113,24 +122,34 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
               noCollapse={noCollapse}
               sx={{
                 ...sx,
-                backgroundColor: level >= 2 ? childBackground : undefined,
+                backgroundColor: level >= 2 ? childBackground : "undefined",
                 color: "white",
+                
               }}
             />
           </Link>
         ) : (
-          <NavLink
-            to={routePath || "#"}
-            onClick={(e) => {
-              if (hasChildren) {
-                e.preventDefault();
+        <NavLink
+          to={routePath || "#"}
+          onClick={(e) => {
+            if (hasChildren) {
+              e.preventDefault();
+              if (!isOpen) {
+                // 1st click: open submenu
                 toggleMenu(key);
               } else if (routePath) {
+                // 2nd click (already open): navigate to parent route
                 navigate(routePath);
+                closeSidenav();
               }
-            }}
-            style={{ textDecoration: "none" }}
-          >
+            } else if (routePath) {
+              // no children: just navigate
+              navigate(routePath);
+              closeSidenav();
+            }
+          }}
+          style={{ textDecoration: "none" }}
+        >
             <SidenavCollapse
               name={name}
               icon={icon}
@@ -157,14 +176,48 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
     );
   };
 
-  // Build the full nav list
   const renderRoutes = useMemo(
-    () => filteredRoutes.map((r) => (r.type === "collapse" ? renderCollapse(r) : null)),
-    [filteredRoutes, openMenus]
+    () =>
+      filteredRoutes.map(({ type, key, title }) => {
+        if (type === "collapse") {
+          const route = filteredRoutes.find((r) => r.key === key);
+          return renderCollapse(route);
+        }
+        if (type === "title") {
+          return (
+            <MDTypography
+              key={key}
+              color={textColor}
+              display="block"
+              variant="caption"
+              fontWeight="bold"
+              textTransform="uppercase"
+              pl={3}
+              mt={2}
+              mb={1}
+              ml={1}
+            >
+              {title}
+            </MDTypography>
+          );
+        }
+        if (type === "divider") {
+          return (
+            <Divider
+              key={key}
+              light={
+                (!darkMode && !whiteSidenav && !transparentSidenav) ||
+                (darkMode && !transparentSidenav && whiteSidenav)
+              }
+            />
+          );
+        }
+        return null;
+      }),
+    [filteredRoutes, openMenus, darkMode, whiteSidenav, transparentSidenav, textColor]
   );
 
-  // No-op for close
-  const closeSidenav = () => {};
+  const closeSidenav = () => setMiniSidenav(dispatch, true);
 
   return (
     <SidenavRoot
@@ -186,7 +239,6 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
         },
       }}
     >
-      {/* Brand / logo */}
       <MDBox pt={3} pb={1} px={4} textAlign="center" position="relative">
         <MDBox
           display={{ xs: "block", lg: "none" }}
@@ -194,8 +246,8 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
           top={0}
           right={0}
           p={1.625}
-          sx={{ cursor: "pointer" }}
           onClick={closeSidenav}
+          sx={{ cursor: "pointer" }}
         >
           <MDTypography variant="h6" color="secondary">
             <Icon sx={{ fontWeight: "bold" }}>close</Icon>
@@ -209,12 +261,13 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
             </MDTypography>
           </MDBox>
         </MDBox>
-      </MDBox>
+      </MDBox> 
 
-      {/* Search bar */}
-      <MDBox px={3} py={1}>
-        <UserSearchBar />
-      </MDBox>
+      {!miniSidenav && (
+        <MDBox px={3} py={1}>
+          <UserSearchBar />
+        </MDBox>
+      )}
 
       <Divider
         light={
@@ -223,10 +276,8 @@ export default function Sidenav({ color = "info", brand = "", brandName, routes,
         }
       />
 
-      {/* Navigation items */}
       <List>{renderRoutes}</List>
 
-      {/* Logout */}
       {isAuthenticated && (
         <MDBox px={2} pb={2}>
           <MDButton variant="outlined" color="error" fullWidth onClick={handleLogout}>

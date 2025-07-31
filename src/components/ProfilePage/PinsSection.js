@@ -18,6 +18,7 @@ import ImageGridGallery from "./ImageGridGallery";
 import ReactMarkdown from "react-markdown";
 import "./PinSection.css";
 import { supabase } from "SupabaseClient";
+import PinInteractionPanel from "./../PinInteractionPanel"; // adjust path if needed
 
 const headerStyles = {
   backdropFilter: "blur(20px)",
@@ -33,7 +34,7 @@ const headerStyles = {
 
 export default function PinsSection({
   pins,
-  setPins, // make sure setPins is passed from parent to update state after deletion
+  setPins,
   profile,
   loadingPins,
   openLightbox,
@@ -59,7 +60,6 @@ export default function PinsSection({
     if (!window.confirm("Are you sure you want to delete this pin?")) return;
 
     try {
-      // 1. Delete the pin row from database
       const { error: deletePinError } = await supabase
         .from("pins")
         .delete()
@@ -70,8 +70,6 @@ export default function PinsSection({
         return;
       }
 
-      // 2. Delete associated images from storage bucket "pins-images"
-      // Assuming Images is JSON array or comma-separated URLs
       let imageUrls = [];
       try {
         const parsed = JSON.parse(pin.Images || "[]");
@@ -82,31 +80,21 @@ export default function PinsSection({
         imageUrls = (pin.Images || "").split(",").map((u) => u.trim());
       }
 
-      // Add the main image as well if present and different from Images
       const mainImage = pin["Main Image"]?.trim();
       if (mainImage && !imageUrls.includes(mainImage)) {
         imageUrls.unshift(mainImage);
       }
 
-      // Extract file paths from URLs by removing public URL prefix
-      // Example: https://xyz.supabase.co/storage/v1/object/public/pins-images/filename.jpg
-      // We want: pins-images/filename.jpg or just filename.jpg depending on your storage structure
-      // Assuming your storage path is just the filename part after "pins-images/"
       const bucketFolder = "pins-images/";
 
       for (const url of imageUrls) {
         try {
-          // Extract path inside bucket
           const pathIndex = url.indexOf(bucketFolder);
-          if (pathIndex === -1) continue; // skip if not found
-
+          if (pathIndex === -1) continue;
           const filePath = url.substring(pathIndex + bucketFolder.length);
-
-          // Delete file from storage bucket
           const { error: deleteFileError } = await supabase.storage
             .from("pins-images")
             .remove([filePath]);
-
           if (deleteFileError) {
             console.warn(
               "Failed to delete image from storage:",
@@ -119,12 +107,17 @@ export default function PinsSection({
         }
       }
 
-      // 3. Remove the pin from local state to update UI
       setPins((prev) => prev.filter((p) => p.id !== pin.id));
       window.dispatchEvent(new CustomEvent("pinDeleted", { detail: pin.id }));
     } catch (err) {
       alert("Error deleting pin: " + err.message);
     }
+  };
+
+  const handlePinUpdated = (updated) => {
+    setPins((prev) =>
+      prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p))
+    );
   };
 
   return (
@@ -196,7 +189,6 @@ export default function PinsSection({
           <MDBox display="flex" flexDirection="column" gap={0.05}>
             {pins.map((pin) => {
               let imageUrls = [];
-
               try {
                 const raw = pin.Images || "";
                 const parsed = JSON.parse(raw);
@@ -304,6 +296,11 @@ export default function PinsSection({
                       }
                     />
                   </Box>
+
+                  {/* interaction panel */}
+                  <Box mt={1}>
+                    <PinInteractionPanel pin={pin} onUpdated={handlePinUpdated} />
+                  </Box>
                 </Card>
               );
             })}
@@ -386,9 +383,6 @@ export default function PinsSection({
                           sx={{
                             width: 60,
                             height: 60,
-                            borderRadius: "50%",
-                            overflow: "hidden",
-                            flexShrink: 0,
                           }}
                         >
                           <img
@@ -402,14 +396,6 @@ export default function PinsSection({
                           />
                         </Box>
 
-                        <Box>
-                          <MDTypography variant="subtitle2">
-                            {profile.full_name || profile.Username}
-                          </MDTypography>
-                          <MDTypography variant="caption" color="white">
-                            {new Date(pin.created_at).toLocaleDateString()}
-                          </MDTypography>
-                        </Box>
                       </Box>
                       <MDTypography variant="h6">{pin.Name}</MDTypography>
                       <Box sx={{ mb: 2, color: "white", fontSize: "14px" }}>
@@ -431,6 +417,11 @@ export default function PinsSection({
                             )
                           }
                         />
+                      </Box>
+
+                      {/* interaction panel */}
+                      <Box mt={1}>
+                        <PinInteractionPanel pin={pin} onUpdated={handlePinUpdated} />
                       </Box>
                     </Card>
                   );
@@ -544,6 +535,11 @@ export default function PinsSection({
                             >
                               {new Date(pin.created_at).toLocaleDateString()}
                             </MDTypography>
+
+                            {/* interaction panel */}
+                            <Box mt={1}>
+                              <PinInteractionPanel pin={pin} onUpdated={handlePinUpdated} />
+                            </Box>
                           </Card>
                         </Grid>
                       );
