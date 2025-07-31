@@ -11,30 +11,27 @@ import {
   Avatar,
   Box,
 } from "@mui/material";
-
 import DashboardLayout from "../../examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "../../examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "../../examples/Footer";
 import MDBox from "../../components/MDBox";
 import MDTypography from "../../components/MDTypography";
-
 import { PinImageCarousel } from "../../components/pinpage/PinImageCarousel";
 import { PinHeader } from "../../components/pinpage/PinHeader";
 import { PinStats } from "../../components/pinpage/PinStats";
 import PinDetailsCard from "./PinDetailsCard";
 import { PinInfoEditor } from "../../components/pinpage/PinInfoEditor";
 import PinMapCard from "../../components/PinMapCard";
-import ListDialog from "components/AddToList/AddToListDialog";
-import { Link as RouterLink} from "react-router-dom";
+import ListDialog from "../../components/AddToList/AddToListDialog";
+import { Link as RouterLink } from "react-router-dom";
 import { Link as MuiLink } from "@mui/material";
-
-import { supabase } from "SupabaseClient";
+import { supabase } from "../../SupabaseClient";
 import { useSavedPins } from "../../components/SavedPinsContext";
 import normalizeImages from "../../utils/normalizeImages";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
-import StarField from "components/StarField";
+import StarField from "../../components/StarField";
 import FollowButton from "./FollowButton";
 
 export default function PinPage() {
@@ -47,15 +44,35 @@ export default function PinPage() {
   const pinFromState = state?.pin || null;
 
   const { pins, save, remove } = useSavedPins();
-
   const [pin, setPin] = useState(pinFromState);
   const [loading, setLoading] = useState(!pinFromState);
   const [isBeenThere, setIsBeenThere] = useState(false);
   const [isWantToGo, setIsWantToGo] = useState(false);
+
+  // New: local saved state
+  const [isSaved, setIsSaved] = useState(false);
+
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
 
-  const isSaved = pins.some((p) => p.id === pin?.id);
+  // 1) Derive isSaved from context on change
+  useEffect(() => {
+    setIsSaved(pins.some((p) => p.id === pin?.id));
+  }, [pins, pin?.id]);
+
+  // 2) Re-fetch saved_count whenever pins change
+  useEffect(() => {
+    if (!pin?.id) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from("pins")
+        .select("saved_count")
+        .eq("id", pin.id)
+        .single();
+      if (error) console.error("Failed to refresh saved_count:", error);
+      else if (data) setPin((p) => ({ ...p, saved_count: data.saved_count }));
+    })();
+  }, [pins, pin?.id]);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -79,9 +96,7 @@ export default function PinPage() {
           .maybeSingle();
 
         if (!pData) {
-          const { data: allPins } = await supabase
-            .from("pins")
-            .select("id, Name");
+          const { data: allPins } = await supabase.from("pins").select("id, Name");
           const map = {};
           allPins.forEach((p) => {
             map[p.Name.toLowerCase().split(" ").join("_")] = p.id;
@@ -146,32 +161,24 @@ export default function PinPage() {
     await supabase.from("pins").update({ want_to_go: count }).eq("id", pin.id);
   };
 
-  const handleSaveClick = () => {
+  // save / unsave handler
+  const handleSaveClick = async () => {
     if (!isSaved) {
-      // open the "Add to list" dialog
       setListDialogOpen(true);
     } else {
-      // already saved → unsave immediately
+      // unsave
       remove(pin);
-      // decrement saved count locally
-      setPin((p) => ({
-        ...p,
-        saved_count: Math.max((p.saved_count || 1) - 1, 0),
-      }));
-      // update in the db
-      supabase
+      await supabase
         .from("pins")
-        .update({ saved_count: pin.saved_count - 1 })
-        .eq("id", pin.id);
+        .update({ saved_count: Math.max((pin.saved_count || 1) - 1, 0) })
+        .eq("id", pin.id)
+        .catch(console.error);
     }
   };
 
   // update info text
   const updatePinInfo = async (newInfo) => {
-    await supabase
-      .from("pins")
-      .update({ Information: newInfo })
-      .eq("id", pin.id);
+    await supabase.from("pins").update({ Information: newInfo }).eq("id", pin.id);
     setPin((p) => ({ ...p, Information: newInfo }));
   };
 

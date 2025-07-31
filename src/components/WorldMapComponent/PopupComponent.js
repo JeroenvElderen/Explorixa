@@ -1,3 +1,4 @@
+// src/components/WorldMapComponent/PopupComponent.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import PinCard from 'examples/Charts/PinCard';
 import RowPinCard from 'examples/Charts/PinCard/RowPinCard';
@@ -8,29 +9,29 @@ import { useNavigate } from 'react-router-dom';
 import { useSavedPins } from '../../components/SavedPinsContext';
 import { supabase } from '../../SupabaseClient';
 import ListDialog from '../AddToList/AddToListDialog';
-import zIndex from '@mui/material/styles/zIndex';
 
 // Util: Sluggify
 const sluggify = str => str?.toString().trim().replace(/\s+/g, '_');
 
-function getRealPinId(pin, supPins) {
-  if (pin.id && !isNaN(Number(pin.id))) return pin.id.toString();
-  const match = supPins.find(
-    sp => sp.title?.toLowerCase() === pin.title?.toLowerCase()
-  );
-  return match?.id?.toString() ?? null;
-}
-
 export default function PopupComponent({ data, onClose }) {
   const navigate = useNavigate();
-  const { pins, save, remove } = useSavedPins();
+    const {
+    pins,            // favorites (unused here)
+    save, remove,
+    beenTherePins,
+    saveBeenThere,
+    removeBeenThere,
+    wantToGoPins,
+    saveWantToGo,
+    removeWantToGo,
+  } = useSavedPins();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const touchStartX = useRef(0);
+
+  // State for all pins (fallback), toggles, counts
   const [supPins, setSupPins] = useState([]);
   const [mobileToggles, setMobileToggles] = useState({});
-
-  // Desktop toggles
   const [isBeenThere, setIsBeenThere] = useState(false);
   const [beenThereCount, setBeenThereCount] = useState(0);
   const [isWantToGo, setIsWantToGo] = useState(false);
@@ -38,113 +39,88 @@ export default function PopupComponent({ data, onClose }) {
   const [isSavedLocal, setIsSavedLocal] = useState(false);
   const [savedCount, setSavedCount] = useState(0);
 
-  // Dialog toggles
+  // Dialog state
   const [listDialogOpen, setListDialogOpen] = useState(false);
   const [dialogPin, setDialogPin] = useState(null);
 
-  // Fetch pins…
+  // Fetch all pins once for title→ID fallback
   useEffect(() => {
     let active = true;
-    (async () => {
-      const selectCols = 'id, "Name", "Main Image", created_at, "Information", been_there, want_to_go, saved_count';
-      const { data: fetched } = await supabase
-        .from('pins')
-        .select(selectCols)
-        .order('created_at', { ascending: false });
-      if (!active || !fetched) return;
-      setSupPins(fetched.map(p => ({
-        id: p.id.toString(),
-        title: p.Name,
-        description: p.Information ?? "",
-        imageurl: p['Main Image'],
-        date: p.created_at,
-        been_there: p.been_there || 0,
-        want_to_go: p.want_to_go || 0,
-        saved_count: p.saved_count || 0,
-      })));
-    })();
-    return () => { active = false };
+    supabase
+      .from('pins')
+      .select('id, Name, been_there, want_to_go, saved_count')
+      .then(({ data }) => {
+        if (!active || !data) return;
+        setSupPins(data.map(p => ({
+          id: p.id.toString(),
+          title: p.Name,
+          been_there: p.been_there,
+          want_to_go: p.want_to_go,
+          saved_count: p.saved_count,
+        })));
+      });
+    return () => { active = false; };
   }, []);
 
-  // Build currentPin + path
-  const pinTitle = data?.title?.toString() ?? "";
-  const currentPin = {
-    id: data?.id?.toString(),
-    title: pinTitle,
-    description: data?.description ?? "",
-    imageurl: data?.imageurl ?? "",
-    date: data?.date,
+  // Helper to find a numeric ID (or fallback by title)
+  const getRealPinId = pin => {
+    if (pin.id && !isNaN(Number(pin.id))) return pin.id.toString();
+    const match = supPins.find(
+      sp => sp.title?.toLowerCase() === pin.title?.toLowerCase()
+    );
+    return match?.id?.toString() ?? null;
   };
-  const realPinId = getRealPinId(currentPin, supPins);
-  const allowSave = Boolean(realPinId);
-  const rawCont = data?.continentName || data?.countryName || data?.title;
-  const rawCoun = data?.countryName || data?.title;
-  const contSlug = sluggify(rawCont);
-  const counSlug = sluggify(rawCoun);
-  const pinSlug = sluggify(data?.title);
-  const pinPath = `/Destinations/${contSlug}/${counSlug}/${pinSlug}`;
-  const formattedDate = data?.date ? new Date(data.date).toISOString().slice(0, 10) : '';
 
-  // Carousel pins
-  const allPins = [{ ...currentPin, id: realPinId }, ...supPins];
-  const seen = new Set();
-  const carouselPins = allPins.filter(p => {
-    const id = p.id?.toString();
-    if (!id || seen.has(id)) return false;
-    seen.add(id);
-    return true;
-  });
-
-  // Reset desktop counts
+  // Reset desktop counts whenever data or supPins change
   useEffect(() => {
-    const db = supPins.find(p => p.id === realPinId) || {};
+    if (!data) return;
+    const currentPin = {
+      id: data.id?.toString(),
+      title: data.title,
+    };
+    const realId = getRealPinId(currentPin);
+    const db = supPins.find(p => p.id === realId) || {};
     setBeenThereCount(db.been_there || 0);
     setWantToGoCount(db.want_to_go || 0);
     setSavedCount(db.saved_count || 0);
-    setIsBeenThere(false);
-    setIsWantToGo(false);
-    setIsSavedLocal(false);
-  }, [realPinId, supPins]);
+    setIsBeenThere(beenTherePins.some(p => p.id.toString() === realId));
+    setIsWantToGo(wantToGoPins.some(p => p.id.toString() === realId));
+    setIsSavedLocal(pins.some(p => p.id.toString() === realId));
+  }, [data, supPins]);
 
-  if (!data) return null;
-
-  // Touch handlers…
+  // Touch handlers for mobile closing
   const handleTouchStart = e => { touchStartX.current = e.touches[0].clientX };
   const handleTouchEnd = e => {
-    if (Math.abs(e.changedTouches[0].clientX - touchStartX.current) < 5) onClose();
+    if (Math.abs(e.changedTouches[0].clientX - touchStartX.current) < 5) {
+      onClose();
+    }
   };
 
-  // Desktop handlers…
+  // Desktop toggles
   const handleToggleBeenThere = async e => {
     e.stopPropagation();
     const nxt = !isBeenThere;
     const cnt = nxt ? beenThereCount + 1 : Math.max(beenThereCount - 1, 0);
-    setIsBeenThere(nxt); setBeenThereCount(cnt);
-    await supabase.from('pins').update({ been_there: cnt }).eq('id', realPinId);
+    setIsBeenThere(nxt);
+    setBeenThereCount(cnt);
+    const realId = getRealPinId({ id: data.id?.toString(), title: data.title });
+    await supabase.from('pins').update({ been_there: cnt }).eq('id', realId);
+        if (nxt) saveBeenThere({ id: realId, title: data.title });
+    else    removeBeenThere({ id: realId });
   };
   const handleToggleWantToGo = async e => {
     e.stopPropagation();
     const nxt = !isWantToGo;
     const cnt = nxt ? wantToGoCount + 1 : Math.max(wantToGoCount - 1, 0);
-    setIsWantToGo(nxt); setWantToGoCount(cnt);
-    await supabase.from('pins').update({ want_to_go: cnt }).eq('id', realPinId);
-  };
-  const handleSave = async e => {
-    e.stopPropagation();
-    if (!allowSave) return alert("This pin can’t be saved.");
-    // open the "add to list" dialog
-    setDialogPin({ ...currentPin, id: realPinId, saved_count: savedCount });
-    setListDialogOpen(true);
+    setIsWantToGo(nxt);
+    setWantToGoCount(cnt);
+    const realId = getRealPinId({ id: data.id?.toString(), title: data.title });
+    await supabase.from('pins').update({ want_to_go: cnt }).eq('id', realId);
+    if (nxt) saveWantToGo({ id: realId, title: data.title });
+    else    removeWantToGo({ id: realId });
   };
 
-  const handleOpenDialogFor = (pinObj) => (e) => {
-  e.stopPropagation();
-  setDialogPin({ ...pinObj, id: pinObj.id, saved_count: pinObj.saved_count });
-  setListDialogOpen(true);
-};
-
-
-  // Mobile handlers generator…
+  // Mobile toggle generator (been there, want to go)
   const mkToggle = (p, key, col, countKey) => async e => {
     e.stopPropagation();
     const curr = mobileToggles[p.id]?.[key] ?? false;
@@ -153,10 +129,12 @@ export default function PopupComponent({ data, onClose }) {
     const nxtCount = nxt ? currCnt + 1 : Math.max(currCnt - 1, 0);
     setMobileToggles(m => ({
       ...m,
-      [p.id]: { ...(m[p.id] || {}), [key]: nxt, [countKey]: nxtCount }
+      [p.id]: { ...(m[p.id]||{}), [key]: nxt, [countKey]: nxtCount }
     }));
     await supabase.from('pins').update({ [col]: nxtCount }).eq('id', p.id);
   };
+
+  // Mobile save generator
   const mkSave = p => async e => {
     e.stopPropagation();
     const saved = mobileToggles[p.id]?.isSaved ?? false;
@@ -164,12 +142,56 @@ export default function PopupComponent({ data, onClose }) {
     const nxtCnt = saved ? Math.max(currCnt - 1, 0) : currCnt + 1;
     setMobileToggles(m => ({
       ...m,
-      [p.id]: { ...(m[p.id] || {}), isSaved: !saved, savedCount: nxtCnt }
+      [p.id]: { ...(m[p.id]||{}), isSaved: !saved, savedCount: nxtCnt }
     }));
     await supabase.from('pins').update({ saved_count: nxtCnt }).eq('id', p.id);
     if (!saved) save({ ...p, saved_count: nxtCnt });
     else remove({ id: p.id });
   };
+
+  // Open dialog only when we have a valid numeric ID
+  const openListDialog = pinObj => e => {
+    e.stopPropagation();
+    const idStr = getRealPinId(pinObj);
+    if (!idStr) return alert("This pin can’t be saved (no ID).");
+    const idNum = Number(idStr);
+    if (Number.isNaN(idNum)) return alert("Invalid pin ID.");
+    const initialSaved = pinObj.saved_count ?? savedCount;
+    setDialogPin({ ...pinObj, id: idNum, saved_count: initialSaved });
+    setListDialogOpen(true);
+  };
+
+  // If there's no data to show, bail render (hooks are already wired)
+  if (!data) return null;
+
+  // Build currentPin and path slugs
+  const currentPin = {
+    id: data.id?.toString(),
+    title: data.title,
+    description: data.description,
+    imageurl: data.imageurl,
+    date: data.date,
+  };
+  const realPinId = getRealPinId(currentPin);
+  const allowSave = Boolean(realPinId);
+
+  const rawCont = data.continentName || data.countryName || data.title;
+  const rawCoun = data.countryName || data.title;
+  const contSlug = sluggify(rawCont);
+  const counSlug = sluggify(rawCoun);
+  const pinSlug = sluggify(data.title);
+  const pinPath = `/Destinations/${contSlug}/${counSlug}/${pinSlug}`;
+  const formattedDate = data.date
+    ? new Date(data.date).toISOString().slice(0, 10)
+    : '';
+
+  const allPins = [{ ...currentPin, id: realPinId }, ...supPins];
+  const seen = new Set();
+  const carouselPins = allPins.filter(p => {
+    if (!p.id || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
 
   return (
     <div
@@ -181,14 +203,15 @@ export default function PopupComponent({ data, onClose }) {
         height: isMobile ? '500px' : '100vh',
         background: 'transparent', display: 'flex',
         justifyContent: 'center',
-        alignItems: isMobile ? 'flex-start' : 'center', zIndex: 1300
+        alignItems: isMobile ? 'flex-start' : 'center',
+        zIndex: 1300
       }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        onTouchStart={e => e.stopPropagation()}
         style={{
-          width: '100%', maxWidth: 500, margin: isMobile ? '0 0 10px' : '0 auto',
+          width: '100%', maxWidth: 500,
+          margin: isMobile ? '0 0 10px' : '0 auto',
           display: 'flex', flexDirection: 'column',
           background: 'transparent', borderRadius: 16, boxShadow: 'none'
         }}
@@ -200,10 +223,10 @@ export default function PopupComponent({ data, onClose }) {
               display: 'flex', overflowX: 'auto', WebkitOverflowScrolling: 'touch',
               touchAction: 'pan-x', overscrollBehaviorX: 'contain',
               scrollSnapType: 'x mandatory', scrollBehavior: 'smooth',
-              flexWrap: 'nowrap', mt: 2, pb: 0, '&::-webkit-scrollbar': { display: 'none' }
+              flexWrap: 'nowrap', mt: 2, pb: 0,
+              '&::-webkit-scrollbar': { display: 'none' }
             }}>
               {carouselPins.map(p => {
-                const safeTitle = p.title;
                 const route = `/Destinations/${contSlug}/${counSlug}/${sluggify(p.title)}`;
                 const pinDate = p.date ? new Date(p.date).toISOString().slice(0, 10) : '';
                 return (
@@ -220,31 +243,30 @@ export default function PopupComponent({ data, onClose }) {
                   >
                     <RowPinCard
                       color="info"
-                      title={safeTitle}
+                      title={p.title}
                       description={p.description}
                       date={pinDate}
                       imageurl={p.imageurl}
-                      imagealt={safeTitle}
+                      imagealt={p.title}
                       height="150px"
                       truncateDescription
                       link={route}
-                      linkLabel={`Go to ${safeTitle}`}
+                      linkLabel={`Go to ${p.title}`}
                       onLinkClick={() => {
                         onClose();
                         navigate(route, { state: { pin: p } });
                       }}
-                      isSaved={mobileToggles[p.id]?.isSaved ?? false}
-                      savedCount={mobileToggles[p.id]?.savedCount ?? p.saved_count ?? 0}
-                      onSave={handleOpenDialogFor(p)}
-                      isBeenThere={mobileToggles[p.id]?.isBeenThere ?? false}
-                      beenThereCount={mobileToggles[p.id]?.beenThereCount ?? p.been_there ?? 0}
+                      onSave={openListDialog(p)}
                       onBeenThere={mkToggle(p, 'isBeenThere', 'been_there', 'beenThereCount')}
-                      isWantToGo={mobileToggles[p.id]?.isWantToGo ?? false}
-                      wantToGoCount={mobileToggles[p.id]?.wantToGoCount ?? p.want_to_go ?? 0}
                       onWantToGo={mkToggle(p, 'isWantToGo', 'want_to_go', 'wantToGoCount')}
+                      isSaved={mobileToggles[p.id]?.isSaved || false}
+                      savedCount={mobileToggles[p.id]?.savedCount ?? p.saved_count}
+                      isBeenThere={mobileToggles[p.id]?.isBeenThere || false}
+                      beenThereCount={mobileToggles[p.id]?.beenThereCount ?? p.been_there}
+                      isWantToGo={mobileToggles[p.id]?.isWantToGo || false}
+                      wantToGoCount={mobileToggles[p.id]?.wantToGoCount ?? p.want_to_go}
                     />
                   </Box>
-                  
                 );
               })}
             </Box>
@@ -270,20 +292,37 @@ export default function PopupComponent({ data, onClose }) {
                   onClose();
                   navigate(pinPath, { state: { pin: currentPin } });
                 }}
-                isSaved={isSavedLocal}
-                savedCount={savedCount}
-                onSave={handleOpenDialogFor(currentPin)}
-                isBeenThere={isBeenThere}
                 onBeenThere={handleToggleBeenThere}
+                onWantToGo={handleToggleWantToGo}
+                    isSaved={isSavedLocal}
+      savedCount={savedCount}
+      onSave={e => {
+        e.stopPropagation();
+        if (isSavedLocal) {
+          // User clicked to unsave
+          remove({ ...currentPin, id: realPinId });
+          setIsSavedLocal(false);
+          setSavedCount(c => Math.max(c - 1, 0));
+          // also persist decrement on the pins table
+          supabase
+            .from('pins')
+            .update({ saved_count: savedCount - 1 })
+            .eq('id', realPinId)
+            .catch(console.error);
+        } else {
+          // Open dialog to save
+          openListDialog(currentPin)(e);
+        }
+      }}
+                isBeenThere={isBeenThere}
                 beenThereCount={beenThereCount}
                 isWantToGo={isWantToGo}
-                onWantToGo={handleToggleWantToGo}
                 wantToGoCount={wantToGoCount}
               />
             </Box>
           )}
+
           <ListDialog
-            sx={{ zIndex: 9000 }}
             open={listDialogOpen}
             onClose={() => {
               setListDialogOpen(false);
@@ -291,22 +330,10 @@ export default function PopupComponent({ data, onClose }) {
             }}
             pin={dialogPin}
             onSaved={() => {
-  // desktop update
-  setIsSavedLocal(true);
-  setSavedCount(c => c + 1);
-  save(dialogPin);
-
-  // mobile update
-  setMobileToggles(m => ({
-    ...m,
-    [dialogPin.id]: {
-      ...(m[dialogPin.id] || {}),
-      isSaved: true,
-      savedCount: (m[dialogPin.id]?.savedCount ?? dialogPin.saved_count) + 1,
-    }
-  }));
-}}
-
+              setIsSavedLocal(true);
+              setSavedCount(c => c + 1);
+              save(dialogPin);
+            }}
           />
         </ThemeProvider>
       </div>

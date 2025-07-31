@@ -25,25 +25,33 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
   // Load auth session
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      setUser(session?.user || null);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_, session) => {
-      setUser(session?.user ?? null);
+      setUser(session?.user || null);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
 
-  // Fetch user's lists whenever the dialog opens
+  // Fetch lists on dialog open
   useEffect(() => {
     if (!open || !user) return;
     supabase
       .from("lists")
       .select("id, name")
       .eq("user_id", user.id)
-      .then(({ data }) => setLists(data || []));
+      .order("created_at", { ascending: false })
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("Error loading lists:", error);
+          setLists([]);
+        } else {
+          setLists(data || []);
+        }
+      });
   }, [open, user]);
 
-  const isAlreadySaved = pins.some((p) => p.id === pin?.id);
+  const isAlreadySaved = pins.some((p) => p.id?.toString() === pin?.id?.toString());
 
   const toggleList = (id) =>
     setSelectedLists((prev) =>
@@ -61,9 +69,20 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
   };
 
   const handleSave = async () => {
-    if (!user) return;
+    if (!user) return alert("You must be logged in to save.");
 
-    // 1) Possibly create a new list
+    // Ensure we have a valid numeric pin ID
+    if (!pin?.id) {
+      console.error("No pin.id!", pin);
+      return alert("Cannot save: missing pin ID.");
+    }
+    const pinId = Number(pin.id);
+    if (Number.isNaN(pinId)) {
+      console.error("pin.id is not a number:", pin.id);
+      return alert("Cannot save: pin ID is invalid.");
+    }
+
+    // 1) Optionally create a new list
     let newId = null;
     if (newListName.trim()) {
       const { data: created, error: createError } = await supabase
@@ -72,15 +91,16 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
         .single();
       if (createError) {
         console.error("Error creating list:", createError);
-      } else {
-        newId = created.id;
+        return alert(`Couldn’t create list: ${createError.message}`);
       }
+      newId = created.id;
     }
 
-    // 2) Build the final list of list_ids to upsert into
-    const allIds = [...selectedLists, ...(newId ? [newId] : [])];
+    // 2) Build target list IDs
+    const allIds = [...selectedLists];
+    if (newId) allIds.push(newId);
 
-    // 3) If no list chosen, just toggle saved state on the pin itself
+    // 3) If no lists checked, just toggle local favorites
     if (allIds.length === 0) {
       isAlreadySaved ? remove(pin) : save(pin);
       onSaved?.();
@@ -88,49 +108,47 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
       return;
     }
 
-    // 4) Insert one row per (list_id, pin_id) into list_pins
-    const rows = allIds.map((list_id) => ({ list_id, pin_id: pin.id }));
+    // 4) Insert into list_pins
+    const rows = allIds.map((list_id) => ({ list_id, pin_id: pinId }));
     const { data: inserted, error: insertError } = await supabase
       .from("list_pins")
-      .insert(rows)
+      .insert(rows, { ignoreDuplicates: true })
       .select();
+    console.log("list_pins.insert result:", { inserted, insertError });
     if (insertError) {
-      console.error("Error inserting into list_pins:", insertError);
-    } else {
-      console.log("Inserted into list_pins:", inserted);
+      console.error("Error saving to list_pins:", insertError);
+      return alert(`Couldn’t save pin to list: ${insertError.message}`);
     }
 
-    // 5) Re-fetch the user's lists so the parent sees the newly attached pin
-    const { data: refreshed, error: refreshError } = await supabase
-      .from("lists")
-      .select("id, name")
-      .eq("user_id", user.id);
-    if (refreshError) {
-      console.error("Error refreshing lists:", refreshError);
-    } else {
-      setLists(refreshed || []);
+    // 5) Increment saved_count on the pin itself
+    const currentCount = pin.saved_count ?? 0;
+    const { error: countError } = await supabase
+      .from("pins")
+      .update({ saved_count: currentCount + 1 })
+      .eq("id", pinId);
+    if (countError) {
+      console.error("Error bumping saved_count:", countError);
     }
 
+    // 6) Finalize
     onSaved?.();
     onClose();
   };
 
   return (
-    <Dialog open={open} onClose={onClose} PaperProps={{
-      sx: {
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        background:
-          "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
-        border: "1px solid rgba(255,255,255,0.6)",
-        boxShadow:
-          "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
-        borderRadius: "12px",
-        p: 2,
-        minWidth: 300,
-      },
-    }}>
-      <DialogTitle>Add to a list</DialogTitle>
+    <Dialog open={open} onClose={onClose} PaperProps={{ sx: {
+      backdropFilter: "blur(20px)",
+      WebkitBackdropFilter: "blur(20px)",
+      background:
+        "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
+      border: "1px solid rgba(255,255,255,0.6)",
+      boxShadow:
+        "inset 4px 4px 10px rgba(241,143,1,0.4), inset -4px -4px 10px rgba(241,143,1,0.1), 0 6px 15px rgba(241,143,1,0.3)",
+      borderRadius: "12px",
+      p: 2,
+      minWidth: 300,
+    }}}>
+      <DialogTitle>Add “{pin?.title}” to a list</DialogTitle>
 
       <DialogContent>
         <List>
@@ -168,11 +186,7 @@ export default function ListDialog({ open, onClose, pin, onSaved }) {
 
       <DialogActions>
         <Button onClick={onClose}>Cancel</Button>
-        <Button
-          variant="contained"
-          disabled={!user}
-          onClick={handleSave}
-        >
+        <Button variant="contained" disabled={!user} onClick={handleSave}>
           Save
         </Button>
       </DialogActions>
