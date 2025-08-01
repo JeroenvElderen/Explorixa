@@ -1,4 +1,3 @@
-// src/components/Projects.jsx
 import React, { useState, useEffect } from "react";
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
@@ -14,13 +13,13 @@ import MDTypography from "components/MDTypography";
 import { supabase } from "SupabaseClient";
 import ReactMarkdown from "react-markdown";
 import SimpleMDE from "react-simplemde-editor";
+import { motion, AnimatePresence } from "framer-motion";
 import "easymde/dist/easymde.min.css";
-
-// DiffMatchPatch utilities (unchanged)
 import DiffMatchPatch from "diff-match-patch";
+
 const highlightChanges = (oldMd, newMd) => {
   const dmp = new DiffMatchPatch();
-  const diffs = dmp.diff_main(oldMd||"", newMd||"");
+  const diffs = dmp.diff_main(oldMd || "", newMd || "");
   dmp.diff_cleanupSemantic(diffs);
   return diffs
     .map(([op, data]) => {
@@ -38,17 +37,16 @@ const dropdownCards = [
 ];
 
 export default function Projects({ country }) {
-  const [expandedCard, setExpandedCard]   = useState(null);
+  const [expandedCard, setExpandedCard] = useState(null);
   const [pendingUpdates, setPendingUpdates] = useState([]);
-  const [isDialogOpen, setIsDialogOpen]   = useState(false);
-  const [editingField, setEditingField]   = useState(null);
-  const [editedText, setEditedText]       = useState("");
-  const [countryData, setCountryData]     = useState(null);
-  const [loading, setLoading]             = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingField, setEditingField] = useState(null);
+  const [editedText, setEditedText] = useState("");
+  const [countryData, setCountryData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const theme = useTheme();
   const [controller] = useMaterialUIController();
 
-  // Fetch data & subscribe
   useEffect(() => {
     if (!country) return;
 
@@ -97,7 +95,7 @@ export default function Projects({ country }) {
   }, [country]);
 
   const toggleCard = idx =>
-    setExpandedCard(expandedCard===idx?null:idx);
+    setExpandedCard(expandedCard === idx ? null : idx);
 
   const openEditor = key => {
     setEditingField(key);
@@ -107,8 +105,8 @@ export default function Projects({ country }) {
 
   const saveUpdate = async () => {
     await supabase.from("pending_updates").insert([{
-      country:  countryData.name,
-      field:    editingField,
+      country: countryData.name,
+      field: editingField,
       old_text: countryData[editingField],
       new_text: editedText,
     }]);
@@ -119,129 +117,155 @@ export default function Projects({ country }) {
 
   return (
     <>
-      <Card sx={{
-        p:3, mb:2,
-        backdropFilter:"blur(20px)",
-        background:"rgba(255,255,255,0.1)",
-        border:"1px solid rgba(243,143,1,0.6)",
-        borderRadius:2
-      }}>
-        <MDBox display="flex" justifyContent="space-between" mb={2}>
-          <MDTypography variant="h6">
-            Details for this country
-          </MDTypography>
-        </MDBox>
-
-        {dropdownCards.map((card, idx) => {
-          const val = countryData[card.key] || "";
-          const isPending = pendingUpdates.some(u => u.field===card.key);
-
-          return (
-            <Card
-              key={card.key}
-              sx={{
-                mb:2, p:2,
-                backdropFilter:"blur(20px)",
-                background:"rgba(255,255,255,0.1)",
-                border:"1px solid rgba(243,143,1,0.6)",
-                borderRadius:2,
-                cursor:"pointer"
-              }}
-              onClick={() => toggleCard(idx)}
-            >
-              <MDBox display="flex" justifyContent="space-between" alignItems="center">
-                <MDTypography variant="subtitle1" fontWeight="medium">
-                  {card.title}
-                  {isPending && (
-                    <MDTypography
-                      variant="caption"
-                      color="warning"
-                      sx={{ ml:1, bg:"#fff3cd", px:1, borderRadius:1 }}
-                    >
-                      Pending update
-                    </MDTypography>
-                  )}
-                </MDTypography>
-                <Icon>{expandedCard===idx?"expand_less":"expand_more"}</Icon>
-              </MDBox>
-
-              <Collapse in={expandedCard===idx} timeout="auto" unmountOnExit>
-                <MDBox mt={2}>
-                  <MDTypography component="div" sx={{
-                    color:"white",
-                    "& a": { color: theme.palette.info.main, textDecoration:"underline" },
-                    "& h2":{fontSize:"1.4rem",mt:1,mb:0.5},
-                    "& p": {fontSize:"1rem",mb:1},
-                    "& ul":{pl:2,mb:1},
-                    "& li":{mb:0.5}
-                  }}>
-                    <ReactMarkdown>{val}</ReactMarkdown>
-                  </MDTypography>
-
-                  {!isPending && (
-                    <Button
-                      variant="outlined"
-                      sx={{ mt:2, borderColor:"#F18F01", color:"white" }}
-                      onClick={e => {
-                        e.stopPropagation();
-                        openEditor(card.key);
-                      }}
-                    >
-                      Request update
-                    </Button>
-                  )}
-                </MDBox>
-              </Collapse>
-            </Card>
-          );
-        })}
-      </Card>
-
-      <Dialog
-        open={isDialogOpen}
-        onClose={()=>setIsDialogOpen(false)}
-        fullWidth maxWidth="md"
-        PaperProps={{
-          sx:{
-            borderRadius:2,
-            background:"rgba(255,255,255,0.1)",
-            backdropFilter:"blur(20px)",
-            border:"1px solid rgba(255,255,255,0.6)"
-          }
-        }}
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.7, delay: 0.09 }}
       >
-        <DialogTitle>
-          Edit {editingField?.replace(/_/g," ")}
-        </DialogTitle>
-        <DialogContent>
-          <SimpleMDE
-            value={editedText}
-            onChange={setEditedText}
-            options={{
-              autofocus: true,
-              spellChecker: false,
-              toolbar: [],
-            }}
-            className="white-simplemde"
-          />
-          <MDBox display="flex" gap={1} mt={2}>
-            <Button
-              variant="outlined"
-              onClick={saveUpdate}
-              sx={{ borderColor:"#F18F01", color:"white" }}
-            >
-              Save
-            </Button>
-            <Button
-              variant="outlined"
-              onClick={()=>setIsDialogOpen(false)}
-              sx={{ borderColor:"#F18F01", color:"white" }}
-            >
-              Cancel
-            </Button>
+        <Card sx={{
+          p: 3, mb: 2,
+          backdropFilter: "blur(20px)",
+          background: "rgba(255,255,255,0.14)",
+          border: "1px solid rgba(243,143,1,0.45)",
+          borderRadius: 3
+        }}>
+          <MDBox display="flex" justifyContent="space-between" mb={2}>
+            <MDTypography variant="h6">
+              Details for this country
+            </MDTypography>
           </MDBox>
-        </DialogContent>
-      </Dialog>
+
+          {dropdownCards.map((card, idx) => {
+            const val = countryData[card.key] || "";
+            const isPending = pendingUpdates.some(u => u.field === card.key);
+
+            return (
+              <motion.div
+                key={card.key}
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.54, delay: 0.13 + idx * 0.07 }}
+                style={{ borderRadius: 16 }}
+              >
+                <Card
+                  sx={{
+                    mb: 2, p: 2,
+                    backdropFilter: "blur(20px)",
+                    background: "rgba(255,255,255,0.17)",
+                    border: "1px solid rgba(243,143,1,0.38)",
+                    borderRadius: 2,
+                    cursor: "pointer",
+                    transition: "box-shadow 0.2s",
+                    boxShadow: expandedCard === idx ? "0 6px 20px 0 rgba(241,143,1,0.10)" : undefined
+                  }}
+                  onClick={() => toggleCard(idx)}
+                >
+                  <MDBox display="flex" justifyContent="space-between" alignItems="center">
+                    <MDTypography variant="subtitle1" fontWeight="medium">
+                      {card.title}
+                      {isPending && (
+                        <MDTypography
+                          variant="caption"
+                          color="warning"
+                          sx={{ ml: 1, px: 1, borderRadius: 1, background: "#fff3cd" }}
+                        >
+                          Pending update
+                        </MDTypography>
+                      )}
+                    </MDTypography>
+                    <Icon>{expandedCard === idx ? "expand_less" : "expand_more"}</Icon>
+                  </MDBox>
+
+                  <Collapse in={expandedCard === idx} timeout="auto" unmountOnExit>
+                    <MDBox mt={2}>
+                      <MDTypography component="div" sx={{
+                        color: "white",
+                        "& a": { color: theme.palette.info.main, textDecoration: "underline" },
+                        "& h2": { fontSize: "1.4rem", mt: 1, mb: 0.5 },
+                        "& p": { fontSize: "1rem", mb: 1 },
+                        "& ul": { pl: 2, mb: 1 },
+                        "& li": { mb: 0.5 }
+                      }}>
+                        <ReactMarkdown>{val}</ReactMarkdown>
+                      </MDTypography>
+
+                      {!isPending && (
+                        <Button
+                          variant="outlined"
+                          sx={{ mt: 2, borderColor: "#F18F01", color: "white" }}
+                          onClick={e => {
+                            e.stopPropagation();
+                            openEditor(card.key);
+                          }}
+                        >
+                          Request update
+                        </Button>
+                      )}
+                    </MDBox>
+                  </Collapse>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </Card>
+      </motion.div>
+
+      <AnimatePresence>
+        {isDialogOpen && (
+          <Dialog
+            open={isDialogOpen}
+            onClose={() => setIsDialogOpen(false)}
+            fullWidth maxWidth="md"
+            PaperProps={{
+              sx: {
+                borderRadius: 2,
+                background: "rgba(255,255,255,0.11)",
+                backdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.5)"
+              }
+            }}
+            TransitionComponent={motion.div}
+            TransitionProps={{
+              initial: { opacity: 0, scale: 0.96 },
+              animate: { opacity: 1, scale: 1 },
+              exit: { opacity: 0, scale: 0.93 },
+              transition: { duration: 0.23 }
+            }}
+          >
+            <DialogTitle>
+              Edit {editingField?.replace(/_/g, " ")}
+            </DialogTitle>
+            <DialogContent>
+              <SimpleMDE
+                value={editedText}
+                onChange={setEditedText}
+                options={{
+                  autofocus: true,
+                  spellChecker: false,
+                  toolbar: [],
+                }}
+                className="white-simplemde"
+              />
+              <MDBox display="flex" gap={1} mt={2}>
+                <Button
+                  variant="outlined"
+                  onClick={saveUpdate}
+                  sx={{ borderColor: "#F18F01", color: "white" }}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => setIsDialogOpen(false)}
+                  sx={{ borderColor: "#F18F01", color: "white" }}
+                >
+                  Cancel
+                </Button>
+              </MDBox>
+            </DialogContent>
+          </Dialog>
+        )}
+      </AnimatePresence>
     </>
   );
 }

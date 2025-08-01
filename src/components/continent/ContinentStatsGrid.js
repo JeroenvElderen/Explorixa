@@ -1,6 +1,8 @@
 import { Grid } from "@mui/material";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
 import MarqueeText from "components/MarqueeText";
+import { motion } from "framer-motion";
+import CountUp from "react-countup";
 import {
   FaGlobeAfrica,
   FaGlobeAmericas,
@@ -36,49 +38,73 @@ export default function ContinentStatsGrid({
   return (
     <Grid container spacing={2}>
       <Grid item xs={6} md={3}>
-        <ComplexStatisticsCard
-          color="dark"
-          icon="place"
-          title={displayName}
-          count={pinCount}
-          formatCount
-          percentage={{ color: "success", amount: `Pins in ${displayName}` }}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.04 }}
+        >
+          <ComplexStatisticsCard
+            color="dark"
+            icon="place"
+            title={displayName}
+            count={<CountUp end={pinCount || 0} duration={4} separator="," />}
+            formatCount
+            percentage={{ color: "success", amount: `Pins in ${displayName}` }}
+          />
+        </motion.div>
       </Grid>
       <Grid item xs={6} md={3}>
-        <ComplexStatisticsCard
-          icon="house"
-          title="Cities"
-          count={cityCount}
-          formatCount
-          percentage={
-            allCitiesString
-              ? { color: "success", amount: <MarqueeText duration={12}>{allCitiesString}</MarqueeText> }
-              : undefined
-          }
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.10 }}
+        >
+          <ComplexStatisticsCard
+            icon="house"
+            title="Cities"
+            count={<CountUp end={cityCount || 0} duration={4} separator="," />}
+            formatCount
+            percentage={
+              allCitiesString
+                ? { color: "success", amount: <MarqueeText duration={20}>{allCitiesString}</MarqueeText> }
+                : undefined
+            }
+          />
+        </motion.div>
       </Grid>
       <Grid item xs={6} md={3}>
-        <ComplexStatisticsCard
-          color="info"
-          icon="thermostat"
-          title="Climate"
-          count={temperature != null ? `${temperature.toFixed(1)}°C` : "…"}
-          percentage={{
-            amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`,
-            label: "Weather",
-          }}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.18 }}
+        >
+          <ComplexStatisticsCard
+            color="info"
+            icon="thermostat"
+            title="Climate"
+            count={temperature != null ? `${temperature.toFixed(1)}°C` : "…"}
+            percentage={{
+              amount: `${weatherEmoji[weatherCondition] || ""} ${weatherCondition}`,
+              label: "Weather",
+            }}
+          />
+        </motion.div>
       </Grid>
       <Grid item xs={6} md={3}>
-        <ComplexStatisticsCard
-          color="primary"
-          icon={<IconComp size={26} />}
-          title="Population"
-          count={population}
-          formatCount
-          percentage={{ color: "success", amount: "Updated" }}
-        />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.23 }}
+        >
+          <ComplexStatisticsCard
+            color="primary"
+            icon={<IconComp size={26} />}
+            title="Population"
+            count={<CountUp end={population || 0} duration={4} separator="," />}
+            formatCount
+            percentage={{ color: "success", amount: "Updated" }}
+          />
+        </motion.div>
       </Grid>
     </Grid>
   );

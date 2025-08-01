@@ -6,8 +6,7 @@ import DashboardLayout from "examples/LayoutContainers/DashboardLayout";
 import SimpleResponsiveNavbar from "examples/Navbars/ResponsiveNavbar/allpage";
 import Footer from "examples/Footer";
 import StarFieldOverall from "components/StarFieldOverall";
-import { Grid } from "@mui/material";
-import MarqueeText from "components/MarqueeText";
+import { motion } from "framer-motion";
 
 // Subcomponents
 import TopStats from "./TopStats";
@@ -52,7 +51,6 @@ export default function CountryPage() {
 
   // --- Data Fetching ---
 
-  // Get pin and city counts
   useEffect(() => {
     if (!countryName) return;
     supabase
@@ -68,7 +66,6 @@ export default function CountryPage() {
       .then(({ count, error }) => !error && setCityCount(count || 0));
   }, [countryName]);
 
-  // Get last created city
   useEffect(() => {
     if (!countryName) return;
     supabase
@@ -80,7 +77,6 @@ export default function CountryPage() {
       .then(({ data }) => data?.[0] && setLastCity(data[0]));
   }, [countryName]);
 
-  // Get all cities and categories for filters
   useEffect(() => {
     if (!countryName) return;
     supabase
@@ -103,7 +99,6 @@ export default function CountryPage() {
       );
   }, [countryName]);
 
-  // Get recent pins for "See all pins" and last pin time
   useEffect(() => {
     if (!countryName) return;
     supabase
@@ -123,7 +118,6 @@ export default function CountryPage() {
       });
   }, [countryName]);
 
-  // Get all pins for this country, optionally filtered
   useEffect(() => {
     if (!countryName) return;
     let q = supabase.from("pins").select("*").eq("countryName", countryName);
@@ -135,7 +129,6 @@ export default function CountryPage() {
     });
   }, [countryName, selectedCity, selectedCategory, showAllPins]);
 
-  // Get population, weather, and country code
   useEffect(() => {
     if (!countryName) return;
     fetch(`https://restcountries.com/v3.1/name/${countryName}?fullText=true`)
@@ -165,7 +158,6 @@ export default function CountryPage() {
       });
   }, [countryName]);
 
-  // === NEW: Fetch all cities with creation date for marquee ===
   useEffect(() => {
     if (!countryName) return;
     supabase
@@ -178,7 +170,6 @@ export default function CountryPage() {
       });
   }, [countryName]);
 
-  // --- Handlers ---
   const handlePinClick = (pin) => {
     const pinSlug = encodeURIComponent(pin.Name?.replace(/\s/g, "_") || pin.id);
     navigate(
@@ -195,25 +186,37 @@ export default function CountryPage() {
   const handleNextCountry = () => {};
   const handlePrevCountry = () => {};
 
-  // === Helper for formatting date ===
   function formatDate(isoString) {
     if (!isoString) return "";
     const d = new Date(isoString);
     return d.toISOString().slice(0, 10);
   }
 
-  // === Build marquee string ===
   const marqueeCities = countryCitiesData
     .map(city => `${city.Name} added: ${formatDate(city.created_at)}`)
     .join(" · ") + " ·";
 
-  // --- Render ---
   return (
     <DashboardLayout>
+      {/* Stylish blurred SVG background */}
+      <div
+        style={{
+          position: "fixed",
+          top: "-120px",
+          left: "-80px",
+          zIndex: -1,
+          filter: "blur(70px)",
+          opacity: 0.14,
+          pointerEvents: "none",
+        }}
+      >
+        <svg width="600" height="600" viewBox="0 0 600 600" fill="none">
+          <circle cx="300" cy="300" r="250" fill="#f18f01" />
+        </svg>
+      </div>
       <StarFieldOverall />
       <SimpleResponsiveNavbar />
 
-      {/* Navigation Buttons at the Top */}
       <MDBox px={3} py={1}>
         <NavigationButtons
           continent={continent}
@@ -224,57 +227,71 @@ export default function CountryPage() {
       </MDBox>
 
       <MDBox py={3}>
-        {/* Top Stats - Responsive! */}
-        <TopStats
-          pinCount={pinCount}
-          lastPinCreatedTimeAgo={lastPinCreatedTimeAgo}
-          cityCount={cityCount}
-          lastCity={lastCity}
-          marqueeCities={marqueeCities} // <-- THIS IS THE KEY
-          temperature={temperature}
-          weatherCondition={weatherCondition}
-          countryCode={countryCode}
-          countryName={countryName}
-          population={population}
-          weatherEmoji={weatherEmoji}
-          onSeeAllPins={() => setShowAllPins(true)}
-        />
-
-        {/* Map of Country (with pins) */}
-        <CountryMap
-          pins={allPins.filter((pin) => pin.lat && pin.lng)}
-          onPinClick={handlePinClick}
-        />
-
-        {/* Pins View / Recent Pins */}
-        {showAllPins ? (
-          <PinsView
-            allPins={allPins}
-            countryCities={countryCities}
-            categories={categories}
-            selectedCity={selectedCity}
-            setSelectedCity={setSelectedCity}
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-            onReset={() => {
-              setSelectedCity("All");
-              setSelectedCategory("All");
-            }}
-            onBack={() => setShowAllPins(false)}
-            handlePinClick={handlePinClick}
-          />
-        ) : (
-          <RecentPins
-            recentPins={recentPins}
-            expandedPinId={expandedPinId}
-            handlePinClick={handlePinClick}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.05 }}
+        >
+          <TopStats
+            pinCount={pinCount}
+            lastPinCreatedTimeAgo={lastPinCreatedTimeAgo}
+            cityCount={cityCount}
+            lastCity={lastCity}
+            marqueeCities={marqueeCities}
+            temperature={temperature}
+            weatherCondition={weatherCondition}
+            countryCode={countryCode}
             countryName={countryName}
-            countryCities={countryCities}
-            setExpandedPinId={setExpandedPinId}
+            population={population}
+            weatherEmoji={weatherEmoji}
+            onSeeAllPins={() => setShowAllPins(true)}
           />
-        )}
-      </MDBox>
+        </motion.div>
 
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.18 }}
+        >
+          <CountryMap
+            pins={allPins.filter((pin) => pin.lat && pin.lng)}
+            onPinClick={handlePinClick}
+          />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.31 }}
+        >
+          {showAllPins ? (
+            <PinsView
+              allPins={allPins}
+              countryCities={countryCities}
+              categories={categories}
+              selectedCity={selectedCity}
+              setSelectedCity={setSelectedCity}
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              onReset={() => {
+                setSelectedCity("All");
+                setSelectedCategory("All");
+              }}
+              onBack={() => setShowAllPins(false)}
+              handlePinClick={handlePinClick}
+            />
+          ) : (
+            <RecentPins
+              recentPins={recentPins}
+              expandedPinId={expandedPinId}
+              handlePinClick={handlePinClick}
+              countryName={countryName}
+              countryCities={countryCities}
+              setExpandedPinId={setExpandedPinId}
+            />
+          )}
+        </motion.div>
+      </MDBox>
       <Footer />
     </DashboardLayout>
   );

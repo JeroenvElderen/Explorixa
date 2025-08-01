@@ -1,11 +1,10 @@
-// src/components/CountryPage/PinsView.jsx
-
 import React from "react";
 import { FormControl, Select, MenuItem, Button, Box } from "@mui/material";
 import MDBox from "components/MDBox";
 import AllPinCard from "examples/Charts/PinCard/allpins";
 import PinInteractionPanel from "components/PinInteractionPanel";
 import { timeAgo } from "./helpers";
+import { motion } from "framer-motion";
 
 export default function PinsView({
   allPins = [],
@@ -22,17 +21,21 @@ export default function PinsView({
   return (
     <>
       {/* Filter Controls */}
-      <MDBox
-        mb={3}
-        sx={{
+      <motion.div
+        initial={{ opacity: 0, y: 18 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, delay: 0.05 }}
+        style={{
+          marginBottom: 22,
           display: "flex",
-          gap: 2,
+          gap: 18,
           flexWrap: "wrap",
-          p: 2,
-          borderRadius: 2,
-          background: "transparent",
-          backdropFilter: "blur(10px)",
-          border: "1px solid rgba(243,143,1,0.6)",
+          padding: "18px",
+          borderRadius: 16,
+          background: "linear-gradient(120deg, rgba(255,255,255,0.21) 40%, rgba(241,143,1,0.08) 100%)",
+          backdropFilter: "blur(13px)",
+          border: "1px solid rgba(243,143,1,0.26)",
+          boxShadow: "0 2px 22px 0 rgba(241,143,1,0.08)",
         }}
       >
         <FormControl
@@ -40,8 +43,9 @@ export default function PinsView({
           size="medium"
           sx={{
             minWidth: 180,
-            background: "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.07)",
             color: "white",
+            borderRadius: 1.3,
           }}
         >
           <Select
@@ -63,8 +67,9 @@ export default function PinsView({
           size="medium"
           sx={{
             minWidth: 180,
-            background: "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.07)",
             color: "white",
+            borderRadius: 1.3,
           }}
         >
           <Select
@@ -89,10 +94,14 @@ export default function PinsView({
             borderColor: "rgba(243,143,1,0.6)",
             color: "white !important",
             background: "transparent",
+            fontWeight: 500,
             "&:hover": {
-              background: "rgba(243,143,1,0.1)",
+              background: "rgba(243,143,1,0.13)",
               borderColor: "rgba(243,143,1,1)",
+              color: "#F18F01 !important",
             },
+            borderRadius: 1.3,
+            minWidth: 95,
           }}
         >
           Reset
@@ -103,16 +112,20 @@ export default function PinsView({
           sx={{
             borderColor: "rgba(243,143,1,0.6)",
             color: "white !important",
-            background: "rgba(255,255,255,0.05)",
+            background: "rgba(255,255,255,0.08)",
+            fontWeight: 500,
             "&:hover": {
-              background: "rgba(243,143,1,0.1)",
+              background: "rgba(243,143,1,0.13)",
               borderColor: "rgba(243,143,1,1)",
+              color: "#F18F01 !important",
             },
+            borderRadius: 1.3,
+            minWidth: 80,
           }}
         >
           Back
         </Button>
-      </MDBox>
+      </motion.div>
 
       {/* Pin Cards + PinInteractionPanel */}
       <MDBox
@@ -128,13 +141,24 @@ export default function PinsView({
           py: 2,
           WebkitOverflowScrolling: "touch",
           "&::-webkit-scrollbar": { width: 6 },
-          "&::-webkit-scrollbar-thumb": { backgroundColor: "rgba(255,255,255,0.3)" },
+          "&::-webkit-scrollbar-thumb": { backgroundColor: "rgba(255,255,255,0.27)" },
         }}
       >
-        {allPins.map((pin) => (
-          <Box
+        {allPins.map((pin, idx) => (
+          <motion.div
             key={pin.id}
-            sx={{ flex: "0 0 100%", scrollSnapAlign: "start", minWidth: "100%", maxWidth: "100%", mb: 2 }}
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.016, boxShadow: "0 4px 32px 0 rgba(241,143,1,0.09)" }}
+            transition={{ duration: 0.5, delay: 0.07 * idx }}
+            style={{
+              flex: "0 0 100%",
+              scrollSnapAlign: "start",
+              minWidth: "100%",
+              maxWidth: "100%",
+              marginBottom: 18,
+              borderRadius: 14,
+            }}
           >
             <div onClick={() => handlePinClick(pin)} style={{ cursor: "pointer" }}>
               <AllPinCard
@@ -147,7 +171,7 @@ export default function PinsView({
                 date={timeAgo(pin.created_at)}
               />
             </div>
-          </Box>
+          </motion.div>
         ))}
       </MDBox>
     </>

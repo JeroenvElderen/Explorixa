@@ -7,6 +7,7 @@ import Projects from "layouts/dashboard/components/Projects";
 import OrdersOverview from "layouts/dashboard/components/OrdersOverview";
 import PinInteractionPanel from "components/PinInteractionPanel";
 import { Box } from "@mui/material";
+import { motion } from "framer-motion";
 import { timeAgo } from "./helpers";
 
 export default function RecentPins({
@@ -23,33 +24,45 @@ export default function RecentPins({
         <Grid container spacing={3}>
           {recentPins.map((pin, idx) => (
             <Grid item xs={12} md={6} lg={4} key={pin.id}>
-              <MDBox mb={3}>
-                {/* Only wrap the card in the click, not the whole container */}
-                {expandedPinId === pin.id ? (
-                  <>
-                    <div style={{ cursor: "pointer" }} onClick={() => handlePinClick(pin)}>
-                      <PinDetailCard pin={pin} />
-                    </div>
-                    <Box mt={0.5}>
-                      <PinInteractionPanel pin={pin} />
-                    </Box>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ cursor: "pointer" }} onClick={() => handlePinClick(pin)}>
-                      <PinCard
-                        pin={pin}
-                        title={pin.Name || "Untitled"}
-                        description={pin.Information}
-                        date={timeAgo(pin.created_at)}
-                        imageurl={pin["Main Image"]}
-                        imagealt={pin.Name}
-                      />
-                    </div>
-                    
-                  </>
-                )}
-              </MDBox>
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                whileHover={{ scale: 1.025, boxShadow: "0 4px 24px 0 rgba(241,143,1,0.11)" }}
+                transition={{ duration: 0.5, delay: 0.07 * idx }}
+                style={{ borderRadius: 16 }}
+              >
+                <MDBox mb={3}>
+                  {expandedPinId === pin.id ? (
+                    <>
+                      <div
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handlePinClick(pin)}
+                      >
+                        <PinDetailCard pin={pin} />
+                      </div>
+                      <Box mt={0.5}>
+                        <PinInteractionPanel pin={pin} />
+                      </Box>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        style={{ cursor: "pointer" }}
+                        onClick={() => handlePinClick(pin)}
+                      >
+                        <PinCard
+                          pin={pin}
+                          title={pin.Name || "Untitled"}
+                          description={pin.Information}
+                          date={timeAgo(pin.created_at)}
+                          imageurl={pin["Main Image"]}
+                          imagealt={pin.Name}
+                        />
+                      </div>
+                    </>
+                  )}
+                </MDBox>
+              </motion.div>
             </Grid>
           ))}
         </Grid>

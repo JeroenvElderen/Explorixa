@@ -1,6 +1,8 @@
+// components/continent/PinCardWithTimeAgo.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PinCard from "examples/Charts/PinCard";
+import { motion } from "framer-motion";
 
 function timeAgo(date) {
   if (!date) return "";
@@ -37,17 +39,19 @@ export default function PinCardWithTimeAgo({ pin, idx, onUpdated }) {
   };
 
   return (
-    <PinCard
-      pin={pin}
-      onUpdated={onUpdated}
-      color={idx === 0 ? "info" : idx === 1 ? "success" : "dark"}
-      title={pin.Name || "Untitled"}
-      imageurl={pin["Main Image"]}
-      imagealt={pin.Name}
-      height="150px"
-      truncateDescription={false}
-      onCardClick={handleCardClick}
-      timeAgoLabel={timeSincePost}
-    />
+    <motion.div whileHover={{ scale: 1.03 }}>
+      <PinCard
+        pin={pin}
+        onUpdated={onUpdated}
+        color={idx === 0 ? "info" : idx === 1 ? "success" : "dark"}
+        title={pin.Name || "Untitled"}
+        imageurl={pin["Main Image"]}
+        imagealt={pin.Name}
+        height="150px"
+        truncateDescription={false}
+        onCardClick={handleCardClick}
+        timeAgoLabel={timeSincePost}
+      />
+    </motion.div>
   );
 }
