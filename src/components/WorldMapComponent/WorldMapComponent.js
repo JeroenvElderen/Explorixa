@@ -266,6 +266,21 @@ const WorldMapComponent = forwardRef(function WorldMapComponent(
     }
   }, [map, flyOnTarget, target]);
 
+  // --- CLOSE POPUP ON MAP MOVE or ZOOM ---
+  useEffect(() => {
+    if (!map) return;
+    const closePopupOnMove = () => {
+      setPopup(null);
+    };
+    map.on('movestart', closePopupOnMove);
+    map.on('zoomstart', closePopupOnMove);
+    return () => {
+      map.off('movestart', closePopupOnMove);
+      map.off('zoomstart', closePopupOnMove);
+    };
+  }, [map]);
+  // --- END CLOSE POPUP HOOK ---
+
   return (
     <>
       <MapContainer

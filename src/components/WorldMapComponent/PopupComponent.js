@@ -1,10 +1,10 @@
-// src/components/WorldMapComponent/PopupComponent.jsx
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import PinCard from 'examples/Charts/PinCard';
 import RowPinCard from 'examples/Charts/PinCard/RowPinCard';
 import { ThemeProvider, useTheme } from '@mui/material/styles';
 import themeDark from 'assets/theme-dark';
-import { Typography, Box, useMediaQuery } from '@mui/material';
+import { Typography, Box, useMediaQuery, IconButton } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
 
@@ -26,19 +26,7 @@ export default function PopupComponent({ data, onClose }) {
     let active = true;
     supabase
       .from('pins')
-      .select(`
-        id,
-        Name,
-        description,
-        imageurl,
-        date,
-        Information,
-        been_there,
-        want_to_go,
-        saved_count,
-        "Main Image",
-        created_at
-      `)
+      .select(`*`)
       .then(({ data }) => {
         if (!active || !data) return;
         setSupPins(
@@ -80,7 +68,11 @@ export default function PopupComponent({ data, onClose }) {
     [supPins]
   );
 
+  // Only allow overlay to catch pointer events on desktop
+  const overlayPointerEvents = isMobile ? 'none' : 'auto';
+
   const handleOverlayClick = e => {
+    if (isMobile) return; // don't close on mobile, only via button
     if (cardRef.current && cardRef.current.contains(e.target)) return;
     onClose();
   };
@@ -92,11 +84,12 @@ export default function PopupComponent({ data, onClose }) {
   };
 
   const handleTouchEnd = e => {
+    if (!isMobile) return;
     const deltaX = Math.abs(e.changedTouches[0].clientX - touchStartRef.current.x);
     const endedInside =
       cardRef.current && cardRef.current.contains(e.changedTouches[0].target);
     if (!touchStartRef.current.startedInside && !endedInside && deltaX < 5) {
-      onClose();
+      // Don't close on mobile; handled by close button
     }
   };
 
@@ -137,9 +130,7 @@ export default function PopupComponent({ data, onClose }) {
     return true;
   });
 
-  const handlePinUpdated = updated => {
-    
-  };
+  const handlePinUpdated = updated => {};
 
   return (
     <div
@@ -148,39 +139,43 @@ export default function PopupComponent({ data, onClose }) {
       onTouchEnd={handleTouchEnd}
       style={{
         position: 'fixed',
-        top: 16,
+        top: 0,
         left: 0,
         width: '100vw',
-        height: isMobile ? '500px' : '100vh',
+        height: '100vh',
         background: 'transparent',
         display: 'flex',
         justifyContent: 'center',
         alignItems: isMobile ? 'flex-start' : 'center',
         zIndex: 1300,
+        pointerEvents: overlayPointerEvents, // <-- key: none on mobile, auto on desktop
       }}
     >
       <div
         ref={cardRef}
-        onClick={e => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: 500,
-          margin: isMobile ? '0 0 10px' : '0 auto',
+          margin: isMobile ? '0' : '0 auto',
           display: 'flex',
           flexDirection: 'column',
           background: 'transparent',
           borderRadius: 16,
           boxShadow: 'none',
+          pointerEvents: 'auto', // Only the popup/cards catch interaction
         }}
       >
         <ThemeProvider theme={themeDark}>
           {isMobile ? (
+            // MOBILE: Carousel fixed above navbar, map still interactive!
             <Box
               sx={{
                 position: 'fixed',
-                bottom: 130,
-                left: '2.5vw',
-                width: '95vw',
+                left: 0,
+                right: 0,
+                bottom: '44px', // Set to navbar height or adjust as needed!
+                zIndex: 1400,
+                width: '100vw',
                 display: 'flex',
                 overflowX: 'auto',
                 WebkitOverflowScrolling: 'touch',
@@ -189,9 +184,10 @@ export default function PopupComponent({ data, onClose }) {
                 scrollSnapType: 'x mandatory',
                 scrollBehavior: 'smooth',
                 flexWrap: 'nowrap',
-                mt: 2,
-                pb: 0,
+                px: '2vw',
+                background: 'transparent',
                 '&::-webkit-scrollbar': { display: 'none' },
+                pointerEvents: 'auto', // <--- this area catches swipes/taps!
               }}
             >
               {carouselPins.map(p => {
@@ -202,11 +198,15 @@ export default function PopupComponent({ data, onClose }) {
                   <Box
                     key={p.id}
                     sx={{
-                      flex: '0 0 100%',
-                      minWidth: '100%',
+                      flex: '0 0 600vw',
+                      minWidth: '80vw',
+                      maxWidth: '80vw',
+                      height: 210, // match your RowPinCard's natural height
                       scrollSnapAlign: 'start',
                       mr: 2,
                       '&:last-of-type': { mr: 0 },
+                      display: 'flex',
+                      alignItems: 'stretch',
                     }}
                     onClick={() => {
                       onClose();
@@ -222,15 +222,13 @@ export default function PopupComponent({ data, onClose }) {
                       isExpanded={false}
                       pin={p}
                       onUpdated={handlePinUpdated}
-                      onClick={() => {
-                        // optional: additional click logic
-                      }}
                     />
                   </Box>
                 );
               })}
             </Box>
           ) : (
+            // DESKTOP: Centered PinCard, overlay closes on click-outside
             <Box sx={{ position: 'relative' }}>
               <PinCard
                 color="info"
