@@ -139,15 +139,7 @@ export default function usePlaceForm({
         payload.Images = urls.join(",");
       }
 
-      // upsert city
-      await supabase
-        .from("cities")
-        .upsert(
-          [{ Name: selectedPlace.city, Country: selectedPlace.country }],
-          { onConflict: ["Name", "Country"] }
-        );
-
-      // upsert country
+       // upsert country
       let continent = null;
       try {
         continent = await fetchContinent(selectedPlace.country);
@@ -158,6 +150,23 @@ export default function usePlaceForm({
           [{ name: selectedPlace.country, continent }],
           { onConflict: ["name"] }
         );
+
+      // upsert city
+      const { error: cityError, data: cityData } = await supabase
+  .from("cities")
+  .upsert(
+    [{ Name: selectedPlace.city, Country: selectedPlace.country, continent: continent, }],
+    { onConflict: ["Name", "Country"] }
+  );
+if (cityError) {
+  console.error("City upsert error:", cityError);
+  alert("City upsert failed: " + cityError.message);
+} else {
+  console.log("City upsert data:", cityData);
+}
+
+
+     
 
       // insert pin
       const { error } = await supabase.from("pins").insert([payload]);
@@ -183,7 +192,7 @@ export default function usePlaceForm({
           selectedPlace.text?.trim() ||
           "",
         Latitude: selectedPlace.lat,
-        Longitude: selectedPlace.lng,
+        Longitude: selectedPlace.lng, 
         countryName: selectedPlace.country,
         City: selectedPlace.city || "",
         Currency: autoCurr,

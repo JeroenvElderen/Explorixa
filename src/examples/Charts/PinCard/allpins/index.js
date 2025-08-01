@@ -8,6 +8,7 @@ import Divider from "@mui/material/Divider";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
+import PinInteractionPanel from "components/PinInteractionPanel";
 
 const GlassCard = styled(Card)(({ theme }) => ({
   position: "relative",
@@ -46,6 +47,7 @@ const ImageWrapper = styled(Box)(({ height = 120 }) => ({
 }));
 
 export default function AllPinCard({
+  pin,
   title,
   description,
   imageurl,
@@ -107,9 +109,14 @@ export default function AllPinCard({
           </ReactMarkdown>
         </Box>
 
+             {pin && (
+          <Box mt={1}>
+            <PinInteractionPanel pin={pin} />
+          </Box>
+        )}
         <Typography
           variant="caption"
-          sx={{ color: "white !important", position: "absolute", bottom: 8, left: 8 }}
+          sx={{ color: "white !important", position: "absolute", bottom: 8, left: 180 }}
         >
           {date}
         </Typography>

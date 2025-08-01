@@ -1,4 +1,4 @@
-// src/components/RowPinCard/RowPinCard.jsx  (or wherever the original lives)
+// src/components/RowPinCard/RowPinCard.jsx
 import React from 'react';
 import PropTypes from 'prop-types';
 import { styled } from '@mui/material/styles';
@@ -73,7 +73,8 @@ export default function RowPinCard({
       onClick={handleCardClick}
       sx={{
         cursor: 'pointer',
-        width: compact ? 260 : undefined,
+        width: compact ? 260 : '100%',
+        position: 'relative',
         ...style,
       }}
     >
@@ -120,11 +121,18 @@ export default function RowPinCard({
 
         {pin && (
           <Box
-            mt={compact ? 0.5 : 1}
-            onClick={e => {
-              e.stopPropagation(); // prevent bubbling to the card click
+            onClick={e => e.stopPropagation()}
+            sx={{
+              position: 'absolute',
+              left: 8,
+              bottom: 4,
+              display: 'flex',
+              // smaller footprint
+              '& > *': {
+                width: '100%',
+                maxWidth: compact ? 140 : 160,
+              },
             }}
-            onClickCapture={e => e.stopPropagation()}
           >
             <PinInteractionPanel pin={pin} onUpdated={onUpdated} compact={compact} />
           </Box>

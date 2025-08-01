@@ -1,6 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
 import PropTypes from "prop-types";
-import { Link } from "react-router-dom";
 import Card from "@mui/material/Card";
 import Divider from "@mui/material/Divider";
 import MDBox from "../../../components/MDBox";
@@ -8,6 +7,7 @@ import MDTypography from "../../../components/MDTypography";
 import DOMPurify from "dompurify";
 import PinInteractionPanel from "components/PinInteractionPanel";
 import Box from "@mui/material/Box";
+import { Link } from "react-router-dom";
 
 function PinCard({
   color = "info",
@@ -22,7 +22,9 @@ function PinCard({
   link,
   linkLabel,
   onLinkClick,
+  onCardClick, // <-- New for main card click
   onUpdated = () => {},
+  timeAgoLabel, // Optional
 }) {
   const contentRef = useRef(null);
   const [maxHeight, setMaxHeight] = useState("4.5em");
@@ -56,8 +58,27 @@ function PinCard({
     setIsTransitioning(false);
   };
 
+  // Prevent card click if bottom button is clicked!
+  const handleCardClick = (e) => {
+    // If the click was inside the link/button, do nothing
+    if (e.target.closest(".pin-bottom-link-button")) return;
+    if (onCardClick) onCardClick(e);
+  };
+
   return (
-    <div>
+    <div
+      style={{ cursor: onCardClick ? "pointer" : "default" }}
+      onClick={onCardClick ? handleCardClick : undefined}
+      tabIndex={onCardClick ? 0 : undefined}
+      role={onCardClick ? "button" : undefined}
+      onKeyDown={
+        onCardClick
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") handleCardClick(e);
+            }
+          : undefined
+      }
+    >
       <Card
         sx={{
           position: "relative",
@@ -104,7 +125,7 @@ function PinCard({
           </MDBox>
 
           <MDBox pt={3} pb={1} px={1}>
-            <MDTypography variant="h6" textTransform="capitalize">
+            <MDTypography variant="h6" textTransform="capitalize" align="center">
               {resolvedTitle}
             </MDTypography>
 
@@ -132,14 +153,23 @@ function PinCard({
             </MDTypography>
 
             <Divider sx={{ my: 1 }} />
-            <MDBox display="flex" alignItems="center">
+
+            <MDBox display="flex" alignItems="center" justifyContent="center">
+              {timeAgoLabel && (
+                <MDTypography
+                  variant="caption"
+                  color="text"
+                  fontWeight="regular"
+                  sx={{ mr: 1 }}
+                >
+                  {timeAgoLabel}
+                </MDTypography>
+              )}
               <MDTypography
                 variant="button"
                 color="text"
-                lineHeight={1}
-                sx={{ mt: 0.15, mr: 0.5 }}
-              ></MDTypography>
-              <MDTypography variant="button" color="text" fontWeight="light">
+                fontWeight="light"
+              >
                 {resolvedDate}
               </MDTypography>
             </MDBox>
@@ -147,20 +177,29 @@ function PinCard({
         </MDBox>
 
         {pin && (
-          <Box mt={1} px={1}>
+          <Box
+            mt={1}
+            px={1}
+            display="flex"
+            justifyContent="center"
+            className="pin-interaction-panel"
+          >
             <PinInteractionPanel
               pin={pin}
-              onUpdated={(updated) => {
+              onUpdated={updated => {
                 onUpdated(updated);
               }}
+              compact={false}
             />
           </Box>
         )}
       </Card>
+      {/* --- Keep your orange button for desktop! --- */}
       {link && (
         <Link
           to={link}
           onClick={onLinkClick}
+          className="pin-bottom-link-button"
           style={{
             display: "block",
             marginTop: "16px",
@@ -205,7 +244,9 @@ PinCard.propTypes = {
   link: PropTypes.string,
   linkLabel: PropTypes.string,
   onLinkClick: PropTypes.func,
+  onCardClick: PropTypes.func,
   onUpdated: PropTypes.func,
+  timeAgoLabel: PropTypes.string,
 };
 
 PinCard.defaultProps = {
@@ -220,7 +261,9 @@ PinCard.defaultProps = {
   link: null,
   linkLabel: null,
   onLinkClick: () => {},
+  onCardClick: null,
   onUpdated: () => {},
+  timeAgoLabel: null,
 };
 
 export default PinCard;

@@ -1,11 +1,11 @@
-// src/components/pinpage/PinHeader.js
 import React from "react";
 import PropTypes from "prop-types";
 import Grid from "@mui/material/Grid";
-import { useTheme, useMediaQuery } from "@mui/material";
+import { useTheme, useMediaQuery, Box } from "@mui/material";
 import MDTypography from "../../MDTypography";
+import PinInteractionPanel from "components/PinInteractionPanel";
 
-export function PinHeader({ pin }) {
+export function PinHeader({ pin, onUpdated }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -13,8 +13,9 @@ export function PinHeader({ pin }) {
     <Grid
       container
       spacing={4}
-      alignItems="center"
-      justifyContent={isMobile ? "center" : "space-between"}
+      alignItems="flex-start"
+      justifyContent="stretch"
+      sx={{ position: "relative" }} // for absolute positioning
     >
       <Grid
         item
@@ -39,6 +40,31 @@ export function PinHeader({ pin }) {
           </MDTypography>
         )}
       </Grid>
+
+      {/* filler to balance */}
+      <Grid item xs={12} md={6} />
+
+      {/* Desktop-only interaction panel in top-right corner */}
+      {!isMobile && (
+        <Box
+          sx={{
+            position: "absolute",
+            top: 42,
+            right: 0,
+            display: "flex",
+            alignItems: "center",
+            p: 1,
+            pointerEvents: "auto",
+          }}
+        >
+          <PinInteractionPanel
+            pin={pin}
+            onUpdated={(updatedPin) => {
+              onUpdated?.(updatedPin);
+            }}
+          />
+        </Box>
+      )}
     </Grid>
   );
 }
@@ -50,4 +76,9 @@ PinHeader.propTypes = {
     Name: PropTypes.string.isRequired,
     "Post Summary": PropTypes.string,
   }).isRequired,
+  onUpdated: PropTypes.func,
+};
+
+PinHeader.defaultProps = {
+  onUpdated: () => {},
 };

@@ -74,7 +74,7 @@ export default function SimpleResponsiveNavbar({
         elevation={0}
         sx={{
           top: 'auto',
-          bottom: 30,
+          bottom: 10,
           left: 0,
           right: 0,
           backgroundColor: 'transparent',

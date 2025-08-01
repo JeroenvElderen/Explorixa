@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import PinCard from 'examples/Charts/PinCard';
 import RowPinCard from 'examples/Charts/PinCard/RowPinCard';
 import { ThemeProvider, useTheme } from '@mui/material/styles';
 import themeDark from 'assets/theme-dark';
-import { Typography, Box, useMediaQuery, IconButton } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
+import { Typography, Box, useMediaQuery } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../SupabaseClient';
 
@@ -12,25 +11,26 @@ import { supabase } from '../../SupabaseClient';
 const sluggify = str => str?.toString().trim().replace(/\s+/g, '_');
 
 export default function PopupComponent({ data, onClose }) {
+  // --- hooks (must be unconditional) ---
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const cardRef = useRef(null);
+  const carouselRef = useRef(null);
   const touchStartRef = useRef({ x: 0, startedInside: false });
 
   const [supPins, setSupPins] = useState([]);
 
-  // Fetch all pins once for title→ID fallback (and some fields for interaction panel)
   useEffect(() => {
     let active = true;
     supabase
       .from('pins')
       .select(`*`)
-      .then(({ data }) => {
-        if (!active || !data) return;
+      .then(({ data: pinsData }) => {
+        if (!active || !pinsData) return;
         setSupPins(
-          data.map(p => ({
+          pinsData.map(p => ({
             id: p.id?.toString(),
             Name: p.Name,
             title: p.Name,
@@ -53,7 +53,6 @@ export default function PopupComponent({ data, onClose }) {
     };
   }, []);
 
-  // Helper to find a numeric ID (or fallback by title)
   const getRealPin = useCallback(
     pin => {
       if (pin.id && !isNaN(Number(pin.id))) {
@@ -68,11 +67,10 @@ export default function PopupComponent({ data, onClose }) {
     [supPins]
   );
 
-  // Only allow overlay to catch pointer events on desktop
   const overlayPointerEvents = isMobile ? 'none' : 'auto';
 
   const handleOverlayClick = e => {
-    if (isMobile) return; // don't close on mobile, only via button
+    if (isMobile) return;
     if (cardRef.current && cardRef.current.contains(e.target)) return;
     onClose();
   };
@@ -89,27 +87,49 @@ export default function PopupComponent({ data, onClose }) {
     const endedInside =
       cardRef.current && cardRef.current.contains(e.changedTouches[0].target);
     if (!touchStartRef.current.startedInside && !endedInside && deltaX < 5) {
-      // Don't close on mobile; handled by close button
+      // no-op
     }
   };
 
-  if (!data) return null;
-
-  // Build currentPin and slugs
+  // Build current pin base only after hooks but before guard (safe—will bail if data missing)
   const currentPinBase = {
-    id: data.id?.toString(),
-    title: data.title,
-    description: data.description,
-    imageurl: data.imageurl,
-    date: data.date,
-    Information: data.Information,
-    been_there: data.been_there,
-    want_to_go: data.want_to_go,
-    saved_count: data.saved_count,
-    'Main Image': data['Main Image'],
-    created_at: data.created_at,
+    id: data?.id?.toString(),
+    title: data?.title,
+    description: data?.description,
+    imageurl: data?.imageurl,
+    date: data?.date,
+    Information: data?.Information,
+    been_there: data?.been_there,
+    want_to_go: data?.want_to_go,
+    saved_count: data?.saved_count,
+    'Main Image': data?.['Main Image'],
+    created_at: data?.created_at,
   };
-  const currentPin = getRealPin(currentPinBase); // enrich if possible
+  const currentPin = getRealPin(currentPinBase);
+
+  // carouselPins: clicked pin first, then enriched/deduped others
+  const carouselPins = useMemo(() => {
+    const others = supPins
+      .map(p =>
+        p.id === currentPin.id ? { ...p, ...currentPin } : p
+      )
+      .filter(p => p.id !== currentPin.id);
+    return [{ ...currentPin, id: currentPin.id }, ...others];
+  }, [supPins, currentPin]);
+
+  // initial scroll to show left peek (after layout)
+  useEffect(() => {
+    if (isMobile && carouselRef.current) {
+      requestAnimationFrame(() => {
+        carouselRef.current.scrollLeft = 16;
+      });
+    }
+  }, [isMobile, carouselPins]);
+
+  const handlePinUpdated = updated => {};
+
+  // --- guard after all hooks ---
+  if (!data) return null;
 
   const rawCont = data.continentName || data.countryName || data.title;
   const rawCoun = data.countryName || data.title;
@@ -120,17 +140,6 @@ export default function PopupComponent({ data, onClose }) {
   const formattedDate = data.date
     ? new Date(data.date).toISOString().slice(0, 10)
     : '';
-
-  // dedupe carousel
-  const allPins = [{ ...currentPin, id: currentPin.id }, ...supPins];
-  const seen = new Set();
-  const carouselPins = allPins.filter(p => {
-    if (!p.id || seen.has(p.id)) return false;
-    seen.add(p.id);
-    return true;
-  });
-
-  const handlePinUpdated = updated => {};
 
   return (
     <div
@@ -148,7 +157,7 @@ export default function PopupComponent({ data, onClose }) {
         justifyContent: 'center',
         alignItems: isMobile ? 'flex-start' : 'center',
         zIndex: 1300,
-        pointerEvents: overlayPointerEvents, // <-- key: none on mobile, auto on desktop
+        pointerEvents: overlayPointerEvents,
       }}
     >
       <div
@@ -162,51 +171,54 @@ export default function PopupComponent({ data, onClose }) {
           background: 'transparent',
           borderRadius: 16,
           boxShadow: 'none',
-          pointerEvents: 'auto', // Only the popup/cards catch interaction
+          pointerEvents: 'auto',
         }}
       >
         <ThemeProvider theme={themeDark}>
           {isMobile ? (
-            // MOBILE: Carousel fixed above navbar, map still interactive!
             <Box
+              ref={carouselRef}
               sx={{
                 position: 'fixed',
                 left: 0,
                 right: 0,
-                bottom: '44px', // Set to navbar height or adjust as needed!
+                bottom: '44px',
                 zIndex: 1400,
                 width: '100vw',
                 display: 'flex',
                 overflowX: 'auto',
                 WebkitOverflowScrolling: 'touch',
-                touchAction: 'pan-x',
-                overscrollBehaviorX: 'contain',
                 scrollSnapType: 'x mandatory',
+                scrollPaddingLeft: '16px',
+                scrollPaddingRight: '16px',
                 scrollBehavior: 'smooth',
                 flexWrap: 'nowrap',
-                px: '2vw',
                 background: 'transparent',
+                gap: '8px',
                 '&::-webkit-scrollbar': { display: 'none' },
-                pointerEvents: 'auto', // <--- this area catches swipes/taps!
+                pointerEvents: 'auto',
               }}
             >
+              {/* left peek spacer */}
+              <Box sx={{ flex: '0 0 16px', minWidth: '16px' }} />
+
               {carouselPins.map(p => {
                 const route = `/Destinations/${contSlug}/${counSlug}/${sluggify(
                   p.title || p.Name
                 )}`;
+
                 return (
                   <Box
                     key={p.id}
                     sx={{
-                      flex: '0 0 600vw',
-                      minWidth: '80vw',
-                      maxWidth: '80vw',
-                      height: 210, // match your RowPinCard's natural height
+                      flex: '0 0 calc(100vw - 32px)',
+                      minWidth: 'calc(100vw - 32px)',
+                      height: 210,
                       scrollSnapAlign: 'start',
-                      mr: 2,
-                      '&:last-of-type': { mr: 0 },
                       display: 'flex',
                       alignItems: 'stretch',
+                      boxShadow: '0px 0 12px -4px #0003',
+                      borderRadius: 3,
                     }}
                     onClick={() => {
                       onClose();
@@ -226,9 +238,11 @@ export default function PopupComponent({ data, onClose }) {
                   </Box>
                 );
               })}
+
+              {/* right peek spacer */}
+              <Box sx={{ flex: '0 0 16px', minWidth: '16px' }} />
             </Box>
           ) : (
-            // DESKTOP: Centered PinCard, overlay closes on click-outside
             <Box sx={{ position: 'relative' }}>
               <PinCard
                 color="info"

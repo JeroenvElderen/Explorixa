@@ -1,3 +1,4 @@
+// src/components/pinpage/PinPage.jsx
 import React, { useEffect, useState } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import {
@@ -30,6 +31,7 @@ import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
 import StarField from "../../components/StarField";
 import FollowButton from "./FollowButton";
+import PinInteractionPanel from "components/PinInteractionPanel";
 
 export default function PinPage() {
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -117,17 +119,7 @@ export default function PinPage() {
     setPin(p => ({ ...p, Information: newInfo }));
   };
 
-  if (loading)
-    return (
-      <DashboardLayout>
-        <SimpleResponsiveNavbar />
-        <MDBox p={4} textAlign="center">
-          <MDTypography variant="h5">Loading pin…</MDTypography>
-        </MDBox>
-        <Footer />
-      </DashboardLayout>
-    );
-
+  
   if (!pin)
     return (
       <DashboardLayout>
@@ -170,17 +162,9 @@ export default function PinPage() {
               borderRadius: 2,
             }}
           >
-            <PinStats
-              beenThere={pin.been_there}
-              wantToGo={pin.want_to_go}
-              savedCount={pin.saved_count}
-              onToggleBeen={() => {}}
-              onToggleWant={() => {}}
-              onToggleSave={() => {}}
-              isBeen={false}
-              isWant={false}
-              isSaved={false}
-              iconOnly
+            <PinInteractionPanel
+              pin={pin}
+              onUpdated={(updated) => setPin(prev => ({ ...prev, ...updated }))}
             />
           </Box>
         </Box>
@@ -215,7 +199,12 @@ export default function PinPage() {
                 justifyContent: { xs: "center", md: "flex-start" },
               }}
             >
-              <PinHeader pin={pin} />
+              <PinHeader
+                pin={pin}
+                onUpdated={(updated) => {
+                  setPin(prev => ({ ...prev, ...updated }));
+                }}
+              />
             </Box>
           </CardContent>
           <CardActions sx={{ px: 3, py: 2 }}>

@@ -5,10 +5,11 @@ import Slider from "react-slick";
 import { useTheme, useMediaQuery, Box } from "@mui/material";
 import MDBox from "../../MDBox";
 import MDTypography from "../../MDTypography";
+import PinInteractionPanel from "components/PinInteractionPanel";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-export function PinImageCarousel({ images }) {
+export function PinImageCarousel({ images, pin, onUpdated = () => {} }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [current, setCurrent] = useState(0);
@@ -19,8 +20,8 @@ export function PinImageCarousel({ images }) {
     slidesToShow: 2,
     slidesToScroll: 1,
     adaptiveHeight: true,
-    arrows: !isMobile,            // hide arrows on mobile
-    beforeChange: (_, next) => {  // track index
+    arrows: !isMobile, // hide arrows on mobile
+    beforeChange: (_, next) => {
       setCurrent(next);
     },
     responsive: [
@@ -60,6 +61,7 @@ export function PinImageCarousel({ images }) {
         ))}
       </Slider>
 
+      {/* Mobile indicator at bottom center */}
       {isMobile && images.length > 0 && (
         <Box
           sx={{
@@ -81,10 +83,37 @@ export function PinImageCarousel({ images }) {
           </MDTypography>
         </Box>
       )}
+
+      {/* Mobile-only interaction panel in top-right with spacing */}
+      {isMobile && pin && (
+        <Box
+          sx={{
+            position: "absolute",
+            left: 12,
+            bottom: 18,
+            zIndex: 1100,
+            display: "flex",
+            alignItems: "center",
+            pointerEvents: "auto",
+          }}
+        >
+          <PinInteractionPanel
+            pin={pin}
+            onUpdated={onUpdated}
+          />
+        </Box>
+      )}
     </MDBox>
   );
 }
 
 PinImageCarousel.propTypes = {
   images: PropTypes.arrayOf(PropTypes.string).isRequired,
+  pin: PropTypes.object,
+  onUpdated: PropTypes.func,
+};
+
+PinImageCarousel.defaultProps = {
+  pin: null,
+  onUpdated: () => {},
 };
