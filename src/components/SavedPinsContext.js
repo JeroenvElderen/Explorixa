@@ -10,7 +10,6 @@ const STORAGE_KEYS = {
 const SavedPinsContext = createContext();
 
 export function SavedPinsProvider({ children }) {
-      console.log("🔔 SavedPinsProvider mounted");
   // Initialize all three lists from localStorage
   const [pins, setPins] = useState(() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.favorites)) || []; }
@@ -73,7 +72,6 @@ export function SavedPinsProvider({ children }) {
 
 export function useSavedPins() {
   const ctx = useContext(SavedPinsContext);
-  console.log("🔑 useSavedPins() →", ctx);
   if (!ctx) throw new Error('useSavedPins must be inside SavedPinsProvider');
   return ctx;
 }

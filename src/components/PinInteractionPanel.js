@@ -1,16 +1,16 @@
 // src/components/PinInteractionPanel/PinInteractionPanel.jsx
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import PropTypes from "prop-types";
-import { Box, IconButton, Typography, Tooltip } from "@mui/material";
-import FlagIcon from "@mui/icons-material/Flag";
-import OutlinedFlagIcon from "@mui/icons-material/OutlinedFlag";
-import StarIcon from "@mui/icons-material/Star";
-import StarBorderIcon from "@mui/icons-material/StarBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import { supabase } from "../SupabaseClient";
-import ListDialog from "./AddToList/AddToListDialog";
-import useSupabaseUser from "../hooks/useSupabaseUser";
+import React, { useEffect, useState, useCallback } from 'react';
+import PropTypes from 'prop-types';
+import { Box, IconButton, Typography, Tooltip } from '@mui/material';
+import FlagIcon from '@mui/icons-material/Flag';
+import OutlinedFlagIcon from '@mui/icons-material/OutlinedFlag';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import { supabase } from '../SupabaseClient';
+import ListDialog from './AddToList/AddToListDialog';
+import useSupabaseUser from '../hooks/useSupabaseUser';
 
 /**
  * Unified panel: been_there, want_to_go, save (with list dialog).
@@ -26,18 +26,26 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
   const [isSaved, setIsSaved] = useState(false);
   const [userListsContainingPin, setUserListsContainingPin] = useState([]);
 
+  const guardUser = () => {
+    if (!user?.id) {
+      alert('You must be logged in.');
+      return false;
+    }
+    return true;
+  };
+
   const refreshState = useCallback(
-    async (forcePin = initialPin) => {
+    async (forcePin = pin) => {
       if (!forcePin?.id) return;
 
-      // fetch global pin counts
       const { data: freshPin, error: pinErr } = await supabase
-        .from("pins")
-        .select("been_there, want_to_go, saved_count")
-        .eq("id", forcePin.id)
+        .from('pins')
+        .select('been_there, want_to_go, saved_count')
+        .eq('id', forcePin.id)
         .single();
 
-      const mergedPin = !pinErr && freshPin ? { ...forcePin, ...freshPin } : forcePin;
+      const mergedPin =
+        !pinErr && freshPin ? { ...forcePin, ...freshPin } : forcePin;
       setPin(mergedPin);
       onUpdated?.(mergedPin);
 
@@ -51,61 +59,57 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
 
       const pinId = forcePin.id;
 
-      // been there membership
       try {
-        const { count: beenCount } = await supabase
-          .from("user_been_there")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("pin_id", pinId);
+        const { count: beenCount, error: beenErr } = await supabase
+          .from('user_been_there')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('pin_id', pinId);
+        if (beenErr) throw beenErr;
         setHasBeenThere(beenCount > 0);
-      } catch (e) {
-        console.error("fetch been there membership failed", e);
+      } catch {
         setHasBeenThere(false);
       }
 
-      // want to go membership
       try {
-        const { count: wantCount } = await supabase
-          .from("user_want_to_go")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", user.id)
-          .eq("pin_id", pinId);
+        const { count: wantCount, error: wantErr } = await supabase
+          .from('user_want_to_go')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('pin_id', pinId);
+        if (wantErr) throw wantErr;
         setHasWantToGo(wantCount > 0);
-      } catch (e) {
-        console.error("fetch want to go membership failed", e);
+      } catch {
         setHasWantToGo(false);
       }
 
-      // saved / list membership
       try {
         const { data: listPins, error: lpErr } = await supabase
-          .from("list_pins")
-          .select("list_id")
-          .eq("pin_id", pinId);
+          .from('list_pins')
+          .select('list_id')
+          .eq('pin_id', pinId);
         if (lpErr) throw lpErr;
-        const listIds = (listPins || []).map((r) => r.list_id);
+        const listIds = (listPins || []).map(r => r.list_id);
         if (listIds.length === 0) {
           setIsSaved(false);
           setUserListsContainingPin([]);
         } else {
           const { data: userLists, error: listsErr } = await supabase
-            .from("lists")
-            .select("id")
-            .in("id", listIds)
-            .eq("user_id", user.id);
+            .from('lists')
+            .select('id')
+            .in('id', listIds)
+            .eq('user_id', user.id);
           if (listsErr) throw listsErr;
-          const owned = (userLists || []).map((l) => l.id);
+          const owned = (userLists || []).map(l => l.id);
           setUserListsContainingPin(owned);
           setIsSaved(owned.length > 0);
         }
-      } catch (e) {
-        console.error("list_pins / lists fetch error:", e);
+      } catch {
         setIsSaved(false);
         setUserListsContainingPin([]);
       }
     },
-    [initialPin, onUpdated, user]
+    [onUpdated, user, pin]
   );
 
   useEffect(() => {
@@ -116,38 +120,43 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
     refreshState();
   }, [refreshState]);
 
-  const guardUser = () => {
-    if (!user?.id) {
-      alert("You must be logged in to do that.");
-      return false;
+  const safeUpsert = async (table, body) => {
+    const res = await supabase.from(table).insert(body);
+    if (res.error) {
+      alert(`Failed to save to ${table}: ${res.error.message}`);
+      throw res.error;
     }
-    return true;
+    return res.data;
+  };
+
+  const safeDelete = async (table, conditions) => {
+    let query = supabase.from(table).delete();
+    conditions.forEach(({ column, operator = 'eq', value }) => {
+      if (operator === 'eq') query = query.eq(column, value);
+      else if (operator === 'in') query = query.in(column, value);
+    });
+    const res = await query;
+    if (res.error) {
+      alert(`Failed to delete from ${table}: ${res.error.message}`);
+      throw res.error;
+    }
+    return res.data;
   };
 
   const mutateGlobalCount = async (field, delta) => {
-    if (!pin?.id) return;
-    const { data: current, error: fetchErr } = await supabase
-      .from("pins")
-      .select(field)
-      .eq("id", pin.id)
-      .single();
-    if (fetchErr) {
-      console.error("fetch error", fetchErr);
+    if (!pin?.id) return null;
+    // RPC only; +1 or -1 atomic
+    const { data, error } = await supabase.rpc('increment_pin_counter', {
+      p_id_bigint: Number(pin.id),
+      field_name: field,
+      delta,
+    });
+    if (error) {
+      alert(`Counter update failed: ${error.message}`);
       return null;
     }
-    const currentVal = Number(current?.[field] ?? 0);
-    const nextVal = Math.max(currentVal + delta, 0);
-    const { data: updated, error: updateErr } = await supabase
-      .from("pins")
-      .update({ [field]: nextVal })
-      .eq("id", pin.id)
-      .select()
-      .single();
-    if (updateErr) {
-      console.error("update error", updateErr);
-      return null;
-    }
-    setPin((p) => ({ ...p, [field]: nextVal }));
+    const updated = Array.isArray(data) ? data[0] : data;
+    setPin(u => ({ ...u, ...updated }));
     onUpdated?.(updated);
     return updated;
   };
@@ -157,21 +166,21 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
     setLoading(true);
     try {
       if (hasBeenThere) {
-        await supabase
-          .from("user_been_there")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("pin_id", pin.id);
-        await mutateGlobalCount("been_there", -1);
+        await safeDelete('user_been_there', [
+          { column: 'user_id', value: user.id },
+          { column: 'pin_id', value: pin.id },
+        ]);
+        await mutateGlobalCount('been_there', -1);
       } else {
-        await supabase
-          .from("user_been_there")
-          .insert({ user_id: user.id, pin_id: pin.id });
-        await mutateGlobalCount("been_there", 1);
+        await safeUpsert('user_been_there', {
+          user_id: user.id,
+          pin_id: pin.id,
+        });
+        await mutateGlobalCount('been_there', 1);
       }
-      setHasBeenThere((h) => !h);
+      setHasBeenThere(b => !b);
     } catch (e) {
-      console.error("toggleBeenThere failed", e);
+      alert(e.message);
     } finally {
       setLoading(false);
     }
@@ -182,21 +191,21 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
     setLoading(true);
     try {
       if (hasWantToGo) {
-        await supabase
-          .from("user_want_to_go")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("pin_id", pin.id);
-        await mutateGlobalCount("want_to_go", -1);
+        await safeDelete('user_want_to_go', [
+          { column: 'user_id', value: user.id },
+          { column: 'pin_id', value: pin.id },
+        ]);
+        await mutateGlobalCount('want_to_go', -1);
       } else {
-        await supabase
-          .from("user_want_to_go")
-          .insert({ user_id: user.id, pin_id: pin.id });
-        await mutateGlobalCount("want_to_go", 1);
+        await safeUpsert('user_want_to_go', {
+          user_id: user.id,
+          pin_id: pin.id,
+        });
+        await mutateGlobalCount('want_to_go', 1);
       }
-      setHasWantToGo((w) => !w);
+      setHasWantToGo(w => !w);
     } catch (e) {
-      console.error("toggleWantToGo failed", e);
+      alert(e.message);
     } finally {
       setLoading(false);
     }
@@ -204,37 +213,36 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
 
   const handleFavoriteClick = async () => {
     if (!guardUser()) return;
-    if (isSaved === null) return;
     setLoading(true);
     try {
       if (isSaved && userListsContainingPin.length) {
         await supabase
-          .from("list_pins")
+          .from('list_pins')
           .delete()
-          .in("list_id", userListsContainingPin)
-          .eq("pin_id", pin.id);
-        await mutateGlobalCount("saved_count", -1);
+          .in('list_id', userListsContainingPin)
+          .eq('pin_id', pin.id);
+        await mutateGlobalCount('saved_count', -1);
         setIsSaved(false);
       } else if (!isSaved) {
         setDialogOpen(true);
       }
     } catch (e) {
-      console.error("favorite toggle failed", e);
+      alert(e.message);
     } finally {
       setLoading(false);
-      await refreshState();
+      if (!dialogOpen) await refreshState();
     }
   };
 
   const handleAfterListSaved = async () => {
-    // Assume the dialog already inserted into list_pins; just refresh counts/membership.
     await refreshState();
+    setDialogOpen(false);
   };
 
   const initialized =
-    typeof hasBeenThere === "boolean" &&
-    typeof hasWantToGo === "boolean" &&
-    typeof isSaved === "boolean";
+    typeof hasBeenThere === 'boolean' &&
+    typeof hasWantToGo === 'boolean' &&
+    typeof isSaved === 'boolean';
 
   return (
     <Box
@@ -242,19 +250,29 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
       alignItems="center"
       gap={2}
       sx={{
-        background: "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        background: 'rgba(255,255,255,0.05)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
         borderRadius: 12,
-        px: 2,
-        py: 1,
+        px: 1.5,
+        py: 4 / 8, // reduced vertical padding
         opacity: initialized ? 1 : 0.9,
-        transition: "opacity .2s ease",
+        transition: 'opacity .2s ease',
+        width: 'fit-content',
+        maxWidth: '100%',
       }}
     >
       {/* Been There */}
       <Tooltip title="Been there">
-        <Box textAlign="center" sx={{ minWidth: 50 }}>
+        <Box
+          textAlign="center"
+          sx={{
+            minWidth: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
+        >
           <IconButton
             aria-label="been there"
             onClick={toggleBeenThere}
@@ -262,27 +280,24 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
             size="small"
             sx={{
               backgroundColor: hasBeenThere
-                ? "rgba(40,167,69,0.15)"
-                : "transparent",
-              "&:hover": {
+                ? 'rgba(40,167,69,0.15)'
+                : 'transparent',
+              '&:hover': {
                 backgroundColor: hasBeenThere
-                  ? "rgba(40,167,69,0.25)"
-                  : "rgba(40,167,69,0.08)",
+                  ? 'rgba(40,167,69,0.25)'
+                  : 'rgba(40,167,69,0.08)',
               },
-              transition: "background-color .2s ease",
+              transition: 'background-color .2s ease',
+              p: 0.5,
             }}
           >
             {hasBeenThere ? (
-              <FlagIcon fontSize="small" sx={{ color: "green" }} />
+              <FlagIcon fontSize="small" sx={{ color: 'green' }} />
             ) : (
-              <OutlinedFlagIcon fontSize="small" sx={{ color: "green" }} />
+              <OutlinedFlagIcon fontSize="small" sx={{ color: 'green' }} />
             )}
           </IconButton>
-          <Typography
-            variant="caption"
-            display="block"
-            sx={{ color: "#fff", mt: 0.5 }}
-          >
+          <Typography variant="caption" display="block" sx={{ color: '#fff' }}>
             {pin.been_there || 0}
           </Typography>
         </Box>
@@ -290,7 +305,15 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
 
       {/* Want To Go */}
       <Tooltip title="Want to go">
-        <Box textAlign="center" sx={{ minWidth: 50 }}>
+        <Box
+          textAlign="center"
+          sx={{
+            minWidth: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
+        >
           <IconButton
             aria-label="want to go"
             onClick={toggleWantToGo}
@@ -298,27 +321,24 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
             size="small"
             sx={{
               backgroundColor: hasWantToGo
-                ? "rgba(255,215,0,0.15)"
-                : "transparent",
-              "&:hover": {
+                ? 'rgba(255,215,0,0.15)'
+                : 'transparent',
+              '&:hover': {
                 backgroundColor: hasWantToGo
-                  ? "rgba(255,215,0,0.25)"
-                  : "rgba(255,215,0,0.08)",
+                  ? 'rgba(255,215,0,0.25)'
+                  : 'rgba(255,215,0,0.08)',
               },
-              transition: "background-color .2s ease",
+              transition: 'background-color .2s ease',
+              p: 0.5,
             }}
           >
             {hasWantToGo ? (
-              <StarIcon fontSize="small" sx={{ color: "gold" }} />
+              <StarIcon fontSize="small" sx={{ color: 'gold' }} />
             ) : (
-              <StarBorderIcon fontSize="small" sx={{ color: "gold" }} />
+              <StarBorderIcon fontSize="small" sx={{ color: 'gold' }} />
             )}
           </IconButton>
-          <Typography
-            variant="caption"
-            display="block"
-            sx={{ color: "#fff", mt: 0.5 }}
-          >
+          <Typography variant="caption" display="block" sx={{ color: '#fff' }}>
             {pin.want_to_go || 0}
           </Typography>
         </Box>
@@ -326,7 +346,15 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
 
       {/* Save / Favorite */}
       <Tooltip title="Save">
-        <Box textAlign="center" sx={{ minWidth: 50 }}>
+        <Box
+          textAlign="center"
+          sx={{
+            minWidth: 50,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 0.5,
+          }}
+        >
           <IconButton
             aria-label="save"
             onClick={handleFavoriteClick}
@@ -334,30 +362,27 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
             size="small"
             sx={{
               backgroundColor: isSaved
-                ? "rgba(241,143,1,0.15)"
-                : "transparent",
-              "&:hover": {
+                ? 'rgba(241,143,1,0.15)'
+                : 'transparent',
+              '&:hover': {
                 backgroundColor: isSaved
-                  ? "rgba(241,143,1,0.25)"
-                  : "rgba(241,143,1,0.08)",
+                  ? 'rgba(241,143,1,0.25)'
+                  : 'rgba(241,143,1,0.08)',
               },
-              transition: "background-color .2s ease",
+              transition: 'background-color .2s ease',
+              p: 0.5,
             }}
           >
             {isSaved ? (
-              <FavoriteIcon fontSize="small" sx={{ color: "error.main" }} />
+              <FavoriteIcon fontSize="small" sx={{ color: 'error.main' }} />
             ) : (
               <FavoriteBorderIcon
                 fontSize="small"
-                sx={{ color: "error.main" }}
+                sx={{ color: 'error.main' }}
               />
             )}
           </IconButton>
-          <Typography
-            variant="caption"
-            display="block"
-            sx={{ color: "#fff", mt: 0.5 }}
-          >
+          <Typography variant="caption" display="block" sx={{ color: '#fff' }}>
             {pin.saved_count || 0}
           </Typography>
         </Box>
@@ -367,10 +392,7 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated }) {
         open={dialogOpen}
         onClose={() => setDialogOpen(false)}
         pin={pin}
-        onSaved={async () => {
-          await handleAfterListSaved();
-          setDialogOpen(false);
-        }}
+        onSaved={handleAfterListSaved}
       />
     </Box>
   );
@@ -384,4 +406,8 @@ PinInteractionPanel.propTypes = {
     saved_count: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   }).isRequired,
   onUpdated: PropTypes.func,
+};
+
+PinInteractionPanel.defaultProps = {
+  onUpdated: () => {},
 };

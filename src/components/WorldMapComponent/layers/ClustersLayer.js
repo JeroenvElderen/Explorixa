@@ -1,52 +1,66 @@
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
-export default function ClustersLayer({ map, imageId }) {
+export default function ClustersLayer({ map, imageId, insertBefore }) {
   useEffect(() => {
-    if (
-      !map ||                          // no map yet
-      !map.getSource("pins") ||        // source not created
-      !map.hasImage(imageId) ||        // cluster icon not registered
-      map.getLayer("clusters")         // already added
-    ) {
-      return;
+    if (!map || !map.getSource('pins') || !map.hasImage(imageId)) return;
+
+    const firstSymbolId = insertBefore || map
+      .getStyle()
+      .layers.find(l => l.type === 'symbol')?.id;
+
+    if (!map.getLayer('clusters')) {
+      map.addLayer(
+        {
+          id: 'clusters',
+          type: 'symbol',
+          source: 'pins',
+          filter: ['has', 'point_count'],
+          layout: {
+            'icon-image': imageId,
+            'icon-allow-overlap': true,
+            'icon-anchor': 'center',
+            'icon-size': [
+              'step',
+              ['get', 'point_count'],
+              1.2,
+              10,
+              1.5,
+              30,
+              2,
+              70,
+              2.5,
+              200,
+              3,
+            ],
+          },
+        },
+        firstSymbolId
+      );
     }
 
-    map.addLayer({
-      id: "clusters",
-      type: "symbol",
-      source: "pins",
-      filter: ["has", "point_count"],
-      layout: {
-        "icon-image": imageId,
-        "icon-allow-overlap": true,
-        "icon-anchor": "center",
-        "icon-size": [
-          "step",
-          ["get", "point_count"],
-          1.2,
-          10, 1.5,
-          30, 2,
-          70, 2.5,
-          200, 3,
-        ],
-      },
-    });
+    if (!map.getLayer('cluster-count')) {
+      map.addLayer(
+        {
+          id: 'cluster-count',
+          type: 'symbol',
+          source: 'pins',
+          filter: ['has', 'point_count'],
+          layout: {
+            'text-field': '{point_count_abbreviated}',
+            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+            'text-size': 12,
+            'text-allow-overlap': true,
+            'text-ignore-placement': true,
+          },
+          paint: { 'text-color': '#fff' },
+        },
+        firstSymbolId
+      );
+    }
 
-    map.addLayer({
-      id: "cluster-count",
-      type: "symbol",
-      source: "pins",
-      filter: ["has", "point_count"],
-      layout: {
-        "text-field": "{point_count_abbreviated}",
-        "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
-        "text-size": 12,
-        "text-allow-overlap": true,
-        "text-ignore-placement": true,
-      },
-      paint: { "text-color": "#fff" },
-    });
-  }, [map, imageId]);
+    // cluster expansion logic could live here if desired
+
+  }, [map, imageId, insertBefore]);
 
   return null;
 }

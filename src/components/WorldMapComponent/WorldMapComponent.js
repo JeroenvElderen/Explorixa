@@ -5,6 +5,7 @@ import React, {
   useImperativeHandle,
   useCallback,
   useEffect,
+  useRef,
 } from 'react';
 import MapContainer from './MapContainer';
 import usePins from '../../hooks/usePins';
@@ -14,129 +15,167 @@ import PoiClickHandler from './layers/PoiClickHandler';
 import PopupComponent from './PopupComponent';
 import { countryColors } from './constants';
 
-// in‑module cache for marker canvases
+// in-module cache for marker canvases
 const markerCache = new Map();
 function getMarkerImageData(iso) {
   if (markerCache.has(iso)) return markerCache.get(iso);
   const hex = countryColors[iso] || countryColors.default;
   const label = iso === 'PEAK' ? '🏔️' : iso;
   const canvas = createMarkerCanvas(hex, label);
-  const imgData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+  const imgData = canvas
+    .getContext('2d')
+    .getImageData(0, 0, canvas.width, canvas.height);
   markerCache.set(iso, imgData);
   return imgData;
 }
+
+const CLUSTER_ICON_ID = 'cluster-icon';
 
 const WorldMapComponent = forwardRef(function WorldMapComponent(
   { accessToken, selectingPoint, onMapClick, onPoiClick, target, flyOnTarget },
   ref
 ) {
   const features = usePins();
-  // debug: do we actually have any pins?
-  console.log('🔔 usePins returned', features.length, 'features');
-
   const [map, setMap] = useState(null);
   const [popup, setPopup] = useState(null);
 
-  // expose removePinFromMap
+  // track if user is interacting (dragging) to avoid flyTo fights
+  const isUserInteracting = useRef(false);
+  useEffect(() => {
+    if (!map) return;
+    const onDragStart = () => {
+      isUserInteracting.current = true;
+    };
+    const onDragEnd = () => {
+      setTimeout(() => {
+        isUserInteracting.current = false;
+      }, 200);
+    };
+    map.on('dragstart', onDragStart);
+    map.on('dragend', onDragEnd);
+    return () => {
+      map.off('dragstart', onDragStart);
+      map.off('dragend', onDragEnd);
+    };
+  }, [map]);
+
+  // expose removePinFromMap (public API)
   useImperativeHandle(
     ref,
     () => ({
       removePinFromMap(id) {
-        const src = map?.getSource('pins');
-        if (!src?._data) return;
-        const remaining = src._data.features.filter(f => f.properties.pinId !== id);
-        src.setData({ ...src._data, features: remaining });
+        if (!map) return;
+        const src = map.getSource('pins');
+        if (!src) return;
+        // fallback to internal _data if needed; filter out pin
+        const currentFeatures = src._data?.features || [];
+        const remaining = currentFeatures.filter(f => f.properties.pinId !== id);
+        map.getSource('pins')?.setData({
+          type: 'FeatureCollection',
+          features: remaining,
+        });
       },
     }),
     [map]
   );
 
-  // 1) onLoad → source + layers
+  // 1) onLoad → source + base images + layers
   const handleLoad = useCallback(
     m => {
       setMap(m);
-      // add empty source
-      m.addSource('pins', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        cluster: true,
-        clusterRadius: 60,
-      });
+
+      if (!m.getSource('pins')) {
+        m.addSource('pins', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] },
+          cluster: true,
+          clusterRadius: 60,
+        });
+      }
 
       // cluster icon
-      const CID = 'cluster-icon';
-      if (m.hasImage(CID)) m.removeImage(CID);
+      if (m.hasImage(CLUSTER_ICON_ID)) m.removeImage(CLUSTER_ICON_ID);
       const cc = createClusterCanvas('#F18F01');
       const cd = cc.getContext('2d').getImageData(0, 0, cc.width, cc.height);
-      m.addImage(CID, cd);
+      m.addImage(CLUSTER_ICON_ID, cd);
 
-      // pick first symbol layer to insert above
-      const firstSymbolId = m.getStyle().layers.find(l => l.type === 'symbol')?.id;
+      // pick first symbol to insert above
+      const firstSymbolId = m
+        .getStyle()
+        .layers.find(l => l.type === 'symbol')?.id;
 
-      // clusters
-      m.addLayer(
-        {
-          id: 'clusters',
-          type: 'symbol',
-          source: 'pins',
-          filter: ['has', 'point_count'],
-          layout: {
-            'icon-image': CID,
-            'icon-allow-overlap': true,
-            'icon-anchor': 'center',
-            'icon-size': [
-              'step',
-              ['get', 'point_count'],
-              1.2,
-              10, 1.5,
-              30, 2,
-              70, 2.5,
-              200, 3,
-            ],
+      if (!m.getLayer('clusters')) {
+        m.addLayer(
+          {
+            id: 'clusters',
+            type: 'symbol',
+            source: 'pins',
+            filter: ['has', 'point_count'],
+            layout: {
+              'icon-image': CLUSTER_ICON_ID,
+              'icon-allow-overlap': true,
+              'icon-anchor': 'center',
+              'icon-size': [
+                'step',
+                ['get', 'point_count'],
+                1.2,
+                10,
+                1.5,
+                30,
+                2,
+                70,
+                2.5,
+                200,
+                3,
+              ],
+            },
           },
-        },
-        firstSymbolId
-      );
+          firstSymbolId
+        );
+      }
 
-      // cluster count
-      m.addLayer(
-        {
-          id: 'cluster-count',
-          type: 'symbol',
-          source: 'pins',
-          filter: ['has', 'point_count'],
-          layout: {
-            'text-field': '{point_count_abbreviated}',
-            'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-            'text-size': 12,
-            'text-allow-overlap': true,
-            'text-ignore-placement': true,
+      if (!m.getLayer('cluster-count')) {
+        m.addLayer(
+          {
+            id: 'cluster-count',
+            type: 'symbol',
+            source: 'pins',
+            filter: ['has', 'point_count'],
+            layout: {
+              'text-field': '{point_count_abbreviated}',
+              'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+              'text-size': 12,
+              'text-allow-overlap': true,
+              'text-ignore-placement': true,
+            },
+            paint: { 'text-color': '#fff' },
           },
-          paint: { 'text-color': '#fff' },
-        },
-        firstSymbolId
-      );
+          firstSymbolId
+        );
+      }
 
-      // unclustered
-      m.addLayer(
-        {
-          id: 'unclustered-point',
-          type: 'symbol',
-          source: 'pins',
-          filter: ['!', ['has', 'point_count']],
-          layout: {
-            'icon-image': ['concat', 'marker-', ['get', 'iso']],
-            'icon-allow-overlap': true,
-            'icon-anchor': 'bottom',
+      if (!m.getLayer('unclustered-point')) {
+        m.addLayer(
+          {
+            id: 'unclustered-point',
+            type: 'symbol',
+            source: 'pins',
+            filter: ['!', ['has', 'point_count']],
+            layout: {
+              'icon-image': ['concat', 'marker-', ['get', 'iso']],
+              'icon-allow-overlap': true,
+              'icon-anchor': 'bottom',
+            },
           },
-        },
-        firstSymbolId
-      );
+          firstSymbolId
+        );
+      }
 
       // expand cluster on click
       m.on('click', 'clusters', e => {
+        if (!e.features || !e.features[0]) return;
         const clusterId = e.features[0].properties.cluster_id;
-        m.getSource('pins').getClusterExpansionZoom(clusterId, (err, z) => {
+        m.getSource('pins')?.getClusterExpansionZoom(clusterId, (err, z) => {
           if (!err) m.easeTo({ center: e.lngLat, zoom: z });
         });
       });
@@ -144,14 +183,14 @@ const WorldMapComponent = forwardRef(function WorldMapComponent(
     []
   );
 
-  // 2) whenever features change → register marker images & setData
+  // 2) features → ensure marker images + source data
   useEffect(() => {
     if (!map) return;
     const src = map.getSource('pins');
     if (!src) return;
 
     const existing = map.listImages();
-    const isos = Array.from(new Set(features.map(f => f.properties.iso)));
+    const isos = Array.from(new Set(features.map(f => f.properties.iso || 'default')));
     isos.forEach(iso => {
       const imgId = `marker-${iso}`;
       if (!existing.includes(imgId)) {
@@ -159,26 +198,32 @@ const WorldMapComponent = forwardRef(function WorldMapComponent(
       }
     });
 
-    src.setData({ type: 'FeatureCollection', features });
+    map.getSource('pins')?.setData({
+      type: 'FeatureCollection',
+      features,
+    });
   }, [map, features]);
 
-  // 3) raw‐map click
+  // 3) raw-map click (selecting point)
   useEffect(() => {
     if (!map) return;
     const cb = e => {
-      if (selectingPoint) onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
+      if (!selectingPoint) return;
+      onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     };
     map.on('click', cb);
     return () => map.off('click', cb);
   }, [map, selectingPoint, onMapClick]);
 
-  // 4) clicking a marker → popup
+  // 4) unclustered-point click → popup (defensive)
   useEffect(() => {
     if (!map) return;
     const handler = e => {
+      if (!e.features || !e.features[0]) return;
       const feat = e.features[0];
+      if (!feat.geometry || !Array.isArray(feat.geometry.coordinates)) return;
       const [lng, lat] = feat.geometry.coordinates;
-      const p = feat.properties;
+      const p = feat.properties || {};
       setPopup({
         title: p.title,
         description: p.description,
@@ -187,21 +232,37 @@ const WorldMapComponent = forwardRef(function WorldMapComponent(
         longitude: lng,
         latitude: lat,
         countryName: p.countryName,
+        id: p.pinId,
+        Information: p.Information,
+        been_there: p.been_there,
+        want_to_go: p.want_to_go,
+        saved_count: p.saved_count,
       });
     };
+
     map.on('click', 'unclustered-point', handler);
     const canvas = map.getCanvas?.();
     if (canvas?.style) canvas.style.cursor = 'pointer';
+
     return () => {
       map.off('click', 'unclustered-point', handler);
       if (canvas?.style) canvas.style.cursor = '';
     };
   }, [map]);
 
-  // 5) fly to target
+  // 5) fly to target (avoid interrupting user)
   useEffect(() => {
-    if (map && flyOnTarget && target?.lng != null && target?.lat != null) {
-      map.flyTo({ center: [target.lng, target.lat], zoom: Math.max(map.getZoom(), 4) });
+    if (
+      map &&
+      flyOnTarget &&
+      target?.lng != null &&
+      target?.lat != null &&
+      !isUserInteracting.current
+    ) {
+      map.flyTo({
+        center: [target.lng, target.lat],
+        zoom: Math.max(map.getZoom(), 4),
+      });
     }
   }, [map, flyOnTarget, target]);
 
