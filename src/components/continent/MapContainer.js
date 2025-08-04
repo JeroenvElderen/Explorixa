@@ -1,3 +1,4 @@
+// MapContainer.js
 import React, { useRef, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -46,6 +47,7 @@ export default function MapContainer({
     };
   }, [accessToken, onLoad, projection, styleUrl]);
 
+  // always fill its containing box explicitly when not fullscreen
   const baseStyle = fullScreen
     ? {
         position: 'fixed',

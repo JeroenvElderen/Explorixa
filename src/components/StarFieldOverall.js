@@ -175,7 +175,7 @@ export default function StarFieldOverall({ animate = true }) {
         height: "100vh",
         zIndex: 0,
         pointerEvents: "none",
-        background: "radial-gradient(ellipse at 50% 60%, #111 70%, #000 100%)",
+        background: "#000",
         transition: "background 1.5s",
       }}
     />
