@@ -5,7 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import PropTypes from 'prop-types';
 
 export default function MapContainer({
-  accessToken,
+  accessToken, 
   onLoad,
   projection = 'globe',
   styleUrl = 'mapbox://styles/jeroenvanelderen/cmc958dgm006s01shdiu103uz',

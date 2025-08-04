@@ -1,4 +1,4 @@
-// MapCard.js
+// src/components/continent/MapCard.js
 import React, {
   forwardRef,
   useState,
@@ -15,22 +15,21 @@ import PopupComponent from "components/WorldMapComponent/PopupComponent";
 import { createClusterCanvas } from "components/WorldMapComponent/marker/createClusterCanvas";
 import { createMarkerCanvas } from "components/WorldMapComponent/marker/createMarkerCanvas";
 import { countryColors } from "utils/countryColors";
+import continentsGeoJSON from "utils/continents.json";
 import Card from "@mui/material/Card";
 import CardContent from "@mui/material/CardContent";
 import Box from "@mui/material/Box";
 
-// in-module cache for marker canvases
+// cache for marker bitmaps
 const markerCache = new Map();
 function getMarkerImageData(iso) {
   if (markerCache.has(iso)) return markerCache.get(iso);
   const hex = countryColors[iso] || countryColors.default;
   const label = iso === "PEAK" ? "🏔️" : iso;
-  const canvas = createMarkerCanvas(hex, label);
-  const imgData = canvas
-    .getContext("2d")
-    .getImageData(0, 0, canvas.width, canvas.height);
-  markerCache.set(iso, imgData);
-  return imgData;
+  const c = createMarkerCanvas(hex, label);
+  const data = c.getContext("2d").getImageData(0, 0, c.width, c.height);
+  markerCache.set(iso, data);
+  return data;
 }
 
 const CLUSTER_ICON_ID = "cluster-icon";
@@ -43,8 +42,8 @@ const MapCard = forwardRef(function MapCard(
     selectingPoint = false,
     onMapClick = () => {},
     onPoiClick = () => {},
-    initialTarget = null,
-    flyOnTarget = false,
+    initialBounds = null,
+    highlightContinent = null,
     height = 320,
   },
   ref
@@ -53,21 +52,16 @@ const MapCard = forwardRef(function MapCard(
   const [popup, setPopup] = useState(null);
   const isUserInteracting = useRef(false);
 
+  // prevent auto‐moves while user drags
   useEffect(() => {
     if (!map) return;
-    const onDragStart = () => {
-      isUserInteracting.current = true;
-    };
-    const onDragEnd = () => {
-      setTimeout(() => {
-        isUserInteracting.current = false;
-      }, 200);
-    };
-    map.on("dragstart", onDragStart);
-    map.on("dragend", onDragEnd);
+    const start = () => (isUserInteracting.current = true);
+    const end = () => setTimeout(() => (isUserInteracting.current = false), 200);
+    map.on("dragstart", start);
+    map.on("dragend", end);
     return () => {
-      map.off("dragstart", onDragStart);
-      map.off("dragend", onDragEnd);
+      map.off("dragstart", start);
+      map.off("dragend", end);
     };
   }, [map]);
 
@@ -78,12 +72,8 @@ const MapCard = forwardRef(function MapCard(
         if (!map) return;
         const src = map.getSource("pins");
         if (!src) return;
-        const current = src._data?.features || [];
-        const filtered = current.filter((f) => f.properties.pinId !== id);
-        map.getSource("pins")?.setData({
-          type: "FeatureCollection",
-          features: filtered,
-        });
+        const feats = src._data.features.filter((f) => f.properties.pinId !== id);
+        src.setData({ type: "FeatureCollection", features: feats });
       },
       flyTo(lngLat, zoom) {
         if (!map) return;
@@ -98,6 +88,7 @@ const MapCard = forwardRef(function MapCard(
     (m) => {
       setMap(m);
 
+      // — cluster source & layers (unchanged) —
       if (!m.getSource("pins")) {
         m.addSource("pins", {
           type: "geojson",
@@ -106,15 +97,10 @@ const MapCard = forwardRef(function MapCard(
           clusterRadius: 60,
         });
       }
-
       if (m.hasImage(CLUSTER_ICON_ID)) m.removeImage(CLUSTER_ICON_ID);
       const cc = createClusterCanvas("#F18F01");
-      const cd = cc.getContext("2d").getImageData(0, 0, cc.width, cc.height);
-      m.addImage(CLUSTER_ICON_ID, cd);
-
-      const firstSymbolId = m
-        .getStyle()
-        .layers.find((l) => l.type === "symbol")?.id;
+      m.addImage(CLUSTER_ICON_ID, cc.getContext("2d").getImageData(0, 0, cc.width, cc.height));
+      const firstSymbol = m.getStyle().layers.find((l) => l.type === "symbol")?.id;
 
       if (!m.getLayer("clusters")) {
         m.addLayer(
@@ -127,25 +113,12 @@ const MapCard = forwardRef(function MapCard(
               "icon-image": CLUSTER_ICON_ID,
               "icon-allow-overlap": true,
               "icon-anchor": "center",
-              "icon-size": [
-                "step",
-                ["get", "point_count"],
-                1.2,
-                10,
-                1.5,
-                30,
-                2,
-                70,
-                2.5,
-                200,
-                3,
-              ],
+              "icon-size": ["step", ["get", "point_count"], 1.2, 10, 1.5, 30, 2, 70, 2.5, 200, 3],
             },
           },
-          firstSymbolId
+          firstSymbol
         );
       }
-
       if (!m.getLayer("cluster-count")) {
         m.addLayer(
           {
@@ -162,10 +135,9 @@ const MapCard = forwardRef(function MapCard(
             },
             paint: { "text-color": "#fff" },
           },
-          firstSymbolId
+          firstSymbol
         );
       }
-
       if (!m.getLayer("unclustered-point")) {
         m.addLayer(
           {
@@ -179,59 +151,94 @@ const MapCard = forwardRef(function MapCard(
               "icon-anchor": "bottom",
             },
           },
-          firstSymbolId
+          firstSymbol
         );
       }
-
       m.on("click", "clusters", (e) => {
-        if (!e.features || !e.features[0]) return;
-        const clusterId = e.features[0].properties.cluster_id;
-        m.getSource("pins")?.getClusterExpansionZoom(clusterId, (err, z) => {
-          if (!err) m.easeTo({ center: e.lngLat, zoom: z });
-        });
+        const clusterId = e.features?.[0]?.properties.cluster_id;
+        if (clusterId != null) {
+          m.getSource("pins").getClusterExpansionZoom(clusterId, (err, z) => {
+            if (!err) m.easeTo({ center: e.lngLat, zoom: z });
+          });
+        }
       });
+
+      // — NEW: continent outline w/o Russia —
+      if (highlightContinent && Array.isArray(continentsGeoJSON.features)) {
+        const nameLower = highlightContinent.toLowerCase();
+        const base = continentsGeoJSON.features.find(
+          (f) => f.properties.CONTINENT?.toLowerCase() === nameLower
+        );
+        if (base) {
+          // for Europe, drop polygons whose avg lon > 60°E
+          let geom = base.geometry;
+          if (nameLower === "europe" && geom.type === "MultiPolygon") {
+            geom = {
+              ...geom,
+              coordinates: geom.coordinates.filter((poly) => {
+                const ring = poly[0];
+                const avgLon =
+                  ring.reduce((sum, [lon]) => sum + lon, 0) / ring.length;
+                return avgLon < 60;
+              }),
+            };
+          }
+          const feature = { ...base, geometry: geom };
+
+          if (!m.getSource("continent-outline")) {
+            m.addSource("continent-outline", {
+              type: "geojson",
+              data: feature,
+            });
+            m.addLayer({
+              id: "continent-outline",
+              type: "line",
+              source: "continent-outline",
+              paint: {
+                "line-color": "#f18f01",
+                "line-width": 3,
+              },
+            });
+
+            // bring pins above the outline
+            ["clusters", "cluster-count", "unclustered-point"].forEach((layerId) => {
+              if (m.getLayer(layerId)) m.moveLayer(layerId);
+            });
+          }
+        }
+      }
     },
-    []
+    [highlightContinent]
   );
 
+  // update pins
   useEffect(() => {
     if (!map) return;
     const src = map.getSource("pins");
     if (!src) return;
-
     const existing = map.listImages();
-    const isos = Array.from(
-      new Set(pins.map((f) => f.properties?.iso || "default"))
-    );
+    const isos = [...new Set(pins.map((f) => f.properties?.iso || "default"))];
     isos.forEach((iso) => {
-      const imgId = `marker-${iso}`;
-      if (!existing.includes(imgId)) {
-        map.addImage(imgId, getMarkerImageData(iso));
-      }
+      const id = `marker-${iso}`;
+      if (!existing.includes(id)) map.addImage(id, getMarkerImageData(iso));
     });
-
-    map.getSource("pins")?.setData({
-      type: "FeatureCollection",
-      features: pins,
-    });
+    src.setData({ type: "FeatureCollection", features: pins });
   }, [map, pins]);
 
+  // selecting-point click
   useEffect(() => {
     if (!map) return;
-    const cb = (e) => {
-      if (!selectingPoint) return;
-      onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
-    };
+    const cb = (e) => selectingPoint && onMapClick({ lat: e.lngLat.lat, lng: e.lngLat.lng });
     map.on("click", cb);
     return () => map.off("click", cb);
   }, [map, selectingPoint, onMapClick]);
 
+  // popup for unclustered points
   useEffect(() => {
     if (!map) return;
     const handler = (e) => {
-      if (!e.features || !e.features[0]) return;
-      const feat = e.features[0];
-      if (!feat.geometry || !Array.isArray(feat.geometry.coordinates)) return;
+      const feat = e.features?.[0];
+      if (!feat || !Array.isArray(feat.geometry.coordinates)) return;
       const [lng, lat] = feat.geometry.coordinates;
       const p = feat.properties || {};
       setPopup({
@@ -249,9 +256,8 @@ const MapCard = forwardRef(function MapCard(
         saved_count: p.saved_count,
       });
     };
-
     map.on("click", "unclustered-point", handler);
-    const canvas = map.getCanvas?.();
+    const canvas = map.getCanvas();
     if (canvas?.style) canvas.style.cursor = "pointer";
     return () => {
       map.off("click", "unclustered-point", handler);
@@ -259,21 +265,14 @@ const MapCard = forwardRef(function MapCard(
     };
   }, [map]);
 
+  // fit to initialBounds
   useEffect(() => {
-    if (
-      map &&
-      flyOnTarget &&
-      initialTarget?.lng != null &&
-      initialTarget?.lat != null &&
-      !isUserInteracting.current
-    ) {
-      map.flyTo({
-        center: [initialTarget.lng, initialTarget.lat],
-        zoom: Math.max(map.getZoom(), 4),
-      });
+    if (map && initialBounds && !isUserInteracting.current) {
+      map.fitBounds(initialBounds, { padding: 20, maxZoom: 4, duration: 800 });
     }
-  }, [map, flyOnTarget, initialTarget]);
+  }, [map, initialBounds]);
 
+  // close popup on move/zoom
   useEffect(() => {
     if (!map) return;
     const close = () => setPopup(null);
@@ -286,54 +285,31 @@ const MapCard = forwardRef(function MapCard(
   }, [map]);
 
   return (
-  <Card
-    elevation={3}
-    sx={{
-      borderRadius: 2,
-      overflow: "hidden",
-      display: "flex",
-      flexDirection: "column",
-      height: height,
-    }}
-  >
-    <CardContent
+    <Card
+      elevation={3}
       sx={{
-        p: 0,
-        position: "relative",
+        borderRadius: 2,
+        overflow: "hidden",
         display: "flex",
-        flex: 1,
-        minHeight: 0, // critical for flex children not to overflow
+        flexDirection: "column",
+        height,
       }}
     >
-      <Box
-        sx={{
-          flex: 1, // fill the card vertically
-          position: "relative",
-          minHeight: 0,
-        }}
-      >
-        <MapContainer
-          accessToken={accessToken}
-          onLoad={handleLoad}
-          projection="mercator"
-          fullScreen={false}
-          style={{ position: "absolute", inset: 0, height: height, }}
-        />
-        {map && (
-          <PoiClickHandler
-            map={map}
+      <CardContent sx={{ p: 0, position: "relative", display: "flex", flex: 1, minHeight: 0 }}>
+        <Box sx={{ flex: 1, position: "relative", minHeight: 0 }}>
+          <MapContainer
             accessToken={accessToken}
-            onPoiClick={onPoiClick}
+            onLoad={handleLoad}
+            projection="mercator"
+            fullScreen={false}
+            style={{ position: "absolute", inset: 0, height }}
           />
-        )}
-        {popup && (
-          <PopupComponent data={popup} onClose={() => setPopup(null)} />
-        )}
-      </Box>
-    </CardContent>
-  </Card>
-);
-
+          {map && <PoiClickHandler map={map} accessToken={accessToken} onPoiClick={onPoiClick} />}
+          {popup && <PopupComponent data={popup} onClose={() => setPopup(null)} />}
+        </Box>
+      </CardContent>
+    </Card>
+  );
 });
 
 MapCard.propTypes = {
@@ -343,11 +319,8 @@ MapCard.propTypes = {
   selectingPoint: PropTypes.bool,
   onMapClick: PropTypes.func,
   onPoiClick: PropTypes.func,
-  initialTarget: PropTypes.shape({
-    lat: PropTypes.number,
-    lng: PropTypes.number,
-  }),
-  flyOnTarget: PropTypes.bool,
+  initialBounds: PropTypes.array,
+  highlightContinent: PropTypes.string,
   height: PropTypes.number,
 };
 

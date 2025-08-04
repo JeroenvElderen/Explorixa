@@ -1,0 +1,4 @@
+1. Update supabase upsert so that for russia every pin created in europe is in
+europe and outside europe in other continent
+
+2. make only the continent in the continent page usable for clicking pins.

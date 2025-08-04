@@ -1,4 +1,3 @@
-// components/continent/ContinentPage.js
 import React, {
   useMemo,
   useCallback,
@@ -21,7 +20,6 @@ import MapCard from "./MapCard";
 import { getCountriesByContinent } from "utils/continentHelpers";
 import { countryNameToIso } from "utils/countryColors";
 
-/** normalize helper */
 const normalize = (s) =>
   String(s || "")
     .trim()
@@ -53,15 +51,15 @@ export default function ContinentPage() {
       .replace(/\b\w/g, (l) => l.toUpperCase());
   }, [continentData, continent]);
 
-  const continentCenters = {
-    africa: { lat: 0, lng: 20, zoom: 2.5 },
-    europe: { lat: 52, lng: 10, zoom: 3 },
-    asia: { lat: 34, lng: 100, zoom: 2.5 },
-    "north america": { lat: 45, lng: -100, zoom: 2.5 },
-    "south america": { lat: -15, lng: -60, zoom: 2.5 },
-    oceania: { lat: -22, lng: 140, zoom: 3 },
-  }
-
+  // Precomputed SW/NE bounds for each continent
+  const continentBounds = {
+    africa:          [[-20.0, -35.0], [ 55.0,  38.0]],
+    europe:          [[-10.0,  34.0], [ 30.0,  72.0]],
+    asia:            [[ 26.0,   1.0], [180.0,  81.0]],
+    "north america": [[-170.0,   5.0], [ -50.0,  83.0]],
+    "south america": [[ -82.0, -58.0], [ -34.0,  13.0]],
+    oceania:         [[ 110.0, -50.0], [ 180.0,  10.0]],
+  };
 
   const lookupKey = decodeURIComponent(continent)
     .replace(/[_-]/g, " ")
@@ -76,26 +74,13 @@ export default function ContinentPage() {
     [setRecentPins]
   );
 
-  // country list for this continent
-  const countriesForContinent = useMemo(
-    () => getCountriesByContinent(displayName || ""),
-    [displayName]
-  );
-  const countrySet = useMemo(
-    () => new Set(countriesForContinent.map((c) => normalize(c))),
-    [countriesForContinent]
-  );
-
-  // filter and build GeoJSON features with ISO resolution
+  // Build map pins for this continent
   useEffect(() => {
     if (!displayName) return;
     setLoadingContinentPins(true);
     try {
       const filtered = (recentPins || [])
-        .filter((p) => {
-          if (!p.countryName) return false;
-          return countrySet.has(normalize(p.countryName));
-        })
+        .filter((p) => p.countryName && normalize(p.countryName))
         .filter((p) => p.latitude != null && p.longitude != null)
         .map((p) => {
           const isoFromName =
@@ -136,14 +121,13 @@ export default function ContinentPage() {
     } finally {
       setLoadingContinentPins(false);
     }
-  }, [displayName, recentPins, countrySet]);
+  }, [displayName, recentPins]);
 
-  // pick our centre from the table
-  const initialTarget = continentCenters[lookupKey] || null;
+  // bounding box for fitBounds
+  const initialBounds = continentBounds[lookupKey] || null;
 
   return (
     <DashboardLayout>
-      {/* Stylish blurred SVG background */}
       <div
         style={{
           position: "fixed",
@@ -162,6 +146,7 @@ export default function ContinentPage() {
 
       <StarFieldOverall />
       <SimpleResponsiveNavbar />
+
       <MDBox py={3}>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -201,8 +186,8 @@ export default function ContinentPage() {
               pins={continentPins.length ? continentPins : recentPins}
               onPoiClick={() => {}}
               selectingPoint={false}
-              flyOnTarget={!!initialTarget}
-              initialTarget={initialTarget}
+              initialBounds={initialBounds}
+              highlightContinent={displayName}
             />
           </MDBox>
         </motion.div>
@@ -230,6 +215,7 @@ export default function ContinentPage() {
           </MDBox>
         </motion.div>
       </MDBox>
+
       <Footer />
     </DashboardLayout>
   );
