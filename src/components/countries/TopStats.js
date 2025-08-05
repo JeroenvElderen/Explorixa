@@ -2,9 +2,9 @@ import React from "react";
 import Grid from "@mui/material/Grid";
 import ComplexStatisticsCard from "examples/Cards/StatisticsCards/ComplexStatisticsCard";
 import MDBox from "components/MDBox";
-import MarqueeText from "components/MarqueeText";
 import CountUp from "react-countup";
 import { motion } from "framer-motion";
+import Marquee from "react-fast-marquee";           // ← NEW
 
 export default function TopStats({
   pinCount,
@@ -23,6 +23,7 @@ export default function TopStats({
 }) {
   return (
     <Grid container spacing={2}>
+      {/* ——— See all pins ——— */}
       <Grid item xs={6} sm={6} md={3}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -34,7 +35,13 @@ export default function TopStats({
               color="dark"
               icon="place"
               title="See all pins"
-              count={<CountUp end={pinCount || 0} duration={4} separator="," />}
+              count={
+                <CountUp
+                  end={pinCount || 0}
+                  duration={4}
+                  separator=","
+                />
+              }
               percentage={{
                 color: "success",
                 amount: `Created ${lastPinCreatedTimeAgo}`,
@@ -43,6 +50,8 @@ export default function TopStats({
           </MDBox>
         </motion.div>
       </Grid>
+
+      {/* ——— Current cities ——— */}
       <Grid item xs={6} sm={6} md={3}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -53,15 +62,25 @@ export default function TopStats({
             <ComplexStatisticsCard
               icon="house"
               title="Current cities"
-              count={<CountUp end={cityCount || 0} duration={4} separator="," />}
+              count={
+                <CountUp
+                  end={cityCount || 0}
+                  duration={4}
+                  separator=","
+                />
+              }
               percentage={
                 marqueeCities
                   ? {
                       color: "success",
                       amount: (
-                        <MarqueeText duration={10}>
+                        <Marquee
+                          gradient={false}
+                          speed={40}
+                          pauseOnHover={true}
+                        >
                           {marqueeCities}
-                        </MarqueeText>
+                        </Marquee>
                       ),
                     }
                   : undefined
@@ -70,6 +89,8 @@ export default function TopStats({
           </MDBox>
         </motion.div>
       </Grid>
+
+      {/* ——— Temperature ——— */}
       <Grid item xs={6} sm={6} md={3}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -81,7 +102,17 @@ export default function TopStats({
               color="info"
               icon="thermostat"
               title="Temperature"
-              count={temperature != null ? <CountUp end={temperature} decimals={1} duration={4} /> : "…"}
+              count={
+                temperature != null ? (
+                  <CountUp
+                    end={temperature}
+                    decimals={1}
+                    duration={4}
+                  />
+                ) : (
+                  "…"
+                )
+              }
               percentage={{
                 color:
                   weatherCondition === "Clear"
@@ -96,6 +127,8 @@ export default function TopStats({
           </MDBox>
         </motion.div>
       </Grid>
+
+      {/* ——— Population ——— */}
       <Grid item xs={6} sm={6} md={3}>
         <motion.div
           initial={{ opacity: 0, y: 18 }}
@@ -108,7 +141,7 @@ export default function TopStats({
               icon={
                 countryCode ? (
                   <img
-                    src={`https://flagcdn.com/w320/${countryCode.toLowerCase()}.png`}
+                    src={`https://flagcdn.com/w320/${countryCode}.png`}
                     alt={`${countryName} flag`}
                     style={{
                       width: 26,
@@ -120,7 +153,13 @@ export default function TopStats({
                 ) : null
               }
               title="Population"
-              count={<CountUp end={population || 0} duration={4} separator="," />}
+              count={
+                <CountUp
+                  end={population || 0}
+                  duration={4}
+                  separator=","
+                />
+              }
               formatCount
               percentage={{ color: "success", amount: "Updated" }}
             />

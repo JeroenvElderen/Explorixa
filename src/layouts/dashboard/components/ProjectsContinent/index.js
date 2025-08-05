@@ -1,7 +1,7 @@
 // components/continent/ProjectsContinent.js
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion"; 
 import Card from "@mui/material/Card";
 import Icon from "@mui/material/Icon";
 import Divider from "@mui/material/Divider";
@@ -15,7 +15,7 @@ export default function ProjectsContinent({ continent }) {
   const [expanded, setExpanded] = useState(false);
   const [countries, setCountries] = useState([]);
   const theme = useTheme();
-  const navigate = useNavigate();
+  const navigate = useNavigate(); 
 
   useEffect(() => {
     setCountries(getCountriesByContinent(continent));
@@ -24,11 +24,35 @@ export default function ProjectsContinent({ continent }) {
   const toggle = () => setExpanded((v) => !v);
 
   const getFlag = (countryName) => {
-    const flag = emojiFlags.data.find(
-      (c) => c.name.toLowerCase() === countryName.toLowerCase()
-    );
-    return flag ? flag.emoji : "🌍";
+  const overrides = {
+    "Ivory Coast": "Côte d'Ivoire",
+    "South Korea": "Korea, South",
+    "North Korea": "Korea, North",
+    "Republic of the Congo": "Congo (Brazzaville)",
+    "DR Congo": "Congo (Kinshasa)",
+    "United States": "United States of America",
+    "Russia": "Russian Federation",
+    "Syria": "Syrian Arab Republic",
+    "Laos": "Lao People's Democratic Republic",
+    "Vietnam": "Viet Nam",
+    "Palestine": "Palestinian Territory",
+    "Tanzania": "Tanzania, United Republic of",
+    "Moldova": "Moldova, Republic of",
+    "Bolivia": "Bolivia, Plurinational State of",
+    "Venezuela": "Venezuela, Bolivarian Republic of",
+    "Iran": "Iran, Islamic Republic of",
+    "Brunei": "Brunei Darussalam",
+    "Micronesia": "Micronesia, Federated States of",
   };
+
+  const lookupName = overrides[countryName] || countryName;
+
+  const flag = emojiFlags.data.find(
+    (c) => c.name.toLowerCase() === lookupName.toLowerCase()
+  );
+  return flag ? flag.emoji : "🌍";
+};
+
 
   return (
     <motion.div
@@ -89,7 +113,7 @@ export default function ProjectsContinent({ continent }) {
           {expanded && (
             <motion.div
               initial={{ maxHeight: 0, opacity: 0 }}
-              animate={{ maxHeight: 1000, opacity: 1 }}
+              animate={{ maxHeight: 2000, opacity: 1 }}
               exit={{ maxHeight: 0, opacity: 0 }}
               transition={{ duration: 0.45, ease: "easeInOut" }}
               style={{ overflow: "hidden", willChange: "max-height, opacity" }}

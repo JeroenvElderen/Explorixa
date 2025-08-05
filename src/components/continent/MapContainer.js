@@ -1,69 +1,50 @@
-// MapContainer.js
-import React, { useRef, useEffect } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import PropTypes from 'prop-types';
+import React, { useRef, useEffect } from "react";
+import mapboxgl from "mapbox-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import PropTypes from "prop-types";
 
 export default function MapContainer({
-  accessToken, 
+  accessToken,
   onLoad,
-  projection = 'globe',
-  styleUrl = 'mapbox://styles/jeroenvanelderen/cmc958dgm006s01shdiu103uz',
-  fullScreen = true,
+  projection = "mercator",
+  styleUrl = "mapbox://styles/mapbox/dark-v10",
+  fullScreen = false,
   style = {},
 }) {
-  const mapNode = useRef(null);
-  const mapInstanceRef = useRef(null);
+  const containerRef = useRef(null);
 
   useEffect(() => {
     mapboxgl.accessToken = accessToken;
     const map = new mapboxgl.Map({
-      container: mapNode.current,
+      container: containerRef.current,
       style: styleUrl,
       center: [0, 20],
       zoom: 1.5,
       projection,
       attributionControl: false,
     });
-    mapInstanceRef.current = map;
 
-    map.on('load', () => {
-      if (projection === 'globe' && map.setFog) {
-        map.setFog({
-          color: 'rgb(17,17,17)',
-          'high-color': 'rgb(17,17,17)',
-          'horizon-blend': 0.2,
-          'space-color': 'rgb(0,0,0)',
-          'star-intensity': 0.5,
-        });
-      } else if (map.setFog) {
-        map.setFog(null);
-      }
+    map.on("load", () => {
       onLoad(map);
     });
 
-    return () => {
-      map.remove();
-    };
+    return () => map.remove();
   }, [accessToken, onLoad, projection, styleUrl]);
 
-  // always fill its containing box explicitly when not fullscreen
   const baseStyle = fullScreen
     ? {
-        position: 'fixed',
+        position: "fixed",
         top: 0,
         left: 0,
-        width: '100vw',
-        height: '100vh',
+        width: "100vw",
+        height: "100vh",
       }
     : {
-        position: 'absolute',
+        position: "absolute",
         inset: 0,
-        width: '100%',
-        height: '100%',
       };
 
-  return <div ref={mapNode} style={{ ...baseStyle, ...style }} />;
+  return <div ref={containerRef} style={{ ...baseStyle, ...style }} />;
 }
 
 MapContainer.propTypes = {

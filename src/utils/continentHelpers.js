@@ -21,7 +21,7 @@ export const continentCountries = {
     "Iran","Iraq","Israel","Japan","Jordan","Kazakhstan","Kuwait",
     "Kyrgyzstan","Laos","Lebanon","Macau","Malaysia","Maldives","Mongolia",
     "Myanmar","Nepal","North Korea","Oman","Pakistan","Palestine",
-    "Philippines","Qatar","Saudi Arabia","Singapore","South Korea",
+    "Philippines","Qatar", "Saudi Arabia","Singapore","South Korea",
     "Sri Lanka","Syria","Taiwan","Tajikistan","Thailand","Timor-Leste",
     "Turkey","Turkmenistan","United Arab Emirates","Uzbekistan","Vietnam","Yemen"
   ],

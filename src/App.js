@@ -2,11 +2,9 @@
 =========================================================
 * Material home 2 React - v2.2.0
 =========================================================
-...
 */
 
-// Standard imports
-import { useState, useEffect, useMemo, Suspense } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // @mui material
@@ -19,6 +17,10 @@ import CircularProgress from "@mui/material/CircularProgress";
 import MDBox from "./components/MDBox";
 import Sidenav from "./examples/Sidenav";
 import Configurator from "./examples/Configurator";
+
+// Images
+import brandWhite from "./assets/images/logo-ct.png";
+import brandDark from "./assets/images/logo-ct-dark.png";
 
 // Themes
 import theme from "./assets/theme";
@@ -35,16 +37,16 @@ import createCache from "@emotion/cache";
 import routes from "./routes";
 
 // Context
-import { useMaterialUIController, setMiniSidenav, setOpenConfigurator } from "./context";
+import {
+  useMaterialUIController,
+  setMiniSidenav,
+  setOpenConfigurator,
+} from "./context";
 import { AuthProvider } from "./AuthContext";
-
-// Images
-import brandWhite from "./assets/images/logo-ct.png";
-import brandDark from "./assets/images/logo-ct-dark.png";
 
 // Framer Motion
 import { AnimatePresence } from "framer-motion";
-import PageWrapper from "./components/PageWrapper"; // <-- Add this file!
+import PageWrapper from "./components/PageWrapper"; // wraps for playOnVisible
 
 export default function App() {
   const [controller, dispatch] = useMaterialUIController();
@@ -62,23 +64,30 @@ export default function App() {
   const { pathname } = useLocation();
   const showConfiguratorButton = pathname === "/home";
 
+  // Prefetch lazy chunks on idle
+  useEffect(() => {
+    import(/* webpackPrefetch: true */ "components/StarFieldOverall");
+    import(
+      /* webpackPrefetch: true */ "layouts/dashboard/components/ProjectsContinent"
+    );
+    import(
+      /* webpackPrefetch: true */ "./components/continent/RecentPinsGrid"
+    );
+  }, []);
+
   // RTL Cache
   useMemo(() => {
-    const cacheRtl = createCache({
-      key: "rtl",
-      stylisPlugins: [rtlPlugin],
-    });
+    const cacheRtl = createCache({ key: "rtl", stylisPlugins: [rtlPlugin] });
     setRtlCache(cacheRtl);
   }, []);
 
-  // Mini sidenav mouse events
+  // Sidenav hover handlers
   const handleOnMouseEnter = () => {
     if (miniSidenav && !onMouseEnter) {
       setMiniSidenav(dispatch, false);
       setOnMouseEnter(true);
     }
   };
-
   const handleOnMouseLeave = () => {
     if (onMouseEnter) {
       setMiniSidenav(dispatch, true);
@@ -86,25 +95,24 @@ export default function App() {
     }
   };
 
-  // Configurator open/close
-  const handleConfiguratorOpen = () => setOpenConfigurator(dispatch, !openConfigurator);
+  // Configurator toggler
+  const handleConfiguratorOpen = () =>
+    setOpenConfigurator(dispatch, !openConfigurator);
 
-  // Set RTL direction on body
+  // Body dir attribute
   useEffect(() => {
     document.body.setAttribute("dir", direction);
   }, [direction]);
 
-  // Animate scroll to top on route change
+  // Scroll to top on navigation
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
   }, [pathname]);
 
-  // Route components mapping
+  // Build route elements
   const getRoutes = (allRoutes) =>
     allRoutes.flatMap((route) => {
-      if (route.children) {
-        return getRoutes(route.children);
-      }
+      if (route.children) return getRoutes(route.children);
       if (route.route && route.component) {
         return (
           <Route
@@ -118,8 +126,28 @@ export default function App() {
       return [];
     });
 
-  const isMapPage = pathname.toLowerCase() === "/home";
+  // Loading spinner for Suspense
+  function LoadingSpinner() {
+    return (
+      <div style={{ textAlign: "center", marginTop: 80 }}>
+        <CircularProgress color="info" size={40} />
+      </div>
+    );
+  }
 
+  // Render routes under Suspense + AnimatePresence
+  const renderRoutes = () => (
+    <Suspense fallback={<LoadingSpinner />}>
+      <AnimatePresence mode="wait" initial={false}>
+        <Routes location={pathname} key={pathname}>
+          {getRoutes(routes)}
+          <Route path="*" element={<Navigate to="/home" />} />
+        </Routes>
+      </AnimatePresence>
+    </Suspense>
+  );
+
+  // Configurator button
   const configsButton = (
     <MDBox
       display="flex"
@@ -139,12 +167,12 @@ export default function App() {
       onClick={handleConfiguratorOpen}
     >
       <Icon fontSize="small" color="inherit">
-        {isMapPage ? "place" : "settings"}
+        {pathname === "/home" ? "place" : "settings"}
       </Icon>
     </MDBox>
   );
 
-  // --- RTL layout ---
+  // RTL layout
   if (direction === "rtl") {
     return (
       <CacheProvider value={rtlCache}>
@@ -155,8 +183,12 @@ export default function App() {
               <>
                 <Sidenav
                   color={sidenavColor}
-                  brand={transparentSidenav || whiteSidenav ? brandDark : brandDark}
-                  brandName="Material home 2"
+                  brand={
+                    transparentSidenav || whiteSidenav
+                      ? brandDark
+                      : brandDark
+                  }
+                  brandName="Explorixa"
                   routes={routes}
                   onMouseEnter={handleOnMouseEnter}
                   onMouseLeave={handleOnMouseLeave}
@@ -164,28 +196,14 @@ export default function App() {
                 {showConfiguratorButton && configsButton}
               </>
             )}
-            {layout === "vr"}
-            <Suspense
-              fallback={
-                <div style={{ textAlign: "center", marginTop: 80 }}>
-                  <CircularProgress color="info" size={40} />
-                </div>
-              }
-            >
-              <AnimatePresence mode="wait" initial={false}>
-                <Routes location={pathname} key={pathname}>
-                  {getRoutes(routes)}
-                  <Route path="*" element={<Navigate to="/home" />} />
-                </Routes>
-              </AnimatePresence>
-            </Suspense>
+            {renderRoutes()}
           </AuthProvider>
         </ThemeProvider>
       </CacheProvider>
     );
   }
 
-  // --- LTR layout ---
+  // LTR layout
   return (
     <ThemeProvider theme={themeDark}>
       <CssBaseline />
@@ -194,7 +212,11 @@ export default function App() {
           <>
             <Sidenav
               color={sidenavColor}
-              brand={transparentSidenav || whiteSidenav ? brandDark : brandDark}
+              brand={
+                transparentSidenav || whiteSidenav
+                  ? brandDark
+                  : brandDark
+              }
               brandName="Explorixa"
               routes={routes}
               onMouseEnter={handleOnMouseEnter}
@@ -203,21 +225,7 @@ export default function App() {
             {/* {showConfiguratorButton && configsButton} */}
           </>
         )}
-        {layout === "vr"}
-        <Suspense
-          fallback={
-            <div style={{ textAlign: "center", marginTop: 80 }}>
-              <CircularProgress color="info" size={40} />
-            </div>
-          }
-        >
-          <AnimatePresence mode="wait" initial={false}>
-            <Routes location={pathname} key={pathname}>
-              {getRoutes(routes)}
-              <Route path="*" element={<Navigate to="/home" />} />
-            </Routes>
-          </AnimatePresence>
-        </Suspense>
+        {renderRoutes()}
       </AuthProvider>
     </ThemeProvider>
   );

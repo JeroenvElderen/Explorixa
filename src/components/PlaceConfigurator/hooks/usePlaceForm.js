@@ -1,8 +1,9 @@
+// src/hooks/usePlaceForm.js
 import { useState, useEffect, useRef } from "react";
 import imageCompression from "browser-image-compression";
-import { supabase } from "SupabaseClient"; // ← adjust up one level
+import { supabase } from "SupabaseClient";       // ← adjust path as needed
 import { v4 as uuidv4 } from "uuid";
-import { COUNTRY_TO_CURRENCY } from "../constants"; // ← adjust up one level
+import { COUNTRY_TO_CURRENCY } from "../constants";     // ← adjust path as needed
 
 const BUCKET = "pins-images";
 
@@ -53,7 +54,6 @@ export default function usePlaceForm({
   const [mainImageFile, setMainImageFile] = useState(null);
   const [multiImageFiles, setMultiImageFiles] = useState([]);
 
-  // inside usePlaceForm:
   const [currencyAnchor, setCurrencyAnchor] = useState(null);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
 
@@ -61,7 +61,6 @@ export default function usePlaceForm({
   const handleCurrencyClick = (el) => {
     setCurrencyAnchor(el);
   };
-
   const handleCurrencyClose = () => setCurrencyAnchor(null);
 
   const handleCancelForm = () => {
@@ -107,6 +106,7 @@ export default function usePlaceForm({
     return data.publicUrl;
   }
 
+  // ─── SUBMIT ─────────────────────────
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedPlace?.lat || !selectedPlace?.lng) {
@@ -114,6 +114,21 @@ export default function usePlaceForm({
       return;
     }
     try {
+      // ─── 1) compute continent ─────────────────
+      let continent = null;
+      // Russia split at 60°E
+      if (selectedPlace.country === "Russia") {
+        continent =
+          parseFloat(selectedPlace.lng) < 60 ? "Europe" : "Asia";
+      } else {
+        try {
+          continent = await fetchContinent(selectedPlace.country);
+        } catch {
+          continent = null;
+        }
+      }
+
+      // ─── 2) build pin payload (including continent) ─────────
       const payload = {
         user_id: userId,
         Name: form.Name,
@@ -128,7 +143,9 @@ export default function usePlaceForm({
         countryName: selectedPlace.country,
         City: selectedPlace.city,
         iso: selectedPlace.iso || null,
+        continent,                       // ← NEW
       };
+
       if (mainImageFile) {
         payload["Main Image"] = await uploadImage(mainImageFile);
       }
@@ -137,26 +154,23 @@ export default function usePlaceForm({
         payload.Images = urls.join(",");
       }
 
-      // upsert country
-      let continent = null;
-      try {
-        continent = await fetchContinent(selectedPlace.country);
-      } catch {}
+      // ─── 3) upsert country with continent ─────────────
       await supabase
         .from("countries")
-        .upsert([{ name: selectedPlace.country, continent }], {
-          onConflict: ["name"],
-        });
+        .upsert(
+          [{ name: selectedPlace.country, continent }],
+          { onConflict: ["name"] }
+        );
 
-      // upsert city
-      const { error: cityError, data: cityData } = await supabase
+      // ─── 4) upsert city with same continent ─────────────
+      const { error: cityError } = await supabase
         .from("cities")
         .upsert(
           [
             {
               Name: selectedPlace.city,
               Country: selectedPlace.country,
-              continent: continent,
+              continent,               // ← NEW
             },
           ],
           { onConflict: ["Name", "Country"] }
@@ -164,11 +178,9 @@ export default function usePlaceForm({
       if (cityError) {
         console.error("City upsert error:", cityError);
         alert("City upsert failed: " + cityError.message);
-      } else {
-        console.log("City upsert data:", cityData);
       }
 
-      // insert pin
+      // ─── 5) insert pin row ─────────────────────────────
       const { error } = await supabase.from("pins").insert([payload]);
       if (error) throw error;
 
@@ -186,7 +198,7 @@ export default function usePlaceForm({
       const autoCurr = COUNTRY_TO_CURRENCY[selectedPlace.country] || "";
       setForm((f) => ({
         ...f,
-        Name: selectedPlace.name?.trim() || selectedPlace.text?.trim() || "",
+        Name: (selectedPlace.name || selectedPlace.text || "").trim(),
         Latitude: selectedPlace.lat,
         Longitude: selectedPlace.lng,
         countryName: selectedPlace.country,
@@ -202,7 +214,7 @@ export default function usePlaceForm({
     }
   }, [initialData]);
 
-  // after your other handlers, before return:
+  // ─── PLACE PICKER INTEGRATION ──────
   const handlePlaceSelected = (p) => {
     const [lng, lat] = Array.isArray(p.center) ? p.center : [p.lng, p.lat];
     fetch(
