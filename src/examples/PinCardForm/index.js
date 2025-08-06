@@ -17,6 +17,7 @@ import imageCompression from "browser-image-compression";
 import SimpleMDE from "react-simplemde-editor";
 import "easymde/dist/easymde.min.css";
 import ReactMarkdown from "react-markdown";
+import { Box } from "@mui/material";
 
 import PlaceSearchInput from "components/PlaceSearchInput";
 import MDBox from "../../components/MDBox";
@@ -280,9 +281,13 @@ function PinCardForm({ onCancel, onSubmit, initialData = {}, countryName: propCo
                 onChange={handleChange}
                 label="Category"
               >
-                <MenuItem value="Category1">Category1</MenuItem>
-                <MenuItem value="Category2">Category2</MenuItem>
-                <MenuItem value="Category3">Category3</MenuItem>
+                <MenuItem value="Traditions">Traditions</MenuItem>
+                <MenuItem value="Accommodation">Accommodation</MenuItem>
+                <MenuItem value="Active ?">Active ?</MenuItem>
+                <MenuItem value="Do's/Don'ts">Do's/Don'ts</MenuItem>
+                <MenuItem value="Nightlife">Nightlife</MenuItem>
+                <MenuItem value="Discover">Discover</MenuItem>
+                <MenuItem value="Yumy Yumy">Yumy Yumy</MenuItem>
               </Select>
             </FormControl>
 

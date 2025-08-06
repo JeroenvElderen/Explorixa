@@ -33,7 +33,15 @@ import {
   COUNTRY_OPTIONS,
 } from "components/PlaceConfigurator/constants"; // <-- adjust path
 
-const categories = ["Category1", "Category2", "Category3"]; // Replace with your actual categories
+const categories = [
+  "Traditions",
+  "Accommodation",
+  "Active ?",
+  "Do's/Don'ts",
+  "Nightlife",
+  "Discover",
+  "Yumy Yumy",
+]; // Replace with your actual categories
 
 export default function PostComposer({ user, userId, accessToken, onClose }) {
   // States

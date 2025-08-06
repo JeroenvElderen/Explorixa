@@ -54,7 +54,11 @@ export default function AllPinCard({
   imagealt,
   date,
   imageHeight = 160,
-  children, // for action slot
+  showInternalInteraction = false,
+  onBeenThere = () => {},
+  onWantToGo = () => {},
+  onSave = () => {},
+  children,
 }) {
   return (
     <GlassCard>
@@ -109,14 +113,25 @@ export default function AllPinCard({
           </ReactMarkdown>
         </Box>
 
-             {pin && (
+        {pin && showInternalInteraction && (
           <Box mt={1}>
-            <PinInteractionPanel pin={pin} />
+            <PinInteractionPanel
+              pin={pin}
+              onBeenThere={() => onBeenThere(pin)}
+              onWantToGo={() => onWantToGo(pin)}
+              onSave={() => onSave(pin)}
+            />
           </Box>
         )}
+
         <Typography
           variant="caption"
-          sx={{ color: "white !important", position: "absolute", bottom: 8, left: 180 }}
+          sx={{
+            color: "white !important",
+            position: "absolute",
+            bottom: 8,
+            left: 180,
+          }}
         >
           {date}
         </Typography>
@@ -154,12 +169,17 @@ export default function AllPinCard({
 }
 
 AllPinCard.propTypes = {
+  pin: PropTypes.object,
   title: PropTypes.string.isRequired,
   description: PropTypes.string,
   imageurl: PropTypes.string,
   imagealt: PropTypes.string,
   date: PropTypes.string,
   imageHeight: PropTypes.number,
+  showInternalInteraction: PropTypes.bool,
+  onBeenThere: PropTypes.func,
+  onWantToGo: PropTypes.func,
+  onSave: PropTypes.func,
   children: PropTypes.node,
 };
 
@@ -169,5 +189,10 @@ AllPinCard.defaultProps = {
   imagealt: "",
   date: "",
   imageHeight: 160,
+  pin: null,
+  showInternalInteraction: true,
+  onBeenThere: () => {},
+  onWantToGo: () => {},
+  onSave: () => {},
   children: null,
 };
