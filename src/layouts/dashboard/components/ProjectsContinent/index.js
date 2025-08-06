@@ -113,7 +113,7 @@ export default function ProjectsContinent({ continent }) {
           {expanded && (
             <motion.div
               initial={{ maxHeight: 0, opacity: 0 }}
-              animate={{ maxHeight: 2000, opacity: 1 }}
+              animate={{ maxHeight: window.innerWidth < 600 ? 6000 : 2000, opacity: 1 }}
               exit={{ maxHeight: 0, opacity: 0 }}
               transition={{ duration: 0.45, ease: "easeInOut" }}
               style={{ overflow: "hidden", willChange: "max-height, opacity" }}
