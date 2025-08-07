@@ -61,7 +61,7 @@ export default function CountryPage() {
       .trim()
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "");
-  const viewKeys = useMemo(() => ["all", ...categories.map(normalize), "map"], [
+  const viewKeys = useMemo(() => ["all", "allpins", ...categories.map(normalize), "map"], [
     categories,
   ]);
 
@@ -73,6 +73,7 @@ export default function CountryPage() {
   // Filter pins for both map AND list based on view
   const filteredPins = useMemo(() => {
     if (view === "all" || view === "map") return allPins;
+    if (view === "allpins") return allPins;
     return allPins.filter((pin) => {
       const cat = pin.properties?.category || pin.Category || "";
       return normalize(cat) === view;
@@ -206,7 +207,7 @@ export default function CountryPage() {
                 pins={pins}
                 onPoiClick={onPoiClick}
                 resetPinsFilter={resetPinsFilter}
-                height={400}
+                height={600}
               />
             </Suspense>
           </Box>
@@ -229,7 +230,7 @@ export default function CountryPage() {
                 categories={categories}
                 selectedCity={selectedCity}
                 setSelectedCity={setSelectedCity}
-                selectedCategory={view === "all" ? "All" : view}
+                selectedCategory={view === "all" || view === "allpins" ? "All" : view}
                 setSelectedCategory={() => {}}
                 onReset={() => {
                   setSelectedCity("All");

@@ -14,7 +14,7 @@ import Home from "layouts/home";
 import HomeIcon from "@mui/icons-material/Home";
 import CountryPage from "components/countries/CountryPage";
 import ContinentPage from "components/continent/ContinentPage";
-import PinPage from "components/pinpage";
+import PinPage from "pages/PinPage";
 import ProfilePage from "components/ProfilePage";
 import Icon from "@mui/material/Icon";
 import destinationConfigs from "./routesDestination";

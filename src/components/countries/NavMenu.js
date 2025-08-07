@@ -10,7 +10,9 @@ const normalize = (s) =>
     .replace(/[^a-z0-9]/g, "");
 
 const NAV_OPTIONS = [
+  { key: "map", label: "Map" },
   { key: "all", label: "General" },
+  { key: "allpins", label: "All" },
   { key: normalize("Traditions"), label: "Traditions" },
   { key: normalize("Accommodation"), label: "Accommodation" },
   { key: normalize("active?"), label: "Active ?" },
@@ -18,7 +20,6 @@ const NAV_OPTIONS = [
   { key: normalize("Nightlife"), label: "NightLife" },
   { key: normalize("Discover"), label: "Discover" },
   { key: normalize("Yumy Yumy"), label: "Yumy Yumy" },
-  { key: "map", label: "Map" },
 ];
 
 export default function NavMenu({
@@ -57,7 +58,7 @@ export default function NavMenu({
 
   const btnSx = (active) => ({
     borderColor: "rgba(243,143,1,0.6)",
-    color: active ? "#F18F01" : "white",
+    color: active ? "#F18F01" : "white !important",
     background: active ? "rgba(243,143,1,0.13)" : "rgba(255,255,255,0.07)",
     "&:hover": {
       background: "rgba(243,143,1,0.13)",
@@ -114,8 +115,6 @@ export default function NavMenu({
         width: "100%",
         borderRadius: 2,
         backdropFilter: "blur(10px)",
-        background:
-          "linear-gradient(90deg,rgba(255,255,255,0.13),rgba(241,143,1,0.04) 100%)",
         boxShadow: "0 4px 20px 0 rgba(241,143,1,0.07)",
         p: 2,
         mb: 2,

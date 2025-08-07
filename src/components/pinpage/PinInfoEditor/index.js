@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import PropTypes from "prop-types";
 import { Dialog, DialogTitle, DialogContent, DialogActions, TextField, Button } from "@mui/material";
 
-export function PinInfoEditor({ initialInfo, open, onClose, onSave }) {
+function PinInfoEditor({ initialInfo, open, onClose, onSave }) {
   const [value, setValue] = useState(initialInfo);
 
   return (
@@ -34,3 +34,6 @@ PinInfoEditor.propTypes = {
   onClose:     PropTypes.func.isRequired,
   onSave:      PropTypes.func.isRequired,
 };
+
+export default PinInfoEditor;
+// src/components/pinpage/PinInfoEditor/index.js

@@ -43,7 +43,7 @@ const MapCard = forwardRef(function MapCard(
     pins = [],
     accessToken,
     initialBounds = null,
-    height = 320,
+    height = 520,
     resetPinsFilter = () => {},
     selectedPinId = null,
   },
@@ -158,6 +158,8 @@ const MapCard = forwardRef(function MapCard(
               ];
               if (isValidBounds(bb)) {
                 m.fitBounds(bb, { padding: 20, maxZoom: 5, duration: 800 });
+                m.one('moveend', () => {
+                });
               }
             }
           }
@@ -286,7 +288,7 @@ const MapCard = forwardRef(function MapCard(
       return;
     const tid = setTimeout(() => {
       try {
-        map.fitBounds(initialBounds, { padding: 20, maxZoom: 4, duration: 800 });
+        map.fitBounds(initialBounds, { padding: 20, maxZoom: 3.7, duration: 800 });
       } catch (err) {
         console.warn("fitBounds failed:", err);
       }

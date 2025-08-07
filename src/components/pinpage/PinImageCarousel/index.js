@@ -9,7 +9,7 @@ import PinInteractionPanel from "components/PinInteractionPanel";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 
-export function PinImageCarousel({ images, pin, onUpdated = () => {} }) {
+export default function PinImageCarousel({ images, pin, onUpdated = () => {} }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const [current, setCurrent] = useState(0);

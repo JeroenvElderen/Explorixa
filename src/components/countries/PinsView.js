@@ -22,7 +22,7 @@ export default function PinsView({
   let pinsToShow;
   if (selectedPin) {
     pinsToShow = [selectedPin];
-  } else if (selectedCategory === "all") {
+  } else if (selectedCategory === "general" || selectedCategory === "All") {
     pinsToShow = allPins;
   } else {
     pinsToShow = allPins.filter(
@@ -32,7 +32,7 @@ export default function PinsView({
 
   // 2) Label for the “Show all” button:
   const catLabel =
-    selectedCategory === "all"
+    selectedCategory === "general"
       ? "General"
       : selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1);
 
@@ -40,7 +40,7 @@ export default function PinsView({
     <>
       {/* “Show all {Category}” when viewing a single pin */}
       <Box px={2} mb={2} display="flex" gap={2}>
-        {selectedPin && selectedCategory !== "all" && (
+        {selectedPin && selectedCategory !== "general" && (
           <Button variant="outlined" onClick={onResetCategory}>
             Show all {catLabel}
           </Button>

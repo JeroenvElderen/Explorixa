@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import Grid from "@mui/material/Grid";
 import { useTheme, useMediaQuery } from "@mui/material";
 
-export function PinStats() {
+function PinStats() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -24,3 +24,5 @@ export function PinStats() {
 }
 
 PinStats.propTypes = {};
+
+export default PinStats;

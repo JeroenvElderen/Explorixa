@@ -15,7 +15,7 @@ export function usePin(pinSlug) {
     wantToGoPins,
     saveWantToGo,
     removeWantToGo,
-  } = useSavedPins();
+  } = useSavedPins(); 
 
   const [pin, setPin] = useState(null);
   const [loading, setLoading] = useState(true);

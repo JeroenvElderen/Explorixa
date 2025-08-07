@@ -9,7 +9,7 @@ export default function CountryMap({
   pins,
   onPinClick,
   mapCenter = [51, 10],
-  zoom = 5,
+  zoom = 4,
 }) {
   if (!pins.length) return null;
 

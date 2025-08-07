@@ -5,7 +5,7 @@ import { useTheme, useMediaQuery, Box } from "@mui/material";
 import MDTypography from "../../MDTypography";
 import PinInteractionPanel from "components/PinInteractionPanel";
 
-export function PinHeader({ pin, onUpdated }) {
+function PinHeader({ pin, onUpdated }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
 
@@ -82,3 +82,5 @@ PinHeader.propTypes = {
 PinHeader.defaultProps = {
   onUpdated: () => {},
 };
+
+export default PinHeader;
