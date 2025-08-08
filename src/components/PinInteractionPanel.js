@@ -318,18 +318,7 @@ export default function PinInteractionPanel({ pin: initialPin, onUpdated, refres
       display="flex"
       alignItems="center"
       gap={0.5}
-      sx={{
-        background: 'rgba(255,255,255,0.05)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderRadius: 12,
-        px: 1,
-        py: 0.5,
-        opacity: initialized ? 1 : 0.9,
-        transition: 'opacity .2s ease',
-        width: 'fit-content',
-        maxWidth: '100%',
-      }}
+      
     >
       {/* Been There */}
       <Tooltip title="Been there">

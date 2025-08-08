@@ -12,7 +12,7 @@ function PinHeader({ pin, onUpdated }) {
   return (
     <Grid
       container
-      spacing={4}
+      spacing= {isMobile ? 0 : 4}
       alignItems="flex-start"
       justifyContent="stretch"
       sx={{ position: "relative" }} // for absolute positioning
@@ -31,7 +31,7 @@ function PinHeader({ pin, onUpdated }) {
             {pin.countryName}
           </MDTypography>
         )}
-        <MDTypography variant="h3" gutterBottom>
+        <MDTypography variant="h3">
           {pin.Name}
         </MDTypography>
         {pin["Post Summary"] && (

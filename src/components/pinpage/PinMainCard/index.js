@@ -8,8 +8,13 @@ export default function PinMainCard({ pin, currentUserId, setPin, isMobile }) {
   return (
     <Card
       sx={{
-        mt: 3,
+        mt: isMobile ? -3 : 3,
         mb: 3,
+        width: isMobile ? "98vw" : "100%",
+        left: isMobile ? "50%" : 0,
+        transform: isMobile ? "translateX(-50%)" : "none",
+        position: "relative",
+        overflow: "hidden",
         backdropFilter: "blur(20px)",
         background: "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
         border: "1px solid rgba(255,255,255,0.6)",

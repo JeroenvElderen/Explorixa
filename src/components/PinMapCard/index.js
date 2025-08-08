@@ -9,13 +9,14 @@ import { AddressField } from "./AddressField";
 import { CoordsField } from "./CoordsField";
 import DestinationGuide from "./DestinationGuide";
 import { getContinentByCountry } from "utils/continentHelpers";
+import MDBox from "components/MDBox";
 
 import { supabase } from "../../SupabaseClient"; // adjust if your client is elsewhere
 import { useTheme, useMediaQuery } from "@mui/material";
 
-export default function PinMapCard({ pin }) {
+export default function PinMapCard({ pin, isMobile }) {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+  
   const { latitude, longitude, Name: pinName, countryName } = pin;
 
   const continentName = getContinentByCountry(countryName);
@@ -64,8 +65,12 @@ export default function PinMapCard({ pin }) {
   }, [countryName]);
 
   return (
-    <Card
+    <MDBox
       sx={{
+         width: isMobile ? "98vw" : "100%",
+  position: isMobile ? "relative" : undefined,
+  left: isMobile ? "50%" : undefined,
+  transform: isMobile ? "translateX(-50%)" : undefined,
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         background: "linear-gradient(145deg, rgba(241,143,1,0.3) 0%, rgba(241,143,1,0) 100%)",
@@ -96,6 +101,6 @@ export default function PinMapCard({ pin }) {
           storiesCount={storiesCount}
         />
       </CardContent>
-    </Card>
+    </MDBox>
   );
 }

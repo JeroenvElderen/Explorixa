@@ -10,6 +10,7 @@ export default function PinContentSection({
   infoDialogOpen,
   setInfoDialogOpen,
   updatePinInfo,
+  isMobile,
 }) {
   return (
     <MDBox
@@ -21,6 +22,10 @@ export default function PinContentSection({
         borderRadius: "12px",
         p: 3,
         mb: 3,
+        position: "relative",
+        width: isMobile ? "98vw" : "100%",
+        left: isMobile ? "50%" : "0",
+        transform: isMobile ? "translateX(-50%)" : "none",
         "& p": { color: "white !important", mb: 1, fontSize: "18px" },
       }}
     >

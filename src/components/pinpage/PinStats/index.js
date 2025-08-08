@@ -16,7 +16,7 @@ function PinStats() {
       direction="row"
       wrap="nowrap"
       justifyContent={isMobile ? "space-between" : "flex-end"}
-      sx={{ width: "100%" }}
+      
     >
       {/* Intentionally empty; metrics removed */}
     </Grid>

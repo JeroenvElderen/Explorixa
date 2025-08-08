@@ -64,8 +64,9 @@ export default function PinPage() {
             infoDialogOpen={infoDialogOpen}
             setInfoDialogOpen={setInfoDialogOpen}
             updatePinInfo={updatePinInfo}
+            isMobile={isMobile}
           />
-          <PinSidebar pin={pin} />
+          <PinSidebar pin={pin} isMobile={isMobile}/>
         </Box>
       ) : (
         <Box>
@@ -86,8 +87,8 @@ export default function PinPage() {
               setPin={setPin}
             />
           </Box>
-          <Grid container spacing={3} mt={2}>
-            <Grid item xs={12} md={8}>
+          <Grid container spacing={2} mt={2}>
+            <Grid item xs={12} md={7}>
               <PinContentSection
                 pin={pin}
                 infoDialogOpen={infoDialogOpen}
@@ -95,7 +96,7 @@ export default function PinPage() {
                 updatePinInfo={updatePinInfo}
               />
             </Grid>
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={5}>
               <PinSidebar pin={pin} />
             </Grid>
           </Grid>
